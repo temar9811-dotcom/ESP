@@ -19,10 +19,10 @@
     "files": [
       "main.js",
       "preload.js",
+      "storage.js",
+      "eve.js",
       "version.js",
       "scopes.js",
-      "src/**/*",
-      "eve/**/*",
       "renderer/**/*",
       "test/**/*"
     ],

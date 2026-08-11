@@ -1,0 +1,4 @@
+{
+  "enabled": true,
+  "note": "Set enabled to false, or delete this file, to turn the test harness off. No app restart needed."
+}
