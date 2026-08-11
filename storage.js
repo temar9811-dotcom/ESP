@@ -1,44 +1,68 @@
+'use strict';
+
 const { app, safeStorage } = require('electron');
 const fs = require('fs');
 const path = require('path');
+
 function getDataFile() {
-return path.join(app.getPath('userData'), 'accounts.json');
+  return path.join(app.getPath('userData'), 'accounts.json');
 }
+
+function ensureDirectoryExists(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
 function loadAccounts() {
-try {
-const raw = fs.readFileSync(getDataFile(), 'utf8');
-const data = JSON.parse(raw);
-return Array.isArray(data) ? data : [];
-} catch {
-return [];
+  try {
+    const raw = fs.readFileSync(getDataFile(), 'utf8');
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
 }
-}
+
 function saveAccounts(accounts) {
-const file = getDataFile();
-fs.mkdirSync(path.dirname(file), { recursive: true });
-fs.writeFileSync(file, JSON.stringify(accounts, null, 2), 'utf8');
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
+  const file = getDataFile();
+
+  ensureDirectoryExists(file);
+  fs.writeFileSync(file, JSON.stringify(safeAccounts, null, 2), 'utf8');
 }
+
 function encryptSecret(value) {
-if (!value) return '';
-if (safeStorage.isEncryptionAvailable()) {
-return safeStorage.encryptString(value).toString('base64');
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  const text = String(value);
+
+  if (safeStorage.isEncryptionAvailable()) {
+    return safeStorage.encryptString(text).toString('base64');
+  }
+
+  return Buffer.from(text, 'utf8').toString('base64');
 }
-return Buffer.from(value, 'utf8').toString('base64');
-}
+
 function decryptSecret(value) {
-if (!value) return '';
-if (safeStorage.isEncryptionAvailable()) {
-try {
-return safeStorage.decryptString(Buffer.from(value, 'base64'));
-} catch {
-// Fall through to base64 fallback
+  if (!value) {
+    return '';
+  }
+
+  if (safeStorage.isEncryptionAvailable()) {
+    try {
+      return safeStorage.decryptString(Buffer.from(value, 'base64'));
+    } catch {
+      // Fall through to base64 fallback.
+    }
+  }
+
+  return Buffer.from(value, 'base64').toString('utf8');
 }
-}
-return Buffer.from(value, 'base64').toString('utf8');
-}
+
 module.exports = {
-loadAccounts,
-saveAccounts,
-encryptSecret,
-decryptSecret
+  loadAccounts,
+  saveAccounts,
+  encryptSecret,
+  decryptSecret
 };
