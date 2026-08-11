@@ -8,22 +8,55 @@ const storage = require('../storage');
 const accounts = require('./accounts');
 const plans = require('./plans');
 
-const LEGACY_APP_NAMES = ['EVE Skill Tray'];
+const LEGACY_FOLDER_CANDIDATES = [
+  'EVE Skill Tray',
+  'eve-skill-tray',
+  'EVE SkillTray',
+  'eve-skilltray',
+  'eve_skill_tray'
+];
+
+function hasLegacyAccountsFile(dir) {
+  const file = path.join(dir, 'accounts.json');
+
+  try {
+    if (!fs.existsSync(file)) {
+      return false;
+    }
+
+    const raw = fs.readFileSync(file, 'utf8');
+    return raw.includes('refreshTokenEnc');
+  } catch {
+    return false;
+  }
+}
 
 function findLegacyUserData() {
   const appData = app.getPath('appData');
 
-  for (const name of LEGACY_APP_NAMES) {
+  for (const name of LEGACY_FOLDER_CANDIDATES) {
     const dir = path.join(appData, name);
-    const accountsFile = path.join(dir, 'accounts.json');
 
-    try {
-      if (fs.existsSync(accountsFile)) {
+    if (hasLegacyAccountsFile(dir)) {
+      return dir;
+    }
+  }
+
+  try {
+    const entries = fs.readdirSync(appData, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (!/eve|skill|tray/i.test(entry.name)) continue;
+
+      const dir = path.join(appData, entry.name);
+
+      if (hasLegacyAccountsFile(dir)) {
         return dir;
       }
-    } catch {
-      // Ignore lookup errors.
     }
+  } catch {
+    // Ignore scan errors.
   }
 
   return null;
@@ -115,6 +148,7 @@ function importLegacy() {
 
   return {
     ok: true,
+    legacyDir,
     importedAccounts: importedAccounts + repairedAccounts,
     repairedAccounts,
     skippedAccounts,
