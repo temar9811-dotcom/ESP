@@ -8,6 +8,7 @@ const accounts = require('./accounts');
 const plans = require('./plans');
 const settings = require('./settings');
 const importer = require('./importer');
+const toastWindow = require('./toast-window');
 
 let testHarness = null;
 
@@ -102,6 +103,11 @@ function registerIpcHandlers() {
     }
 
     return summary;
+  });
+
+  ipcMain.handle('toast:show', (_event, title, body) => {
+    toastWindow.showToast(title, body);
+    return true;
   });
 
   ipcMain.handle('test:run', async (_event, command, payload) => {
