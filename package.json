@@ -3,7 +3,7 @@
   "productName": "EVE Status Perception",
   "version": "1.1.0",
   "description": "EVE Status Perception (ESP) - EVE Online skill queue, wallet and status tray",
-  "author": "EVE Status Perception",
+  "author": "Bezekira Windfury <Temar9811@gmail.com>",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -11,19 +11,24 @@
     "build:portable": "electron-builder --win portable"
   },
   "build": {
-    "appId": "com.esp.tool",
+    "appId": "com.esp.app",
     "productName": "EVE Status Perception",
     "directories": {
       "output": "release"
     },
     "files": [
       "main.js",
+      "main/**/*",
       "preload.js",
       "storage.js",
       "eve.js",
+      "eve/**/*",
       "version.js",
       "scopes.js",
       "renderer/**/*",
+      "test/**/*"
+    ],
+    "asarUnpack": [
       "test/**/*"
     ],
     "win": {
