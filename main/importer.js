@@ -7,6 +7,7 @@ const fs = require('fs');
 const storage = require('../storage');
 const accounts = require('./accounts');
 const plans = require('./plans');
+const eve = require('../eve');
 
 const LEGACY_FOLDER_CANDIDATES = [
   'EVE Skill Tray',
@@ -15,6 +16,8 @@ const LEGACY_FOLDER_CANDIDATES = [
   'eve-skilltray',
   'eve_skill_tray'
 ];
+
+const EXPORT_FILE_NAME = 'esp-migration-export.json';
 
 function hasLegacyAccountsFile(dir) {
   const file = path.join(dir, 'accounts.json');
@@ -70,35 +73,43 @@ function readJson(file) {
   }
 }
 
-function reencrypt(value) {
-  if (!value) return '';
-  return storage.encryptSecret(storage.decryptSecret(value));
+function isPrintable(value) {
+  return (
+    typeof value === 'string' && value.length > 0 && /^[ -~]+$/.test(value)
+  );
 }
 
-function importLegacy() {
-  const legacyDir = findLegacyUserData();
+function decryptLegacy(value) {
+  if (!value) return null;
 
-  if (!legacyDir) {
-    return {
-      ok: false,
-      error: 'No EVE Skill Tray data found on this computer.'
-    };
-  }
-
-  const legacyAccounts = readJson(path.join(legacyDir, 'accounts.json'));
-  const legacyPlans = readJson(path.join(legacyDir, 'skillPlans.json'));
-
+  const plain = storage.decryptSecret(value);
+  return isPrintable(plain) ? plain : null;
+}
+async function importFromExport(exportData) {
   const existing = accounts.getAccounts();
+  const stats = { imported: 0, updated: 0, skipped: 0 };
 
-  let importedAccounts = 0;
-  let repairedAccounts = 0;
-  let skippedAccounts = 0;
+  for (const entry of Array.isArray(exportData.accounts) ? exportData.accounts : []) {
+    const characterId = Number(entry.characterId);
+    const refreshToken =
+      typeof entry.refreshToken === 'string' ? entry.refreshToken : '';
 
-  for (const old of Array.isArray(legacyAccounts) ? legacyAccounts : []) {
-    const characterId = Number(old.characterId);
+    if (!characterId || !isPrintable(refreshToken)) {
+      stats.skipped += 1;
+      continue;
+    }
 
-    if (!characterId) {
-      skippedAccounts += 1;
+    // Verify the token live and rotate it into ESP in one move.
+    let tokens = null;
+
+    try {
+      tokens = await eve.refreshAccessToken(refreshToken);
+    } catch {
+      tokens = null;
+    }
+
+    if (!tokens) {
+      stats.skipped += 1;
       continue;
     }
 
@@ -107,15 +118,71 @@ function importLegacy() {
     );
 
     if (existingAccount) {
-      // Only touch characters that are currently broken in ESP.
+      existingAccount.refreshTokenEnc = storage.encryptSecret(tokens.refreshToken);
+      existingAccount.accessTokenEnc = storage.encryptSecret(tokens.accessToken);
+      existingAccount.accessTokenExpiresAt = tokens.expiresAt;
+      existingAccount.lastError = null;
+
+      if (entry.characterName) {
+        existingAccount.characterName = entry.characterName;
+      }
+
+      stats.updated += 1;
+      continue;
+    }
+
+    existing.push({
+      characterId,
+      characterName: entry.characterName || `Character ${characterId}`,
+      addedAt: entry.addedAt || new Date().toISOString(),
+      importedFrom: 'EVE Skill Tray',
+      scopes: entry.scopes || null,
+      refreshTokenEnc: storage.encryptSecret(tokens.refreshToken),
+      accessTokenEnc: storage.encryptSecret(tokens.accessToken),
+      accessTokenExpiresAt: tokens.expiresAt,
+      lastError: null
+    });
+
+    stats.imported += 1;
+  }
+
+  const importedPlans = plans.mergePlans(
+    Array.isArray(exportData.plans) ? exportData.plans : []
+  );
+
+  return { stats, importedPlans };
+}
+
+function importFromAccountsFile(legacyDir) {
+  const legacyAccounts = readJson(path.join(legacyDir, 'accounts.json'));
+  const existing = accounts.getAccounts();
+  const stats = { imported: 0, updated: 0, skipped: 0 };
+
+  for (const old of Array.isArray(legacyAccounts) ? legacyAccounts : []) {
+    const characterId = Number(old.characterId);
+    const refreshToken = decryptLegacy(old.refreshTokenEnc);
+
+    if (!characterId || !refreshToken) {
+      stats.skipped += 1;
+      continue;
+    }
+
+    const existingAccount = existing.find(
+      (account) => Number(account.characterId) === characterId
+    );
+
+    if (existingAccount) {
+      // Conservative fallback: only repair characters already broken.
       if (existingAccount.lastError) {
-        existingAccount.refreshTokenEnc = reencrypt(old.refreshTokenEnc);
-        existingAccount.accessTokenEnc = reencrypt(old.accessTokenEnc);
+        existingAccount.refreshTokenEnc = storage.encryptSecret(refreshToken);
+        existingAccount.accessTokenEnc = storage.encryptSecret(
+          decryptLegacy(old.accessTokenEnc) || ''
+        );
         existingAccount.accessTokenExpiresAt = 0;
         existingAccount.lastError = null;
-        repairedAccounts += 1;
+        stats.updated += 1;
       } else {
-        skippedAccounts += 1;
+        stats.skipped += 1;
       }
       continue;
     }
@@ -126,32 +193,69 @@ function importLegacy() {
       addedAt: old.addedAt || new Date().toISOString(),
       importedFrom: 'EVE Skill Tray',
       scopes: old.scopes || null,
-      refreshTokenEnc: reencrypt(old.refreshTokenEnc),
-      accessTokenEnc: reencrypt(old.accessTokenEnc),
+      refreshTokenEnc: storage.encryptSecret(refreshToken),
+      accessTokenEnc: storage.encryptSecret(decryptLegacy(old.accessTokenEnc) || ''),
       accessTokenExpiresAt: 0,
       lastError: null
     });
 
-    importedAccounts += 1;
+    stats.imported += 1;
   }
 
-  const importedPlans =
-    typeof plans.mergePlans === 'function'
-      ? plans.mergePlans(Array.isArray(legacyPlans) ? legacyPlans : [])
-      : 0;
+  const legacyPlans = readJson(path.join(legacyDir, 'skillPlans.json'));
+  const importedPlans = plans.mergePlans(
+    Array.isArray(legacyPlans) ? legacyPlans : []
+  );
 
-  if (repairedAccounts > 0) {
+  return { stats, importedPlans };
+}
+
+async function importLegacy() {
+  const legacyDir = findLegacyUserData();
+
+  if (!legacyDir) {
+    return {
+      ok: false,
+      error: 'No EVE Skill Tray data found on this computer.'
+    };
+  }
+
+  const exportFile = path.join(legacyDir, EXPORT_FILE_NAME);
+  const exportData = readJson(exportFile);
+
+  let source;
+  let outcome;
+
+  if (exportData && Array.isArray(exportData.accounts)) {
+    source = 'export';
+    outcome = await importFromExport(exportData);
+
+    // Remove the plaintext export once consumed.
+    try {
+      fs.unlinkSync(exportFile);
+    } catch {
+      // Ignore cleanup errors.
+    }
+  } else {
+    source = 'accounts-file';
+    outcome = importFromAccountsFile(legacyDir);
+  }
+
+  const { stats, importedPlans } = outcome;
+
+  if (stats.imported > 0 || stats.updated > 0) {
     accounts.refreshAll().catch(() => {
-      // Ignore background refresh errors after a repair.
+      // Ignore background refresh errors after import.
     });
   }
 
   return {
     ok: true,
     legacyDir,
-    importedAccounts: importedAccounts + repairedAccounts,
-    repairedAccounts,
-    skippedAccounts,
+    source,
+    importedAccounts: stats.imported + stats.updated,
+    repairedAccounts: stats.updated,
+    skippedAccounts: stats.skipped,
     importedPlans
   };
 }
