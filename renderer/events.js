@@ -141,6 +141,7 @@ ESP.bindEvents = function () {
   const addBtn = document.getElementById('add');
   const refreshBtn = document.getElementById('refresh');
   const addPlanBtn = document.getElementById('addPlan');
+  const settingsBtn = document.getElementById('settings');
   const modalRoot = ESP.getModalRoot();
 
   if (modalRoot) {
@@ -152,7 +153,22 @@ ESP.bindEvents = function () {
       }
     });
 
-    modalRoot.addEventListener('change', (event) => {
+    modalRoot.addEventListener('change', async (event) => {
+      if (event.target.id === 'importEnabledToggle') {
+        const enabled = event.target.checked;
+
+        try {
+          ESP.state.settings = await window.eveApi.setSettings({
+            importEnabled: enabled
+          });
+        } catch {
+          ESP.state.settings = { importEnabled: enabled };
+        }
+
+        ESP.renderModals();
+        return;
+      }
+
       if (!ESP.state.addPlanState) return;
 
       if (event.target.name === 'planScope') {
@@ -172,7 +188,38 @@ ESP.bindEvents = function () {
       if (closeBtn || cancelBtn) {
         ESP.state.addPlanState = null;
         ESP.state.planDetail = null;
+        ESP.state.settingsOpen = false;
         ESP.renderModals();
+        return;
+      }
+
+      const importBtn = event.target.closest('.import-legacy');
+
+      if (importBtn) {
+        importBtn.disabled = true;
+
+        try {
+          const summary = await window.eveApi.importLegacy();
+
+          if (summary.ok) {
+            ESP.showToast(
+              'Import complete',
+              `Imported ${summary.importedAccounts} characters and ${summary.importedPlans} plans. Skipped ${summary.skippedAccounts} existing.`
+            );
+            ESP.setStatus('Import complete.');
+            await ESP.loadPlans();
+            await ESP.load();
+            ESP.state.settingsOpen = false;
+            ESP.renderModals();
+          } else {
+            ESP.setStatus(summary.error || 'Import failed.', true);
+            importBtn.disabled = false;
+          }
+        } catch (err) {
+          ESP.setStatus(err?.message || String(err), true);
+          importBtn.disabled = false;
+        }
+
         return;
       }
 
@@ -186,12 +233,12 @@ ESP.bindEvents = function () {
       if (event.target.classList.contains('modal-overlay')) {
         ESP.state.addPlanState = null;
         ESP.state.planDetail = null;
+        ESP.state.settingsOpen = false;
         ESP.renderModals();
       }
     });
   }
-
-  if (accountsEl) {
+    if (accountsEl) {
     accountsEl.addEventListener('click', async (event) => {
       const characterTab = event.target.closest('.character-tab');
 
@@ -302,6 +349,12 @@ ESP.bindEvents = function () {
     });
   }
 
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      ESP.openSettingsModal();
+    });
+  }
+
   if (addBtn) {
     addBtn.addEventListener('click', async () => {
       addBtn.disabled = true;
@@ -348,7 +401,6 @@ ESP.bindEvents = function () {
     });
   }
 };
-
 ESP.startEveTimeClock = function () {
   const eveTimeEl = document.getElementById('eve-time');
   if (!eveTimeEl) return;
