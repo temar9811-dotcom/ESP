@@ -1,91 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        background: transparent;
-        overflow: hidden;
-        font-family: 'Segoe UI', Arial, sans-serif;
+'use strict';
+
+window.ESP = window.ESP || {};
+
+ESP.showToast = function (title, body) {
+  const root = document.getElementById('toast-root');
+  if (!root) return;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'toast-bubble';
+  bubble.innerHTML =
+    '<div class="toast-title">' + ESP.escapeHtml(title) + '</div>' +
+    '<div class="toast-body">' + ESP.escapeHtml(body) + '</div>';
+
+  root.appendChild(bubble);
+
+  setTimeout(() => {
+    bubble.remove();
+  }, 8000);
+};
+
+ESP.initToastListeners = function () {
+  if (window.eveApi && window.eveApi.onSkillCompleted) {
+    window.eveApi.onSkillCompleted((payload) => {
+      ESP.showToast(
+        'Skill complete',
+        `${payload.characterName}: ${payload.skillName} L${payload.level} finished training.`
+      );
+    });
+  }
+
+  if (window.eveApi && window.eveApi.onWalletActivity) {
+    window.eveApi.onWalletActivity((payload) => {
+      const list = Array.isArray(payload.entries) ? payload.entries : [];
+      const shown = list.slice(0, 5);
+
+      for (const entry of shown) {
+        const amount = Number(entry.amount || 0);
+        const sign = amount >= 0 ? '+' : '-';
+        ESP.showToast(
+          'Wallet activity',
+          `${payload.characterName}: ${entry.description} (${sign}${ESP.formatIsk(Math.abs(amount))} ISK)`
+        );
       }
 
-      #toast-stack {
-        position: fixed;
-        bottom: 0;
-        right: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 10px;
+      if (list.length > shown.length) {
+        ESP.showToast(
+          'Wallet activity',
+          `${payload.characterName}: ${list.length - shown.length} more wallet entries.`
+        );
       }
-
-      .toast-bubble {
-        width: 340px;
-        background: rgba(20, 26, 34, 0.95);
-        border: 1px solid rgba(90, 140, 190, 0.5);
-        border-radius: 10px;
-        padding: 12px 14px;
-        color: #e8eef5;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-        animation: toast-in 0.25s ease-out;
-      }
-
-      .toast-title {
-        font-weight: 700;
-        margin-bottom: 4px;
-      }
-
-      .toast-body {
-        font-size: 13px;
-        line-height: 1.4;
-        word-break: break-word;
-      }
-
-      @keyframes toast-in {
-        from {
-          transform: translateY(12px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="toast-stack"></div>
-
-    <script>
-      const stack = document.getElementById('toast-stack');
-
-      window.toastApi.onToast((payload) => {
-        const bubble = document.createElement('div');
-        bubble.className = 'toast-bubble';
-
-        const title = document.createElement('div');
-        title.className = 'toast-title';
-        title.textContent = payload.title || '';
-
-        const body = document.createElement('div');
-        body.className = 'toast-body';
-        body.textContent = payload.body || '';
-
-        bubble.appendChild(title);
-        bubble.appendChild(body);
-        stack.appendChild(bubble);
-
-        while (stack.children.length > 5) {
-          stack.removeChild(stack.firstChild);
-        }
-
-        setTimeout(() => {
-          bubble.remove();
-        }, 8000);
-      });
-    </script>
-  </body>
-</html>
+    });
+  }
+};
