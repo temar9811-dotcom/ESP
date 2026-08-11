@@ -2,50 +2,45 @@
   "name": "eve-status-perception",
   "productName": "EVE Status Perception",
   "version": "1.1.0",
-  "description": "EVE Status Perception (ESP) - EVE Online skill queue, wallet and status tray",
-  "author": "Bezekira Windfury <Temar9811@gmail.com>",
+  "description": "EVE Online skill training and wallet status tray app",
   "main": "main.js",
+  "author": {
+    "name": "Bezekira Windfury",
+    "email": "Temar9811@gmail.com"
+  },
+  "license": "MIT",
+  "private": true,
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
-    "build:portable": "electron-builder --win portable"
-  },
-  "build": {
-    "appId": "com.esp.app",
-    "productName": "EVE Status Perception",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "main.js",
-      "main/**/*",
-      "preload.js",
-      "storage.js",
-      "eve.js",
-      "eve/**/*",
-      "version.js",
-      "scopes.js",
-      "renderer/**/*",
-      "test/**/*"
-    ],
-    "asarUnpack": [
-      "test/**/*"
-    ],
-    "win": {
-      "target": [
-        "nsis"
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "EVE Status Perception"
-    }
+    "dist": "electron-builder --win"
   },
   "devDependencies": {
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.esp.app",
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "asarUnpack": [
+      "test/**",
+      "assets/**"
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "version.js",
+      "storage.js",
+      "scopes.js",
+      "eve.js",
+      "eve/**/*",
+      "main/**/*",
+      "renderer/**/*",
+      "test/**/*",
+      "assets/**/*",
+      "package.json"
+    ]
   }
 }
