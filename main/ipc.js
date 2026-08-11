@@ -95,7 +95,7 @@ function registerIpcHandlers() {
       return { ok: false, error: 'Import is disabled in settings.' };
     }
 
-    const summary = importer.importLegacy();
+    const summary = await importer.importLegacy();
 
     if (summary.ok) {
       accounts.broadcastAccounts();
