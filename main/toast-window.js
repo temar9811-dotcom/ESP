@@ -24,7 +24,7 @@ function createToastWindow() {
     resizable: false,
     focusable: false,
     skipTaskbar: true,
-    show: true,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, '..', 'renderer', 'toast-preload.js'),
       contextIsolation: true,
@@ -33,10 +33,16 @@ function createToastWindow() {
     }
   });
 
-  toastWin.setAlwaysOnTop(true, 'screen-saver');
   toastWin.setIgnoreMouseEvents(true);
 
   toastWin.loadFile(path.join(__dirname, '..', 'renderer', 'toast.html'));
+
+  toastWin.webContents.once('did-finish-load', () => {
+    if (toastWin && !toastWin.isDestroyed()) {
+      toastWin.show();
+      console.log('ESP toast overlay ready.');
+    }
+  });
 
   toastWin.on('closed', () => {
     toastWin = null;
@@ -55,6 +61,7 @@ function showToast(title, body) {
 
   const deliver = () => {
     if (toastWin && !toastWin.isDestroyed()) {
+      console.log('ESP toast delivered:', payload.title);
       toastWin.webContents.send('toast:show', payload);
     }
   };

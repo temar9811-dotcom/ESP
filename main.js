@@ -2,12 +2,17 @@
 
 const { app } = require('electron');
 
+// Software rendering fixes transparent-window repaint issues on Windows.
+app.disableHardwareAcceleration();
+
 const eveConfig = require('./eve/config');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
 const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
 const legacyGuard = require('./main/legacy-guard');
+const toastWindow = require('./main/toast-window');
+const notifications = require('./main/notifications');
 
 let testHarness = null;
 
@@ -24,11 +29,11 @@ function onAccountsBroadcast(publicAccounts) {
 }
 
 function onSkillCompleted(payload) {
-  sendToRenderer('notification:skill-complete', payload);
+  notifications.notifySkillCompleted(payload);
 }
 
 function onWalletActivity(payload) {
-  sendToRenderer('notification:wallet-activity', payload);
+  notifications.notifyWalletActivity(payload);
 }
 
 function onAccountRemoved(characterId) {
@@ -73,6 +78,7 @@ async function bootstrap() {
 
   windowTray.createWindow();
   windowTray.createTray();
+  toastWindow.createToastWindow();
 
   await accounts.refreshAll();
 
