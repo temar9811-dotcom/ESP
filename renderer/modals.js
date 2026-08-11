@@ -201,10 +201,6 @@ ESP.settingsModalHtml = function (settings) {
   <button type="button" class="modal-save import-legacy">
     Import characters from EVE Skill Tray
   </button>
-  <div class="meta">
-    Copies characters and skill plans from the old app into ESP.
-    Existing characters are skipped.
-  </div>
 </div>
 `
     : '';
@@ -217,15 +213,8 @@ ESP.settingsModalHtml = function (settings) {
 
     ${importRow}
 
-    <div class="form-row">
-      <label>
-        <input
-          type="checkbox"
-          id="importEnabledToggle"
-          ${importEnabled ? 'checked' : ''}
-        />
-        Enable import from EVE Skill Tray
-      </label>
+    <div>
+      Legacy import is controlled by "importEnabled" in the ESP config file.
     </div>
 
     <div class="modal-actions">
