@@ -20,6 +20,11 @@ ESP.renderModals = function () {
     return;
   }
 
+  if (ESP.state.settingsOpen) {
+    modalRoot.innerHTML = ESP.settingsModalHtml(ESP.state.settings);
+    return;
+  }
+
   modalRoot.innerHTML = '';
 };
 
@@ -187,6 +192,66 @@ ESP.planDetailModalHtml = function (plan) {
 `;
 };
 
+ESP.settingsModalHtml = function (settings) {
+  const importEnabled = !settings || settings.importEnabled !== false;
+
+  const importRow = importEnabled
+    ? `
+<div class="form-row">
+  <button type="button" class="modal-save import-legacy">
+    Import characters from EVE Skill Tray
+  </button>
+  <div class="meta">
+    Copies characters and skill plans from the old app into ESP.
+    Existing characters are skipped.
+  </div>
+</div>
+`
+    : '';
+
+  return `
+<div class="modal-overlay">
+  <div class="modal-card">
+    <button type="button" class="modal-close" title="Close">✕</button>
+    <h2>Settings</h2>
+
+    ${importRow}
+
+    <div class="form-row">
+      <label>
+        <input
+          type="checkbox"
+          id="importEnabledToggle"
+          ${importEnabled ? 'checked' : ''}
+        />
+        Enable import from EVE Skill Tray
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel">Close</button>
+    </div>
+  </div>
+</div>
+`;
+};
+
+ESP.openSettingsModal = async function () {
+  if (!window.eveApi || !window.eveApi.getSettings) {
+    ESP.setStatus('Settings are not available.', true);
+    return;
+  }
+
+  ESP.state.settingsOpen = true;
+
+  try {
+    ESP.state.settings = await window.eveApi.getSettings();
+  } catch {
+    ESP.state.settings = { importEnabled: true };
+  }
+
+  ESP.renderModals();
+};
 ESP.openAddPlanModal = async function () {
   if (!window.eveApi || !window.eveApi.readClipboardPlan) {
     ESP.setStatus('Clipboard plans are not available.', true);
