@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('eveApi', {
   savePlan: (plan) => ipcRenderer.invoke('plans:save', plan),
   deletePlan: (planId) => ipcRenderer.invoke('plans:delete', planId),
 
+  // --- Settings & Legacy Import ---
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
+  importLegacy: () => ipcRenderer.invoke('import:legacy'),
+
   // --- Test Harness ---
   testEnabled: () => ipcRenderer.invoke('test:enabled'),
   testRun: (command, payload) => ipcRenderer.invoke('test:run', command, payload),
