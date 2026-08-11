@@ -3,6 +3,12 @@
 window.ESP = window.ESP || {};
 
 ESP.showToast = function (title, body) {
+  if (window.eveApi && window.eveApi.showToast) {
+    window.eveApi.showToast(title, body);
+    return;
+  }
+
+  // Fallback: in-app bubbles if the bridge is unavailable.
   const root = document.getElementById('toast-root');
   if (!root) return;
 
