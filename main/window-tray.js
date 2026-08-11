@@ -41,6 +41,20 @@ function getWindow() {
   return win;
 }
 
+function getAppIconPath() {
+  const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
+
+  try {
+    if (fs.existsSync(iconPath)) {
+      return iconPath;
+    }
+  } catch {
+    // Ignore lookup errors.
+  }
+
+  return undefined;
+}
+
 function getTrayIcon() {
   const assetPath = path.join(__dirname, '..', 'assets', 'tray.png');
 
@@ -92,7 +106,6 @@ function remainingUntil(dateStr) {
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
-
 function updateTrayTooltip() {
   if (!tray) return;
 
@@ -130,6 +143,7 @@ function createWindow() {
     show: false,
     title: `${eveConfig.APP_NAME} v${VERSION}`,
     autoHideMenuBar: true,
+    icon: getAppIconPath(),
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
       contextIsolation: true,
