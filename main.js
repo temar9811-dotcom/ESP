@@ -7,6 +7,7 @@ const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
 const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
+const legacyGuard = require('./main/legacy-guard');
 
 let testHarness = null;
 
@@ -92,6 +93,11 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    if (!legacyGuard.ensureLegacyAppClosed()) {
+      app.quit();
+      return;
+    }
+
     bootstrap().catch(console.error);
   });
 }
