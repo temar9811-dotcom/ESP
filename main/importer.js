@@ -56,18 +56,34 @@ function importLegacy() {
   const legacyPlans = readJson(path.join(legacyDir, 'skillPlans.json'));
 
   const existing = accounts.getAccounts();
-  const existingIds = new Set(
-    existing.map((account) => Number(account.characterId))
-  );
 
   let importedAccounts = 0;
+  let repairedAccounts = 0;
   let skippedAccounts = 0;
 
   for (const old of Array.isArray(legacyAccounts) ? legacyAccounts : []) {
     const characterId = Number(old.characterId);
 
-    if (!characterId || existingIds.has(characterId)) {
+    if (!characterId) {
       skippedAccounts += 1;
+      continue;
+    }
+
+    const existingAccount = existing.find(
+      (account) => Number(account.characterId) === characterId
+    );
+
+    if (existingAccount) {
+      // Only touch characters that are currently broken in ESP.
+      if (existingAccount.lastError) {
+        existingAccount.refreshTokenEnc = reencrypt(old.refreshTokenEnc);
+        existingAccount.accessTokenEnc = reencrypt(old.accessTokenEnc);
+        existingAccount.accessTokenExpiresAt = 0;
+        existingAccount.lastError = null;
+        repairedAccounts += 1;
+      } else {
+        skippedAccounts += 1;
+      }
       continue;
     }
 
@@ -83,7 +99,6 @@ function importLegacy() {
       lastError: null
     });
 
-    existingIds.add(characterId);
     importedAccounts += 1;
   }
 
@@ -92,9 +107,16 @@ function importLegacy() {
       ? plans.mergePlans(Array.isArray(legacyPlans) ? legacyPlans : [])
       : 0;
 
+  if (repairedAccounts > 0) {
+    accounts.refreshAll().catch(() => {
+      // Ignore background refresh errors after a repair.
+    });
+  }
+
   return {
     ok: true,
-    importedAccounts,
+    importedAccounts: importedAccounts + repairedAccounts,
+    repairedAccounts,
     skippedAccounts,
     importedPlans
   };
