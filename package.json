@@ -1,0 +1,46 @@
+{
+  "name": "eve-status-perception",
+  "productName": "EVE Status Perception",
+  "version": "1.1.0",
+  "description": "EVE Status Perception (ESP) - EVE Online skill queue, wallet and status tray",
+  "author": "EVE Status Perception",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.esp.tool",
+    "productName": "EVE Status Perception",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "version.js",
+      "scopes.js",
+      "src/**/*",
+      "eve/**/*",
+      "renderer/**/*",
+      "test/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EVE Status Perception"
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}
