@@ -6,6 +6,8 @@ const { VERSION } = require('../version');
 const eve = require('../eve');
 const accounts = require('./accounts');
 const plans = require('./plans');
+const settings = require('./settings');
+const importer = require('./importer');
 
 let testHarness = null;
 
@@ -14,11 +16,17 @@ function setTestHarness(harness) {
 }
 
 function registerIpcHandlers() {
-  ipcMain.handle('app:getVersion', () => VERSION);
+  ipcMain.handle('app:getVersion', () => {
+    return VERSION;
+  });
 
-  ipcMain.handle('accounts:list', () => accounts.getPublicAccounts());
+  ipcMain.handle('accounts:list', () => {
+    return accounts.getPublicAccounts();
+  });
 
-  ipcMain.handle('accounts:add', async () => accounts.addAccount());
+  ipcMain.handle('accounts:add', async () => {
+    return accounts.addAccount();
+  });
 
   ipcMain.handle('accounts:remove', async (_event, characterId) => {
     accounts.removeAccount(characterId);
@@ -56,13 +64,45 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('plans:readClipboard', async () => plans.readClipboardPlan());
+  ipcMain.handle('plans:readClipboard', async () => {
+    return plans.readClipboardPlan();
+  });
 
-  ipcMain.handle('plans:list', () => plans.loadPlans());
+  ipcMain.handle('plans:list', () => {
+    return plans.loadPlans();
+  });
 
-  ipcMain.handle('plans:save', async (_event, payload) => plans.savePlan(payload));
+  ipcMain.handle('plans:save', async (_event, payload) => {
+    return plans.savePlan(payload);
+  });
 
-  ipcMain.handle('plans:delete', async (_event, planId) => plans.deletePlan(planId));
+  ipcMain.handle('plans:delete', async (_event, planId) => {
+    return plans.deletePlan(planId);
+  });
+
+  ipcMain.handle('settings:get', () => {
+    return settings.getSettings();
+  });
+
+  ipcMain.handle('settings:set', (_event, patch) => {
+    return settings.setSettings(patch);
+  });
+
+  ipcMain.handle('import:legacy', async () => {
+    const current = settings.getSettings();
+
+    if (!current.importEnabled) {
+      return { ok: false, error: 'Import is disabled in settings.' };
+    }
+
+    const summary = importer.importLegacy();
+
+    if (summary.ok) {
+      accounts.broadcastAccounts();
+    }
+
+    return summary;
+  });
 
   ipcMain.handle('test:run', async (_event, command, payload) => {
     if (!testHarness) {
