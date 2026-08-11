@@ -4,10 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EVE Status Perception</title>
+
     <link rel="stylesheet" href="styles.css" />
-    <script defer src="renderer.js"></script>
+
+    <script defer src="utils.js"></script>
+    <script defer src="toasts.js"></script>
+    <script defer src="state.js"></script>
+    <script defer src="render.js"></script>
+    <script defer src="modals.js"></script>
+    <script defer src="events.js"></script>
     <script defer src="test-panel.js"></script>
   </head>
+
   <body>
     <header class="topbar">
       <h1>
@@ -22,12 +30,14 @@
       </div>
     </header>
 
-    <div id="status" class="status"></div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
 
     <main id="accounts" class="sidebar"></main>
 
     <div id="modal-root"></div>
-    <div id="toast-root" class="toast-root"></div>
+
+    <div id="toast-root" class="toast-root" aria-live="polite"></div>
+
     <div id="eve-time" class="eve-time"></div>
   </body>
 </html>
