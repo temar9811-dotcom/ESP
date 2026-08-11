@@ -213,10 +213,6 @@ ESP.settingsModalHtml = function (settings) {
 
     ${importRow}
 
-    <div>
-      Legacy import is controlled by "importEnabled" in the ESP config file.
-    </div>
-
     <div class="modal-actions">
       <button type="button" class="modal-cancel">Close</button>
     </div>
