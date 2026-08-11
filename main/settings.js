@@ -18,7 +18,20 @@ function getSettings() {
     const data = JSON.parse(raw);
     return { ...DEFAULT_SETTINGS, ...(data || {}) };
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    const defaults = { ...DEFAULT_SETTINGS };
+
+    try {
+      fs.mkdirSync(path.dirname(getSettingsFile()), { recursive: true });
+      fs.writeFileSync(
+        getSettingsFile(),
+        JSON.stringify(defaults, null, 2),
+        'utf8'
+      );
+    } catch {
+      // Ignore write errors.
+    }
+
+    return defaults;
   }
 }
 
