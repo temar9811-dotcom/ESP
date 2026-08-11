@@ -131,9 +131,32 @@ function deletePlan(planId) {
   return true;
 }
 
+function mergePlans(incoming) {
+  const plans = loadPlans();
+  const existingIds = new Set(plans.map((plan) => plan.id));
+  let imported = 0;
+
+  for (const plan of Array.isArray(incoming) ? incoming : []) {
+    if (!plan || !plan.id || existingIds.has(plan.id)) {
+      continue;
+    }
+
+    plans.push(plan);
+    existingIds.add(plan.id);
+    imported += 1;
+  }
+
+  if (imported > 0) {
+    savePlansFile(plans);
+  }
+
+  return imported;
+}
+
 module.exports = {
   loadPlans,
   readClipboardPlan,
   savePlan,
-  deletePlan
+  deletePlan,
+  mergePlans
 };
