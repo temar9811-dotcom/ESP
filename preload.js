@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld('eveApi', {
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   importLegacy: () => ipcRenderer.invoke('import:legacy'),
 
+  // --- Toast Notifications ---
+  showToast: (title, body) => ipcRenderer.invoke('toast:show', title, body),
+
   // --- Test Harness ---
   testEnabled: () => ipcRenderer.invoke('test:enabled'),
   testRun: (command, payload) => ipcRenderer.invoke('test:run', command, payload),
