@@ -153,22 +153,7 @@ ESP.bindEvents = function () {
       }
     });
 
-    modalRoot.addEventListener('change', async (event) => {
-      if (event.target.id === 'importEnabledToggle') {
-        const enabled = event.target.checked;
-
-        try {
-          ESP.state.settings = await window.eveApi.setSettings({
-            importEnabled: enabled
-          });
-        } catch {
-          ESP.state.settings = { importEnabled: enabled };
-        }
-
-        ESP.renderModals();
-        return;
-      }
-
+    modalRoot.addEventListener('change', (event) => {
       if (!ESP.state.addPlanState) return;
 
       if (event.target.name === 'planScope') {
