@@ -38,6 +38,7 @@ ESP.initApp = function () {
 
   if (window.eveApi) {
     (async () => {
+      await ESP.loadSettings();
       await ESP.loadGroups();
       ESP.load();
       ESP.loadPlans();
