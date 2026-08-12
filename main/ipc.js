@@ -11,6 +11,7 @@ const importer = require('./importer');
 const toastWindow = require('./toast-window');
 const corpInfo = require('./corp-info');
 const groups = require('./groups');
+const skillMeta = require('./skill-meta');
 
 let testHarness = null;
 
@@ -85,6 +86,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('groups:toggle', (_event, groupName) => {
     return groups.toggleCollapsed(groupName);
+  });
+
+  ipcMain.handle('skills:getMeta', async (_event, ids) => {
+    return skillMeta.getMetaForIds(ids);
   });
 
   ipcMain.handle('plans:readClipboard', async () => {
