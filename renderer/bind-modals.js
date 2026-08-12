@@ -7,6 +7,19 @@ ESP.bindModalEvents = function () {
 
   if (!modalRoot) return;
 
+  function persistSetting(key, value, rerender) {
+    ESP.state.settings = ESP.state.settings || {};
+    ESP.state.settings[key] = value;
+
+    if (window.eveApi && window.eveApi.setSettings) {
+      window.eveApi.setSettings({ [key]: value }).catch(() => {});
+    }
+
+    if (rerender) {
+      ESP.render(ESP.state.lastAccounts);
+    }
+  }
+
   modalRoot.addEventListener('input', (event) => {
     if (ESP.state.addPlanState && event.target.id === 'planNameInput') {
       ESP.state.addPlanState.name = event.target.value;
@@ -19,29 +32,40 @@ ESP.bindModalEvents = function () {
 
   modalRoot.addEventListener('change', (event) => {
     if (event.target.id === 'settingHidePrimary') {
-      ESP.state.settings = ESP.state.settings || {};
-      ESP.state.settings.hidePrimaryWhenCollapsed = event.target.checked;
-
-      if (window.eveApi && window.eveApi.setSettings) {
-        window.eveApi
-          .setSettings({ hidePrimaryWhenCollapsed: event.target.checked })
-          .catch(() => {});
-      }
-
-      ESP.render(ESP.state.lastAccounts);
+      persistSetting('hidePrimaryWhenCollapsed', event.target.checked, true);
       return;
     }
 
     if (event.target.id === 'settingOpenAtLogin') {
-      ESP.state.settings = ESP.state.settings || {};
-      ESP.state.settings.openAtLogin = event.target.checked;
+      persistSetting('openAtLogin', event.target.checked);
+      return;
+    }
 
-      if (window.eveApi && window.eveApi.setSettings) {
-        window.eveApi
-          .setSettings({ openAtLogin: event.target.checked })
-          .catch(() => {});
-      }
+    if (event.target.id === 'settingStartMinimized') {
+      persistSetting('startMinimized', event.target.checked);
+      return;
+    }
 
+    if (event.target.id === 'settingMuteSounds') {
+      persistSetting('muteSounds', event.target.checked);
+      return;
+    }
+
+    if (event.target.id === 'settingNotifySkill') {
+      persistSetting('notifySkill', event.target.checked);
+      return;
+    }
+
+    if (event.target.id === 'settingNotifyWallet') {
+      persistSetting('notifyWallet', event.target.checked);
+      return;
+    }
+
+    if (event.target.id === 'settingWalletThreshold') {
+      persistSetting(
+        'walletNotifyThreshold',
+        Math.max(0, Number(event.target.value) || 0)
+      );
       return;
     }
 
