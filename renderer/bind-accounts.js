@@ -161,8 +161,22 @@ ESP.bindAccountEvents = function () {
     if (planBox) {
       const planId = planBox.dataset.planId;
 
-      ESP.state.planDetail =
-        ESP.state.plans.find((plan) => plan.id === planId) || null;
+      const plan =
+        ESP.state.plans.find((p) => p.id === planId) || null;
+
+      ESP.state.planDetail = plan;
+
+      if (plan && window.eveApi && window.eveApi.getSkillMeta) {
+        const ids = (plan.entries || [])
+          .map((entry) => entry.skillId)
+          .filter(Boolean);
+
+        try {
+          plan.meta = await window.eveApi.getSkillMeta(ids);
+        } catch {
+          plan.meta = {};
+        }
+      }
 
       ESP.renderModals();
     }
