@@ -105,6 +105,18 @@ ESP.loadGroups = async function () {
   }
 };
 
+ESP.loadSettings = async function () {
+  if (!window.eveApi || !window.eveApi.getSettings) {
+    return;
+  }
+
+  try {
+    ESP.state.settings = await window.eveApi.getSettings();
+  } catch {
+    ESP.state.settings = {};
+  }
+};
+
 ESP.loadCorpInfo = async function (characterId) {
   if (!window.eveApi || !window.eveApi.getCorpInfo) {
     return;
