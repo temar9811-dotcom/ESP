@@ -136,6 +136,44 @@ ESP.loadPlans = async function () {
   ESP.render(ESP.state.lastAccounts);
   ESP.renderModals();
 };
+
+ESP.loadCorpInfo = async function (characterId) {
+  if (!window.eveApi || !window.eveApi.getCorpInfo) {
+    return;
+  }
+
+  ESP.state.corpInfoByCharacter = ESP.state.corpInfoByCharacter || {};
+
+  if (ESP.state.corpInfoByCharacter[characterId]) {
+    return;
+  }
+
+  ESP.state.corpInfoByCharacter[characterId] = {
+    corporation: null,
+    alliance: null,
+    loading: true
+  };
+
+  ESP.render(ESP.state.lastAccounts);
+
+  try {
+    const info = await window.eveApi.getCorpInfo(characterId);
+
+    ESP.state.corpInfoByCharacter[characterId] = {
+      corporation: info?.corporation || null,
+      alliance: info?.alliance || null,
+      loading: false
+    };
+  } catch {
+    ESP.state.corpInfoByCharacter[characterId] = {
+      corporation: null,
+      alliance: null,
+      loading: false
+    };
+  }
+
+  ESP.render(ESP.state.lastAccounts);
+};
 ESP.bindEvents = function () {
   const accountsEl = document.getElementById('accounts');
   const addBtn = document.getElementById('add');
@@ -234,6 +272,11 @@ ESP.bindEvents = function () {
           ESP.state.openCharacterId === id ? null : id;
 
         ESP.render(ESP.state.lastAccounts);
+
+        if (ESP.state.openCharacterId === id) {
+          ESP.loadCorpInfo(id);
+        }
+
         return;
       }
 
