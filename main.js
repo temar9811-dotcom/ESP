@@ -48,6 +48,7 @@ async function bootstrap() {
   app.setAppUserModelId(eveConfig.APP_USER_MODEL_ID);
 
   const currentSettings = settingsMod.getSettings();
+
   app.setLoginItemSettings({
     openAtLogin: Boolean(currentSettings.openAtLogin)
   });
@@ -86,6 +87,15 @@ async function bootstrap() {
   ipc.registerIpcHandlers();
 
   windowTray.createWindow();
+
+  if (currentSettings.startMinimized) {
+    const win = windowTray.getWindow();
+
+    if (win && !win.isDestroyed()) {
+      win.hide();
+    }
+  }
+
   windowTray.createTray();
   toastWindow.createToastWindow();
 
