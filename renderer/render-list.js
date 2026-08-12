@@ -40,6 +40,10 @@ ESP.render = function (accounts) {
   }
 
   const groupsData = ESP.state.groups || {};
+  const hidePrimary = Boolean(
+    (ESP.state.settings || {}).hidePrimaryWhenCollapsed
+  );
+
   const byId = new Map(
     ESP.state.lastAccounts.map((account) => [
       Number(account.characterId),
@@ -74,7 +78,15 @@ ESP.render = function (accounts) {
           Number(member.characterId) === Number(group.primaryCharacterId)
       ) || members[0];
 
-    const shown = group.collapsed ? [primary] : members;
+    const orderedMembers = hidePrimary
+      ? [primary, ...members.filter((member) => member !== primary)]
+      : members;
+
+    const shown = group.collapsed
+      ? hidePrimary
+        ? []
+        : [primary]
+      : orderedMembers;
 
     html += ESP.groupHeaderHtml(
       groupName,
