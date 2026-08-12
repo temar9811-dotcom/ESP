@@ -1,6 +1,6 @@
 'use strict';
 
-const { ipcMain } = require('electron');
+const { ipcMain, app } = require('electron');
 
 const { VERSION } = require('../version');
 const eve = require('../eve');
@@ -108,7 +108,13 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('settings:set', (_event, patch) => {
-    return settings.setSettings(patch);
+    const updated = settings.setSettings(patch);
+
+    if (patch && typeof patch.openAtLogin === 'boolean') {
+      app.setLoginItemSettings({ openAtLogin: patch.openAtLogin });
+    }
+
+    return updated;
   });
 
   ipcMain.handle('import:legacy', async () => {

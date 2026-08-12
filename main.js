@@ -16,6 +16,7 @@ const ipc = require('./main/ipc');
 const legacyGuard = require('./main/legacy-guard');
 const toastWindow = require('./main/toast-window');
 const notifications = require('./main/notifications');
+const settingsMod = require('./main/settings');
 
 let testHarness = null;
 
@@ -45,6 +46,11 @@ function onAccountRemoved(characterId) {
 
 async function bootstrap() {
   app.setAppUserModelId(eveConfig.APP_USER_MODEL_ID);
+
+  const currentSettings = settingsMod.getSettings();
+  app.setLoginItemSettings({
+    openAtLogin: Boolean(currentSettings.openAtLogin)
+  });
 
   accounts.loadAccounts();
 
