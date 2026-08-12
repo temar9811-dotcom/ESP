@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('eveApi', {
   setGroupPrimary: (characterId) => ipcRenderer.invoke('groups:setPrimary', characterId),
   toggleGroup: (groupName) => ipcRenderer.invoke('groups:toggle', groupName),
 
+  // --- Skills ---
+  getSkillMeta: (ids) => ipcRenderer.invoke('skills:getMeta', ids),
+
   // --- Wallet ---
   getWalletDetails: (characterId) => ipcRenderer.invoke('accounts:getWalletDetails', characterId),
 
