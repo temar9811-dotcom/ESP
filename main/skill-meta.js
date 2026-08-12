@@ -4,10 +4,7 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-const ESI_URL =
-  'https://esi.evetech.net/latest/universe/skills/?datasource=tranquility&language=en-us';
-
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const DOGMA_RANK_ATTRIBUTE = 275;
 
 let cache = null;
 
@@ -19,72 +16,84 @@ function loadCache() {
   if (cache) return cache;
 
   try {
-    const raw = JSON.parse(fs.readFileSync(cacheFile(), 'utf8'));
-
-    if (
-      raw &&
-      raw.fetchedAt &&
-      Date.now() - raw.fetchedAt < CACHE_TTL_MS &&
-      raw.byId
-    ) {
-      cache = raw.byId;
-      return cache;
-    }
+    cache = JSON.parse(fs.readFileSync(cacheFile(), 'utf8')) || {};
   } catch {
-    // Fall through to a fresh fetch.
+    cache = {};
   }
 
-  return null;
+  return cache;
 }
 
-async function ensureMeta() {
-  const cached = loadCache();
-
-  if (cached) return cached;
-
-  const res = await fetch(ESI_URL, {
-    headers: { Accept: 'application/json' }
-  });
-
-  if (!res.ok) {
-    throw new Error(`ESI ${res.status}`);
-  }
-
-  const list = await res.json();
-  const byId = {};
-
-  for (const skill of list || []) {
-    if (skill && skill.id != null) {
-      byId[String(skill.id)] = Number(skill.rank || 1);
-    }
-  }
-
-  cache = byId;
-
+function saveCache() {
   try {
     fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });
     fs.writeFileSync(
       cacheFile(),
-      JSON.stringify({ fetchedAt: Date.now(), byId }, null, 2),
+      JSON.stringify(cache || {}, null, 2),
       'utf8'
     );
   } catch {
     // Ignore cache write errors.
   }
+}
 
-  return byId;
+async function fetchRankForId(skillId) {
+  const url = `https://esi.evetech.net/latest/universe/types/${skillId}/?datasource=tranquility`;
+
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+
+  if (!res.ok) return null;
+
+  const type = await res.json();
+  const attrs = Array.isArray(type.dogma_attributes)
+    ? type.dogma_attributes
+    : [];
+  const rankAttr = attrs.find(
+    (attribute) => attribute.attribute_id === DOGMA_RANK_ATTRIBUTE
+  );
+
+  return rankAttr ? Number(rankAttr.value) : 1;
 }
 
 async function getMetaForIds(ids) {
-  const byId = await ensureMeta();
+  loadCache();
+
   const out = {};
+  const missing = [];
 
   for (const id of ids || []) {
-    const rank = byId[String(id)];
+    const key = String(id);
 
-    if (rank != null) {
-      out[id] = { rank };
+    if (cache[key] != null) {
+      out[id] = { rank: cache[key] };
+    } else {
+      missing.push([key, id]);
     }
+  }
+
+  if (missing.length) {
+    const fetched = await Promise.all(
+      missing.map(async ([key, originalId]) => {
+        try {
+          const rank = await fetchRankForId(key);
+          return [key, originalId, rank];
+        } catch {
+          return [key, originalId, null];
+        }
+      })
+    );
+
+    let changed = false;
+
+    for (const [key, originalId, rank] of fetched) {
+      if (rank != null) {
+        cache[key] = rank;
+        out[originalId] = { rank };
+        changed = true;
+      }
+    }
+
+    if (changed) saveCache();
   }
 
   return out;
