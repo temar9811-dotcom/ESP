@@ -63,12 +63,13 @@ function createToastWindow() {
   return toastWin;
 }
 
-function showToast(title, body) {
+function showToast(title, body, sound) {
   const win = createToastWindow();
 
   const payload = {
     title: String(title || ''),
-    body: String(body || '')
+    body: String(body || ''),
+    sound: sound || null
   };
 
   const deliver = () => {
