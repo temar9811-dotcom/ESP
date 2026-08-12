@@ -1,166 +1,131 @@
+'use strict';
+
 (function () {
-  'use strict';
-
-  const api = window.eveApi;
-
-  if (!api || !api.testEnabled || !api.testRun) {
-    return;
-  }
-
-  let panel = null;
-  let visible = false;
-  let userHidden = false;
-  let lastEnabled = false;
-
-  function injectStyle() {
-    const style = document.createElement('style');
-
-    style.textContent = `
-      #test-panel {
-        position: fixed;
-        left: 12px;
-        bottom: 40px;
-        z-index: 1500;
-        width: 230px;
-        background: rgba(22, 29, 38, 0.97);
-        border: 1px solid #33455a;
-        border-radius: 8px;
-        padding: 10px;
-        font-size: 12px;
-      }
-
-      #test-panel .test-panel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-
-      #test-panel button {
-        display: block;
-        width: 100%;
-        margin: 4px 0;
-        padding: 6px 8px;
-        border: 1px solid #33455a;
-        border-radius: 6px;
-        background: #223140;
-        color: #dfe7ef;
-        cursor: pointer;
-        text-align: left;
-      }
-
-      #test-panel button:hover {
-        background: #2c3f52;
-      }
-
-      #test-panel #test-hide {
-        width: auto;
-        padding: 2px 8px;
-      }
-
-      #test-panel #test-log {
-        margin-top: 6px;
-        color: #9fb2c5;
-        word-break: break-all;
-        max-height: 80px;
-        overflow: auto;
-      }
-    `;
-
-    document.head.appendChild(style);
-  }
-
-  function log(text) {
-    const el = panel ? panel.querySelector('#test-log') : null;
-    if (el) {
-      el.textContent = text;
-    }
-  }
-
-  function setVisible(value) {
-    visible = value;
-
-    if (panel) {
-      panel.style.display = value ? 'block' : 'none';
-    }
-  }
-
   function build() {
-    injectStyle();
+    if (!window.eveApi || !window.eveApi.testEnabled) return;
 
-    panel = document.createElement('div');
-    panel.id = 'test-panel';
+    window.eveApi.testEnabled().then((enabled) => {
+      if (!enabled) return;
 
-    panel.innerHTML = `
-      <div class="test-panel-header">
-        <strong>Test Panel</strong>
-        <button type="button" id="test-hide" title="Hide test panel">✕</button>
-      </div>
-      <div class="test-panel-body">
-        <button type="button" data-cmd="ping">Ping</button>
-        <button type="button" data-cmd="bubble.skill">Skill bubble</button>
-        <button type="button" data-cmd="bubble.wallet">Wallet bubble</button>
-        <button type="button" data-cmd="app.refresh">Force refresh</button>
-        <button type="button" data-cmd="app.showWindow">Show window</button>
-      </div>
-      <div id="test-log"></div>
-    `;
+      const style = document.createElement('style');
+      style.textContent = `
+        #test-panel {
+          position: fixed;
+          left: 16px;
+          bottom: 16px;
+          width: 220px;
+          background: rgba(18, 24, 32, 0.96);
+          border: 1px solid rgba(90, 140, 190, 0.45);
+          border-radius: 10px;
+          padding: 10px;
+          z-index: 999;
+          font-family: 'Segoe UI', Arial, sans-serif;
+          color: #e8eef5;
+        }
+        #test-panel-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+          font-weight: 700;
+        }
+        #test-panel-header .tp-btns button {
+          margin-left: 4px;
+        }
+        #test-panel button {
+          display: block;
+          width: 100%;
+          margin-top: 6px;
+          padding: 8px 10px;
+          background: #24313f;
+          color: #e8eef5;
+          border: 1px solid rgba(90, 140, 190, 0.35);
+          border-radius: 6px;
+          cursor: pointer;
+        }
+        #test-panel button:hover { background: #2d3c4d; }
+        #test-panel .tp-small {
+          display: inline-block;
+          width: auto;
+          margin: 0;
+          padding: 2px 8px;
+        }
+        #test-fab {
+          position: fixed;
+          left: 16px;
+          bottom: 16px;
+          z-index: 999;
+          padding: 8px 12px;
+          background: rgba(18, 24, 32, 0.96);
+          color: #e8eef5;
+          border: 1px solid rgba(90, 140, 190, 0.45);
+          border-radius: 999px;
+          cursor: pointer;
+        }
+      `;
+      document.head.appendChild(style);
 
-    document.body.appendChild(panel);
+      const panel = document.createElement('div');
+      panel.id = 'test-panel';
+      panel.innerHTML = `
+        <div id="test-panel-header">
+          <span>Test Panel</span>
+          <span class="tp-btns">
+            <button type="button" class="tp-small" id="test-collapse" title="Collapse">–</button>
+            <button type="button" class="tp-small" id="test-close" title="Close">✕</button>
+          </span>
+        </div>
+        <div id="test-panel-body">
+          <button type="button" data-cmd="ping">Ping</button>
+          <button type="button" data-cmd="bubble.skill">Skill bubble</button>
+          <button type="button" data-cmd="bubble.wallet">Wallet bubble</button>
+          <button type="button" data-cmd="app.refresh">Force refresh</button>
+          <button type="button" data-cmd="app.showWindow">Show window</button>
+        </div>
+      `;
 
-    panel.querySelector('#test-hide').addEventListener('click', () => {
-      userHidden = true;
-      setVisible(false);
-    });
+      const fab = document.createElement('button');
+      fab.id = 'test-fab';
+      fab.type = 'button';
+      fab.textContent = 'Tests';
+      fab.hidden = true;
 
-    panel.querySelector('.test-panel-body').addEventListener('click', async (event) => {
-      const button = event.target.closest('button[data-cmd]');
-      if (!button) {
-        return;
-      }
+      document.body.appendChild(panel);
+      document.body.appendChild(fab);
 
-      const command = button.getAttribute('data-cmd');
+      panel.addEventListener('click', (event) => {
+        const cmdBtn = event.target.closest('[data-cmd]');
 
-      try {
-        const result = await api.testRun(command);
-        log(`${command} -> ${JSON.stringify(result)}`);
-      } catch (err) {
-        log(`${command} -> ERROR ${err && err.message ? err.message : String(err)}`);
-      }
+        if (cmdBtn) {
+          window.eveApi
+            .testRun(cmdBtn.dataset.cmd)
+            .then((res) => console.log('test:', cmdBtn.dataset.cmd, res))
+            .catch(() => {});
+          return;
+        }
+
+        if (event.target.closest('#test-collapse')) {
+          panel.hidden = true;
+          fab.hidden = false;
+          return;
+        }
+
+        if (event.target.closest('#test-close')) {
+          panel.hidden = true;
+          fab.hidden = true;
+        }
+      });
+
+      fab.addEventListener('click', () => {
+        panel.hidden = false;
+        fab.hidden = true;
+      });
     });
   }
 
-  async function poll() {
-    let enabled = false;
-
-    try {
-      enabled = await api.testEnabled();
-    } catch {
-      enabled = false;
-    }
-
-    if (enabled && !lastEnabled) {
-      userHidden = false;
-    }
-
-    lastEnabled = enabled;
-
-    if (!enabled) {
-      if (panel && visible) {
-        setVisible(false);
-      }
-      return;
-    }
-
-    if (!panel) {
-      build();
-    }
-
-    if (!visible && !userHidden) {
-      setVisible(true);
-    }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', build);
+  } else {
+    build();
   }
-
-  poll();
-  setInterval(poll, 5000);
 })();
