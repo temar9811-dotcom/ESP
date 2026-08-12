@@ -5,6 +5,9 @@ const { app } = require('electron');
 // Software rendering fixes transparent-window repaint issues on Windows.
 app.disableHardwareAcceleration();
 
+// Allow notification chimes to play without a user gesture.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 const eveConfig = require('./eve/config');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
