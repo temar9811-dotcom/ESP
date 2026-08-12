@@ -48,6 +48,25 @@ ESP.addPlanModalHtml = function () {
 `;
   }
 
+  if (addPlanState.status === 'empty') {
+    return `
+<div class="modal-overlay">
+  <div class="modal-card">
+    <button type="button" class="modal-close" title="Close">✕</button>
+    <h2>Add Skill Plan from Clipboard</h2>
+    <div class="idle">
+      No skill plan found on the clipboard.<br /><br />
+      In EVE, copy a skill queue or plan export, then try again.
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel">Close</button>
+      <button type="button" class="retry-clipboard">Try again</button>
+    </div>
+  </div>
+</div>
+`;
+  }
+
   if (addPlanState.status === 'error') {
     return `
 <div class="modal-overlay">
@@ -376,10 +395,12 @@ ESP.openAddPlanModal = async function () {
       errors: result.errors || []
     };
   } catch (err) {
+    const message = err?.message || String(err);
+
     ESP.state.addPlanState = {
       ...ESP.state.addPlanState,
-      status: 'error',
-      error: err?.message || String(err)
+      status: /no valid skill lines/i.test(message) ? 'empty' : 'error',
+      error: message
     };
   }
 
