@@ -83,7 +83,9 @@ async function run(command, payload) {
       }
 
       case 'bubble.skill': {
-        sendToRenderer('notification:skill-complete', {
+        const notifications = require('../main/notifications');
+
+        notifications.notifySkillCompleted({
           characterName: safePayload.characterName || 'Test Character',
           skillName: safePayload.skillName || 'Test Skill',
           level: safePayload.level ?? 5
@@ -93,6 +95,8 @@ async function run(command, payload) {
       }
 
       case 'bubble.wallet': {
+        const notifications = require('../main/notifications');
+
         const rawAmount = safePayload.amount;
         const parsedAmount = Number(rawAmount);
         const amount =
@@ -100,7 +104,7 @@ async function run(command, payload) {
             ? 1000000
             : parsedAmount;
 
-        sendToRenderer('notification:wallet-activity', {
+        notifications.notifyWalletActivity({
           characterName: safePayload.characterName || 'Test Character',
           entries: [
             {
@@ -210,6 +214,27 @@ async function run(command, payload) {
         await accountsMod.refreshAll();
 
         return { ok: true, result: { legacyDir, results } };
+      }
+
+      case 'debug.toastdev': {
+        const { BrowserWindow } = require('electron');
+
+        const overlay = BrowserWindow.getAllWindows().find((w) =>
+          (w.webContents.getURL() || '').includes('toast.html')
+        );
+
+        if (!overlay) {
+          return { ok: false, error: 'Overlay window not found.' };
+        }
+
+        overlay.webContents.openDevTools({ mode: 'detach' });
+        return { ok: true };
+      }
+
+      case 'debug.toastping': {
+        const toastWindow = require('../main/toast-window');
+        toastWindow.showToast('Main ping', 'Direct from main process');
+        return { ok: true };
       }
 
       default: {
