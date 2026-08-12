@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.1.5)
+## Current Features (v1.1.0)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
