@@ -4,6 +4,8 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+const UNGROUPED_KEY = '__ungrouped__';
+
 let data = null;
 
 function groupsFile() {
@@ -43,6 +45,8 @@ function findGroupOf(characterId) {
   const id = Number(characterId);
 
   for (const [name, group] of Object.entries(loadData())) {
+    if (name === UNGROUPED_KEY) continue;
+
     if (Array.isArray(group.members) && group.members.includes(id)) {
       return name;
     }
@@ -107,13 +111,17 @@ function setPrimary(characterId) {
 function toggleCollapsed(groupName) {
   loadData();
 
-  const group = data[groupName];
-
-  if (group) {
-    group.collapsed = !group.collapsed;
-    saveData();
+  if (!data[groupName]) {
+    data[groupName] = {
+      name: groupName,
+      primaryCharacterId: null,
+      collapsed: false,
+      members: []
+    };
   }
 
+  data[groupName].collapsed = !data[groupName].collapsed;
+  saveData();
   return getGroups();
 }
 
@@ -121,5 +129,6 @@ module.exports = {
   getGroups,
   setGroup,
   setPrimary,
-  toggleCollapsed
+  toggleCollapsed,
+  UNGROUPED_KEY
 };
