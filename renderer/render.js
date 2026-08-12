@@ -335,6 +335,17 @@ ESP.characterSheetHtml = function (account) {
   const id = Number(account.characterId);
   const activeTab = ESP.getActiveTab(id);
 
+  const corpInfo =
+    (ESP.state.corpInfoByCharacter || {})[account.characterId] || {};
+
+  const corpLine = corpInfo.loading
+    ? 'Loading corporation...'
+    : corpInfo.corporation || 'Unknown corporation';
+
+  const allianceLine = corpInfo.loading
+    ? ' '
+    : corpInfo.alliance || 'No alliance';
+
   return `
 <div class="sheet-header">
   <img
@@ -344,6 +355,14 @@ ESP.characterSheetHtml = function (account) {
   <div class="sheet-title">
     <h2>${ESP.escapeHtml(account.characterName || 'Unknown character')}</h2>
     <div class="wallet">Wallet: ${ESP.formatIsk(account.wallet)} ISK</div>
+  </div>
+  <div class="sheet-header-center">
+    <div class="sheet-location" title="${ESP.escapeHtml(corpLine)}">
+      ${ESP.escapeHtml(corpLine)}
+    </div>
+    <div class="sheet-ship" title="${ESP.escapeHtml(allianceLine)}">
+      ${ESP.escapeHtml(allianceLine)}
+    </div>
   </div>
   <button class="remove" data-id="${account.characterId}">Remove</button>
 </div>
