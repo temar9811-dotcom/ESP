@@ -29,7 +29,8 @@ function createToastWindow() {
       preload: path.join(__dirname, '..', 'renderer', 'toast-preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      backgroundThrottling: false
     }
   });
 
@@ -40,6 +41,17 @@ function createToastWindow() {
   toastWin.webContents.once('did-finish-load', () => {
     if (toastWin && !toastWin.isDestroyed()) {
       toastWin.show();
+
+      // Force Windows DWM to composite the transparent window.
+      const bounds = toastWin.getBounds();
+      toastWin.setBounds({ ...bounds, height: bounds.height + 1 });
+
+      setTimeout(() => {
+        if (toastWin && !toastWin.isDestroyed()) {
+          toastWin.setBounds(bounds);
+        }
+      }, 50);
+
       console.log('ESP toast overlay ready.');
     }
   });
@@ -63,6 +75,12 @@ function showToast(title, body) {
     if (toastWin && !toastWin.isDestroyed()) {
       console.log('ESP toast delivered:', payload.title);
       toastWin.webContents.send('toast:show', payload);
+
+      try {
+        toastWin.webContents.invalidate();
+      } catch {
+        // Ignore invalidate errors on older Electron.
+      }
     }
   };
 
