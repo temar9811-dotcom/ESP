@@ -95,9 +95,65 @@ ESP.render = function (accounts) {
     return;
   }
 
-  accountsEl.innerHTML = ESP.state.lastAccounts
-    .map(ESP.characterTabHtml)
-    .join('');
+  const groupsData = ESP.state.groups || {};
+  const byId = new Map(
+    ESP.state.lastAccounts.map((account) => [
+      Number(account.characterId),
+      account
+    ])
+  );
+
+  let html = '';
+  const renderedIds = new Set();
+
+  for (const [groupName, group] of Object.entries(groupsData)) {
+    const members = (group.members || [])
+      .map((memberId) => byId.get(Number(memberId)))
+      .filter(Boolean);
+
+    if (!members.length) continue;
+
+    const primary =
+      members.find(
+        (member) =>
+          Number(member.characterId) === Number(group.primaryCharacterId)
+      ) || members[0];
+
+    const shown = group.collapsed ? [primary] : members;
+
+    html += ESP.groupHeaderHtml(
+      groupName,
+      members.length,
+      Boolean(group.collapsed)
+    );
+
+    for (const account of shown) {
+      html += ESP.characterTabHtml(account, {
+        grouped: true,
+        primary:
+          Number(account.characterId) === Number(primary.characterId),
+        groupName
+      });
+
+      renderedIds.add(Number(account.characterId));
+    }
+  }
+
+  const ungrouped = ESP.state.lastAccounts.filter(
+    (account) => !renderedIds.has(Number(account.characterId))
+  );
+
+  if (ungrouped.length) {
+    if (html) {
+      html += ESP.groupHeaderHtml('Ungrouped', ungrouped.length, false);
+    }
+
+    for (const account of ungrouped) {
+      html += ESP.characterTabHtml(account, { grouped: false });
+    }
+  }
+
+  accountsEl.innerHTML = html;
 
   ESP.maybeAutoLoadWallet();
 };
@@ -135,6 +191,18 @@ ESP.loadPlans = async function () {
 
   ESP.render(ESP.state.lastAccounts);
   ESP.renderModals();
+};
+
+ESP.loadGroups = async function () {
+  if (!window.eveApi || !window.eveApi.getGroups) {
+    return;
+  }
+
+  try {
+    ESP.state.groups = await window.eveApi.getGroups();
+  } catch {
+    ESP.state.groups = {};
+  }
 };
 
 ESP.loadCorpInfo = async function (characterId) {
@@ -263,6 +331,39 @@ ESP.bindEvents = function () {
   }
     if (accountsEl) {
     accountsEl.addEventListener('click', async (event) => {
+      const starBtn = event.target.closest('.group-star');
+
+      if (starBtn) {
+        const id = Number(starBtn.dataset.id);
+
+        try {
+          await window.eveApi.setGroupPrimary(id);
+          await ESP.loadGroups();
+          ESP.render(ESP.state.lastAccounts);
+          ESP.setStatus('Primary character set.');
+        } catch (err) {
+          ESP.setStatus(err?.message || String(err), true);
+        }
+
+        return;
+      }
+
+      const groupHeader = event.target.closest('.group-header');
+
+      if (groupHeader) {
+        const name = groupHeader.dataset.group;
+
+        try {
+          await window.eveApi.toggleGroup(name);
+          await ESP.loadGroups();
+          ESP.render(ESP.state.lastAccounts);
+        } catch (err) {
+          ESP.setStatus(err?.message || String(err), true);
+        }
+
+        return;
+      }
+
       const characterTab = event.target.closest('.character-tab');
 
       if (characterTab) {
@@ -301,6 +402,39 @@ ESP.bindEvents = function () {
       if (retryBtn) {
         const id = Number(retryBtn.dataset.id);
         ESP.loadWalletDetails(id, true);
+        return;
+      }
+
+      const setGroupBtn = event.target.closest('.set-group');
+
+      if (setGroupBtn) {
+        const id = Number(setGroupBtn.dataset.id);
+
+        let current = '';
+
+        for (const [name, group] of Object.entries(ESP.state.groups || {})) {
+          if ((group.members || []).map(Number).includes(id)) {
+            current = name;
+            break;
+          }
+        }
+
+        const name = prompt(
+          'Account group name for this character (leave empty to ungroup):',
+          current
+        );
+
+        if (name === null) return;
+
+        try {
+          await window.eveApi.setGroup(id, name);
+          await ESP.loadGroups();
+          ESP.render(ESP.state.lastAccounts);
+          ESP.setStatus('Account group saved.');
+        } catch (err) {
+          ESP.setStatus(err?.message || String(err), true);
+        }
+
         return;
       }
 
@@ -458,8 +592,12 @@ ESP.initApp = function () {
   ESP.startEveTimeClock();
 
   if (window.eveApi) {
-    ESP.load();
-    ESP.loadPlans();
+    (async () => {
+      await ESP.loadGroups();
+      ESP.load();
+      ESP.loadPlans();
+    })();
+
     ESP.loadVersion();
   } else {
     ESP.setStatus('Preload failed. Restart the app.', true);
