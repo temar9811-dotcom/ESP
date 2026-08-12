@@ -10,6 +10,7 @@ const settings = require('./settings');
 const importer = require('./importer');
 const toastWindow = require('./toast-window');
 const corpInfo = require('./corp-info');
+const groups = require('./groups');
 
 let testHarness = null;
 
@@ -68,6 +69,22 @@ function registerIpcHandlers() {
     } catch (err) {
       throw new Error(err?.message || String(err));
     }
+  });
+
+  ipcMain.handle('groups:get', () => {
+    return groups.getGroups();
+  });
+
+  ipcMain.handle('groups:set', (_event, characterId, name) => {
+    return groups.setGroup(characterId, name);
+  });
+
+  ipcMain.handle('groups:setPrimary', (_event, characterId) => {
+    return groups.setPrimary(characterId);
+  });
+
+  ipcMain.handle('groups:toggle', (_event, groupName) => {
+    return groups.toggleCollapsed(groupName);
   });
 
   ipcMain.handle('plans:readClipboard', async () => {
