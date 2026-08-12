@@ -335,11 +335,6 @@ ESP.characterSheetHtml = function (account) {
   const id = Number(account.characterId);
   const activeTab = ESP.getActiveTab(id);
 
-  const location = account.location || 'Unknown location';
-  const shipName = account.shipName || 'Unknown ship';
-  const shipType = account.shipType || '';
-  const shipDisplay = shipType ? `${shipName} [${shipType}]` : shipName;
-
   return `
 <div class="sheet-header">
   <img
@@ -349,14 +344,6 @@ ESP.characterSheetHtml = function (account) {
   <div class="sheet-title">
     <h2>${ESP.escapeHtml(account.characterName || 'Unknown character')}</h2>
     <div class="wallet">Wallet: ${ESP.formatIsk(account.wallet)} ISK</div>
-  </div>
-  <div class="sheet-header-center">
-    <div class="sheet-location" title="${ESP.escapeHtml(location)}">
-      ${ESP.escapeHtml(location)}
-    </div>
-    <div class="sheet-ship" title="${ESP.escapeHtml(shipDisplay)}">
-      ${ESP.escapeHtml(shipDisplay)}
-    </div>
   </div>
   <button class="remove" data-id="${account.characterId}">Remove</button>
 </div>
@@ -404,6 +391,11 @@ ESP.characterTabHtml = function (account) {
   const isOpen = ESP.state.openCharacterId === Number(account.characterId);
   const portrait = `https://images.evetech.net/characters/${account.characterId}/portrait?size=64`;
 
+  const location = account.location || 'Unknown location';
+  const shipName = account.shipName || 'Unknown ship';
+  const shipType = account.shipType || '';
+  const shipDisplay = shipType ? `${shipName} [${shipType}]` : shipName;
+
   return `
 <section
   class="character-item ${isOpen ? 'open' : ''}"
@@ -422,6 +414,17 @@ ESP.characterTabHtml = function (account) {
       </span>
       <span class="character-sub">
         ${ESP.escapeHtml(ESP.tabSubtitle(account))}
+      </span>
+    </span>
+    <span
+      class="character-loc"
+      style="margin-left:auto; text-align:right; max-width:45%; font-size:12px; line-height:1.3; color:#9fb3c8; overflow:hidden;"
+    >
+      <span style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+        ${ESP.escapeHtml(location)}
+      </span>
+      <span style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#7d94ad;">
+        ${ESP.escapeHtml(shipDisplay)}
       </span>
     </span>
     <span class="character-chevron">
