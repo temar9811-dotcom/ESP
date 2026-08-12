@@ -201,6 +201,11 @@ ESP.settingsModalHtml = function (settings) {
   const importEnabled = !settings || settings.importEnabled !== false;
   const hidePrimary = Boolean(settings && settings.hidePrimaryWhenCollapsed);
   const openAtLogin = Boolean(settings && settings.openAtLogin);
+  const muteSounds = Boolean(settings && settings.muteSounds);
+  const notifySkill = !settings || settings.notifySkill !== false;
+  const notifyWallet = !settings || settings.notifyWallet !== false;
+  const startMinimized = Boolean(settings && settings.startMinimized);
+  const threshold = Number((settings && settings.walletNotifyThreshold) || 0);
 
   const importRow = importEnabled
     ? `
@@ -212,32 +217,37 @@ ESP.settingsModalHtml = function (settings) {
 `
     : '';
 
+  const checkbox = (id, checked, label) => `
+<div class="form-row">
+  <label style="display:flex; align-items:center; gap:8px;">
+    <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} />
+    ${label}
+  </label>
+</div>
+`;
+
   return `
 <div class="modal-overlay">
   <div class="modal-card">
     <button type="button" class="modal-close" title="Close">✕</button>
     <h2>Settings</h2>
 
-    <div class="form-row">
-      <label style="display:flex; align-items:center; gap:8px;">
-        <input
-          type="checkbox"
-          id="settingHidePrimary"
-          ${hidePrimary ? 'checked' : ''}
-        />
-        Hide primary character when a group is collapsed
-      </label>
-    </div>
+    ${checkbox('settingHidePrimary', hidePrimary, 'Hide primary character when a group is collapsed')}
+    ${checkbox('settingOpenAtLogin', openAtLogin, 'Start with Windows')}
+    ${checkbox('settingStartMinimized', startMinimized, 'Start minimized to tray')}
+    ${checkbox('settingMuteSounds', muteSounds, 'Mute notification sounds')}
+    ${checkbox('settingNotifySkill', notifySkill, 'Show skill complete notifications')}
+    ${checkbox('settingNotifyWallet', notifyWallet, 'Show wallet activity notifications')}
 
     <div class="form-row">
-      <label style="display:flex; align-items:center; gap:8px;">
-        <input
-          type="checkbox"
-          id="settingOpenAtLogin"
-          ${openAtLogin ? 'checked' : ''}
-        />
-        Start with Windows
-      </label>
+      <label for="settingWalletThreshold">Minimum ISK for wallet notifications</label>
+      <input
+        id="settingWalletThreshold"
+        type="number"
+        min="0"
+        step="100000"
+        value="${threshold}"
+      />
     </div>
 
     ${importRow}
