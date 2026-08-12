@@ -15,6 +15,11 @@ ESP.renderModals = function () {
     return;
   }
 
+  if (ESP.state.groupState) {
+    modalRoot.innerHTML = ESP.groupModalHtml();
+    return;
+  }
+
   if (ESP.state.planDetail) {
     modalRoot.innerHTML = ESP.planDetailModalHtml(ESP.state.planDetail);
     return;
@@ -221,6 +226,34 @@ ESP.settingsModalHtml = function (settings) {
 `;
 };
 
+ESP.groupModalHtml = function () {
+  const groupState = ESP.state.groupState;
+
+  return `
+<div class="modal-overlay">
+  <div class="modal-card">
+    <button type="button" class="modal-close" title="Close">✕</button>
+    <h2>Account Group</h2>
+
+    <div class="form-row">
+      <label for="groupNameInput">Group name (leave empty to ungroup)</label>
+      <input
+        id="groupNameInput"
+        type="text"
+        value="${ESP.escapeHtml(groupState.name || '')}"
+        placeholder="e.g. Main account"
+      />
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel">Cancel</button>
+      <button type="button" class="modal-save">Save group</button>
+    </div>
+  </div>
+</div>
+`;
+};
+
 ESP.openSettingsModal = async function () {
   if (!window.eveApi || !window.eveApi.getSettings) {
     ESP.setStatus('Settings are not available.', true);
@@ -236,6 +269,48 @@ ESP.openSettingsModal = async function () {
   }
 
   ESP.renderModals();
+};
+
+ESP.openGroupModal = function (characterId, currentName) {
+  ESP.state.groupState = {
+    characterId,
+    name: currentName || ''
+  };
+
+  ESP.renderModals();
+};
+
+ESP.saveGroupModal = async function () {
+  const groupState = ESP.state.groupState;
+
+  if (!groupState) return;
+
+  const modalRoot = ESP.getModalRoot();
+  const saveBtn = modalRoot ? modalRoot.querySelector('.modal-save') : null;
+
+  if (saveBtn) {
+    saveBtn.disabled = true;
+  }
+
+  try {
+    await window.eveApi.setGroup(
+      groupState.characterId,
+      groupState.name || ''
+    );
+
+    ESP.state.groupState = null;
+
+    await ESP.loadGroups();
+    ESP.render(ESP.state.lastAccounts);
+    ESP.setStatus('Account group saved.');
+    ESP.renderModals();
+  } catch (err) {
+    ESP.setStatus(err?.message || String(err), true);
+
+    if (saveBtn) {
+      saveBtn.disabled = false;
+    }
+  }
 };
 ESP.openAddPlanModal = async function () {
   if (!window.eveApi || !window.eveApi.readClipboardPlan) {
