@@ -9,6 +9,7 @@ const plans = require('./plans');
 const settings = require('./settings');
 const importer = require('./importer');
 const toastWindow = require('./toast-window');
+const corpInfo = require('./corp-info');
 
 let testHarness = null;
 
@@ -37,6 +38,10 @@ function registerIpcHandlers() {
   ipcMain.handle('accounts:refresh', async () => {
     await accounts.refreshAll();
     return accounts.getPublicAccounts();
+  });
+
+  ipcMain.handle('accounts:getCorpInfo', async (_event, characterId) => {
+    return corpInfo.getCorpAlliance(characterId);
   });
 
   ipcMain.handle('accounts:getWalletDetails', async (_event, characterId) => {
