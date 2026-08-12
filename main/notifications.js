@@ -15,7 +15,8 @@ function notifySkillCompleted(payload) {
     'Skill complete',
     `${safe.characterName || 'Unknown'}: ${safe.skillName || 'Unknown'} L${
       safe.level ?? '?'
-    } finished training.`
+    } finished training.`,
+    'skill'
   );
 }
 
@@ -32,14 +33,16 @@ function notifyWalletActivity(payload) {
       'Wallet activity',
       `${safe.characterName || 'Unknown'}: ${entry.description || ''} (${sign}${formatIsk(
         Math.abs(amount)
-      )} ISK)`
+      )} ISK)`,
+      'wallet'
     );
   }
 
   if (list.length > shown.length) {
     toastWindow.showToast(
       'Wallet activity',
-      `${safe.characterName || 'Unknown'}: ${list.length - shown.length} more wallet entries.`
+      `${safe.characterName || 'Unknown'}: ${list.length - shown.length} more wallet entries.`,
+      'wallet'
     );
   }
 }
