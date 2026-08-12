@@ -18,6 +18,33 @@ ESP.bindModalEvents = function () {
   });
 
   modalRoot.addEventListener('change', (event) => {
+    if (event.target.id === 'settingHidePrimary') {
+      ESP.state.settings = ESP.state.settings || {};
+      ESP.state.settings.hidePrimaryWhenCollapsed = event.target.checked;
+
+      if (window.eveApi && window.eveApi.setSettings) {
+        window.eveApi
+          .setSettings({ hidePrimaryWhenCollapsed: event.target.checked })
+          .catch(() => {});
+      }
+
+      ESP.render(ESP.state.lastAccounts);
+      return;
+    }
+
+    if (event.target.id === 'settingOpenAtLogin') {
+      ESP.state.settings = ESP.state.settings || {};
+      ESP.state.settings.openAtLogin = event.target.checked;
+
+      if (window.eveApi && window.eveApi.setSettings) {
+        window.eveApi
+          .setSettings({ openAtLogin: event.target.checked })
+          .catch(() => {});
+      }
+
+      return;
+    }
+
     if (!ESP.state.addPlanState) return;
 
     if (event.target.name === 'planScope') {
