@@ -252,10 +252,12 @@ ESP.bindEvents = function () {
 
   if (modalRoot) {
     modalRoot.addEventListener('input', (event) => {
-      if (!ESP.state.addPlanState) return;
-
-      if (event.target.id === 'planNameInput') {
+      if (ESP.state.addPlanState && event.target.id === 'planNameInput') {
         ESP.state.addPlanState.name = event.target.value;
+      }
+
+      if (ESP.state.groupState && event.target.id === 'groupNameInput') {
+        ESP.state.groupState.name = event.target.value;
       }
     });
 
@@ -280,6 +282,7 @@ ESP.bindEvents = function () {
         ESP.state.addPlanState = null;
         ESP.state.planDetail = null;
         ESP.state.settingsOpen = false;
+        ESP.state.groupState = null;
         ESP.renderModals();
         return;
       }
@@ -317,7 +320,11 @@ ESP.bindEvents = function () {
       const saveBtn = event.target.closest('.modal-save');
 
       if (saveBtn) {
-        await ESP.saveAddPlanModal();
+        if (ESP.state.groupState) {
+          await ESP.saveGroupModal();
+        } else {
+          await ESP.saveAddPlanModal();
+        }
         return;
       }
 
@@ -325,6 +332,7 @@ ESP.bindEvents = function () {
         ESP.state.addPlanState = null;
         ESP.state.planDetail = null;
         ESP.state.settingsOpen = false;
+        ESP.state.groupState = null;
         ESP.renderModals();
       }
     });
@@ -419,22 +427,7 @@ ESP.bindEvents = function () {
           }
         }
 
-        const name = prompt(
-          'Account group name for this character (leave empty to ungroup):',
-          current
-        );
-
-        if (name === null) return;
-
-        try {
-          await window.eveApi.setGroup(id, name);
-          await ESP.loadGroups();
-          ESP.render(ESP.state.lastAccounts);
-          ESP.setStatus('Account group saved.');
-        } catch (err) {
-          ESP.setStatus(err?.message || String(err), true);
-        }
-
+        ESP.openGroupModal(id, current);
         return;
       }
 
