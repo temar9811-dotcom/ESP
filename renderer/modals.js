@@ -199,6 +199,8 @@ ESP.planDetailModalHtml = function (plan) {
 
 ESP.settingsModalHtml = function (settings) {
   const importEnabled = !settings || settings.importEnabled !== false;
+  const hidePrimary = Boolean(settings && settings.hidePrimaryWhenCollapsed);
+  const openAtLogin = Boolean(settings && settings.openAtLogin);
 
   const importRow = importEnabled
     ? `
@@ -215,6 +217,28 @@ ESP.settingsModalHtml = function (settings) {
   <div class="modal-card">
     <button type="button" class="modal-close" title="Close">✕</button>
     <h2>Settings</h2>
+
+    <div class="form-row">
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input
+          type="checkbox"
+          id="settingHidePrimary"
+          ${hidePrimary ? 'checked' : ''}
+        />
+        Hide primary character when a group is collapsed
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input
+          type="checkbox"
+          id="settingOpenAtLogin"
+          ${openAtLogin ? 'checked' : ''}
+        />
+        Start with Windows
+      </label>
+    </div>
 
     ${importRow}
 
