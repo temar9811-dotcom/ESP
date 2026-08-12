@@ -331,7 +331,22 @@ ESP.tabContentHtml = function (account, activeTab) {
 
   return ESP.overviewHtml(account);
 };
-ESP.characterSheetHtml = function (account) {
+
+ESP.groupHeaderHtml = function (name, count, collapsed) {
+  return `
+<div
+  class="group-header"
+  data-group="${ESP.escapeHtml(name)}"
+  style="display:flex; justify-content:space-between; align-items:center; margin:14px 0 6px; padding:6px 10px; background:rgba(90,140,190,0.12); border:1px solid rgba(90,140,190,0.3); border-radius:8px; cursor:pointer; font-weight:700;"
+>
+  <span>${ESP.escapeHtml(name)}</span>
+  <span style="font-weight:400; font-size:12px; color:#9fb3c8;">
+    ${count} character${count === 1 ? '' : 's'} ${collapsed ? '▸' : '▾'}
+  </span>
+</div>
+`;
+};
+ESP.characterSheetHtml = function (account, opts = {}) {
   const id = Number(account.characterId);
   const activeTab = ESP.getActiveTab(id);
 
@@ -364,6 +379,15 @@ ESP.characterSheetHtml = function (account) {
       ${ESP.escapeHtml(allianceLine)}
     </div>
   </div>
+  <button
+    type="button"
+    class="set-group"
+    data-id="${account.characterId}"
+    title="Set account group for this character"
+    style="background:#24313f; color:#cfe0f2; border:1px solid rgba(90,140,190,0.35); border-radius:6px; padding:6px 10px; cursor:pointer; margin-right:8px;"
+  >
+    Group: ${ESP.escapeHtml(opts.groupName || 'None')}
+  </button>
   <button class="remove" data-id="${account.characterId}">Remove</button>
 </div>
 <nav class="sheet-tabs">
@@ -406,7 +430,7 @@ ESP.characterSheetHtml = function (account) {
 `;
 };
 
-ESP.characterTabHtml = function (account) {
+ESP.characterTabHtml = function (account, opts = {}) {
   const isOpen = ESP.state.openCharacterId === Number(account.characterId);
   const portrait = `https://images.evetech.net/characters/${account.characterId}/portrait?size=64`;
 
@@ -415,11 +439,27 @@ ESP.characterTabHtml = function (account) {
   const shipType = account.shipType || '';
   const shipDisplay = shipType ? `${shipName} [${shipType}]` : shipName;
 
+  const starHtml = opts.grouped
+    ? `
+<button
+  type="button"
+  class="group-star"
+  data-id="${account.characterId}"
+  title="${opts.primary ? 'Primary character' : 'Make primary character'}"
+  style="position:absolute; right:30px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:14px; color:${opts.primary ? '#f5c542' : '#5b708a'}; z-index:2;"
+>
+  ${opts.primary ? '★' : '☆'}
+</button>
+`
+    : '';
+
   return `
 <section
   class="character-item ${isOpen ? 'open' : ''}"
   data-character-id="${account.characterId}"
+  style="position:relative;"
 >
+  ${starHtml}
   <button
     type="button"
     class="character-tab"
@@ -437,7 +477,7 @@ ESP.characterTabHtml = function (account) {
     </span>
     <span
       class="character-loc"
-      style="margin-left:auto; text-align:right; max-width:45%; font-size:12px; line-height:1.3; color:#9fb3c8; overflow:hidden;"
+      style="margin-left:auto; text-align:right; max-width:45%; font-size:12px; line-height:1.3; color:#9fb3c8; overflow:hidden; padding-right:${opts.grouped ? '24px' : '0'};"
     >
       <span style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
         ${ESP.escapeHtml(location)}
@@ -451,7 +491,7 @@ ESP.characterTabHtml = function (account) {
     </span>
   </button>
   <div class="character-dropdown">
-    ${ESP.characterSheetHtml(account)}
+    ${ESP.characterSheetHtml(account, opts)}
   </div>
 </section>
 `;
