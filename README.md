@@ -6,6 +6,8 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
+!!Warning!! the app currently pulls almost all scopes. this was to make it update proof. I will be adding a less invasive option soon for those who wish not to auth more scopes than are needed.
+
 ## Current Features (v1.1.0)
 
 ### Character Management & Tracking
