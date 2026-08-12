@@ -94,6 +94,13 @@ ESP.bindModalEvents = function () {
       return;
     }
 
+    const retryClip = event.target.closest('.retry-clipboard');
+
+    if (retryClip) {
+      await ESP.openAddPlanModal();
+      return;
+    }
+
     const importBtn = event.target.closest('.import-legacy');
 
     if (importBtn) {
