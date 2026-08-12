@@ -6,6 +6,45 @@ ESP.getModalRoot = function () {
   return document.getElementById('modal-root');
 };
 
+ESP.spForLevel = function (rank, level) {
+  const r = Number(rank || 1);
+  const l = Number(level || 1);
+  const base = 250 * r;
+  const sqrt32 = Math.sqrt(32);
+
+  if (l <= 1) return Math.round(base);
+  if (l === 2) return Math.round(base * sqrt32);
+  if (l === 3) return Math.round(base * 32);
+  if (l === 4) return Math.round(base * 32 * sqrt32);
+  return Math.round(base * 1024);
+};
+
+ESP.formatSpTime = function (sp) {
+  const totalMinutes = Math.round((Number(sp) / 1800) * 60);
+
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return `${days}d ${hours}h`;
+  return `${hours}h ${minutes}m`;
+};
+
+ESP.planSpInfo = function (entry, meta) {
+  const skillMeta = entry && entry.skillId ? (meta || {})[entry.skillId] : null;
+
+  if (!skillMeta) return null;
+
+  const sp = ESP.spForLevel(skillMeta.rank, entry.level);
+
+  return {
+    sp,
+    time: ESP.formatSpTime(sp)
+  };
+};
+
 ESP.renderModals = function () {
   const modalRoot = ESP.getModalRoot();
   if (!modalRoot) return;
@@ -81,6 +120,36 @@ ESP.addPlanModalHtml = function () {
 
   const entries = addPlanState.entries;
   const unknownCount = entries.filter((entry) => !entry.skillId).length;
+  const meta = addPlanState.meta || {};
+
+  let totalSp = 0;
+
+  const previewRows = entries
+    .map((entry) => {
+      const info = ESP.planSpInfo(entry, meta);
+
+      if (info) totalSp += info.sp;
+
+      const infoHtml = info
+        ? ` <span style="color:#9fb3c8;">· ${ESP.formatNumber(info.sp)} SP · ~${info.time}</span>`
+        : '';
+
+      return `
+<li>
+  ${ESP.escapeHtml(entry.name)} — L${ESP.escapeHtml(entry.level)}${infoHtml}
+  ${entry.skillId ? '' : '<span class="negative">(unresolved)</span>'}
+</li>
+`;
+    })
+    .join('');
+
+  const totalHtml = totalSp
+    ? `
+<div class="form-row">
+  <strong>Total:</strong> ${ESP.formatNumber(totalSp)} SP · ~${ESP.formatSpTime(totalSp)} @ 1800 SP/h
+</div>
+`
+    : '';
 
   const characterOptions = ESP.state.lastAccounts
     .map(
@@ -98,17 +167,6 @@ ESP.addPlanModalHtml = function () {
   const errorsHtml = addPlanState.errors.length
     ? `<div class="error">${ESP.escapeHtml(addPlanState.errors.join(' '))}</div>`
     : '';
-
-  const previewRows = entries
-    .map(
-      (entry) => `
-<li>
-  ${ESP.escapeHtml(entry.name)} — L${ESP.escapeHtml(entry.level)}
-  ${entry.skillId ? '' : '<span class="negative">(unresolved)</span>'}
-</li>
-`
-    )
-    .join('');
 
   return `
 <div class="modal-overlay">
@@ -174,6 +232,8 @@ ESP.addPlanModalHtml = function () {
       </ul>
     </div>
 
+    ${totalHtml}
+
     <div class="modal-actions">
       <button type="button" class="modal-cancel">Cancel</button>
       <button type="button" class="modal-save">Save plan</button>
@@ -184,16 +244,35 @@ ESP.addPlanModalHtml = function () {
 };
 ESP.planDetailModalHtml = function (plan) {
   const entries = Array.isArray(plan.entries) ? plan.entries : [];
+  const meta = plan.meta || {};
+
+  let totalSp = 0;
 
   const rows = entries
-    .map(
-      (entry) => `
+    .map((entry) => {
+      const info = ESP.planSpInfo(entry, meta);
+
+      if (info) totalSp += info.sp;
+
+      const infoHtml = info
+        ? ` <span style="color:#9fb3c8;">· ${ESP.formatNumber(info.sp)} SP · ~${info.time}</span>`
+        : '';
+
+      return `
 <li>
-  ${ESP.escapeHtml(entry.name)} — L${ESP.escapeHtml(entry.level)}
+  ${ESP.escapeHtml(entry.name)} — L${ESP.escapeHtml(entry.level)}${infoHtml}
 </li>
-`
-    )
+`;
+    })
     .join('');
+
+  const totalHtml = totalSp
+    ? `
+<div class="form-row">
+  <strong>Total:</strong> ${ESP.formatNumber(totalSp)} SP · ~${ESP.formatSpTime(totalSp)} @ 1800 SP/h
+</div>
+`
+    : '';
 
   return `
 <div class="modal-overlay">
@@ -211,6 +290,8 @@ ESP.planDetailModalHtml = function (plan) {
         ${rows}
       </ul>
     </div>
+
+    ${totalHtml}
   </div>
 </div>
 `;
@@ -380,7 +461,8 @@ ESP.openAddPlanModal = async function () {
     characterId: ESP.state.lastAccounts.length
       ? String(ESP.state.lastAccounts[0].characterId)
       : '',
-    name: ''
+    name: '',
+    meta: {}
   };
 
   ESP.renderModals();
@@ -388,11 +470,26 @@ ESP.openAddPlanModal = async function () {
   try {
     const result = await window.eveApi.readClipboardPlan();
 
+    const ids = (result.entries || [])
+      .map((entry) => entry.skillId)
+      .filter(Boolean);
+
+    let meta = {};
+
+    if (ids.length && window.eveApi.getSkillMeta) {
+      try {
+        meta = await window.eveApi.getSkillMeta(ids);
+      } catch {
+        meta = {};
+      }
+    }
+
     ESP.state.addPlanState = {
       ...ESP.state.addPlanState,
       status: 'ready',
       entries: result.entries || [],
-      errors: result.errors || []
+      errors: result.errors || [],
+      meta
     };
   } catch (err) {
     const message = err?.message || String(err);
