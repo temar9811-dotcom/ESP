@@ -62,30 +62,38 @@
     <script>
       const stack = document.getElementById('toast-stack');
 
-      window.toastApi.onToast((payload) => {
-        const bubble = document.createElement('div');
-        bubble.className = 'toast-bubble';
+      if (!window.toastApi) {
+        console.error('overlay: toastApi is missing!');
+      } else {
+        console.log('overlay: listening for toasts');
 
-        const title = document.createElement('div');
-        title.className = 'toast-title';
-        title.textContent = payload.title || '';
+        window.toastApi.onToast((payload) => {
+          console.log('overlay: got toast', payload);
 
-        const body = document.createElement('div');
-        body.className = 'toast-body';
-        body.textContent = payload.body || '';
+          const bubble = document.createElement('div');
+          bubble.className = 'toast-bubble';
 
-        bubble.appendChild(title);
-        bubble.appendChild(body);
-        stack.appendChild(bubble);
+          const title = document.createElement('div');
+          title.className = 'toast-title';
+          title.textContent = payload.title || '';
 
-        while (stack.children.length > 5) {
-          stack.removeChild(stack.firstChild);
-        }
+          const body = document.createElement('div');
+          body.className = 'toast-body';
+          body.textContent = payload.body || '';
 
-        setTimeout(() => {
-          bubble.remove();
-        }, 8000);
-      });
+          bubble.appendChild(title);
+          bubble.appendChild(body);
+          stack.appendChild(bubble);
+
+          while (stack.children.length > 5) {
+            stack.removeChild(stack.firstChild);
+          }
+
+          setTimeout(() => {
+            bubble.remove();
+          }, 8000);
+        });
+      }
     </script>
   </body>
 </html>
