@@ -15,6 +15,12 @@ contextBridge.exposeInMainWorld('eveApi', {
   refreshAll: () => ipcRenderer.invoke('accounts:refresh'),
   getCorpInfo: (characterId) => ipcRenderer.invoke('accounts:getCorpInfo', characterId),
 
+  // --- Account Groups ---
+  getGroups: () => ipcRenderer.invoke('groups:get'),
+  setGroup: (characterId, name) => ipcRenderer.invoke('groups:set', characterId, name),
+  setGroupPrimary: (characterId) => ipcRenderer.invoke('groups:setPrimary', characterId),
+  toggleGroup: (groupName) => ipcRenderer.invoke('groups:toggle', groupName),
+
   // --- Wallet ---
   getWalletDetails: (characterId) => ipcRenderer.invoke('accounts:getWalletDetails', characterId),
 
