@@ -5,7 +5,14 @@ const path = require('path');
 const fs = require('fs');
 
 const DEFAULT_SETTINGS = {
-  importEnabled: true
+  importEnabled: true,
+  hidePrimaryWhenCollapsed: false,
+  openAtLogin: false,
+  startMinimized: false,
+  muteSounds: false,
+  notifySkill: true,
+  notifyWallet: true,
+  walletNotifyThreshold: 0
 };
 
 function getSettingsFile() {
