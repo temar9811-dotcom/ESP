@@ -103,10 +103,21 @@ ESP.render = function (accounts) {
     ])
   );
 
-  let html = '';
-  const renderedIds = new Set();
+  const groupedIds = new Set();
 
   for (const [groupName, group] of Object.entries(groupsData)) {
+    if (groupName === '__ungrouped__') continue;
+
+    for (const memberId of group.members || []) {
+      groupedIds.add(Number(memberId));
+    }
+  }
+
+  let html = '';
+
+  for (const [groupName, group] of Object.entries(groupsData)) {
+    if (groupName === '__ungrouped__') continue;
+
     const members = (group.members || [])
       .map((memberId) => byId.get(Number(memberId)))
       .filter(Boolean);
@@ -134,22 +145,35 @@ ESP.render = function (accounts) {
           Number(account.characterId) === Number(primary.characterId),
         groupName
       });
-
-      renderedIds.add(Number(account.characterId));
     }
   }
 
   const ungrouped = ESP.state.lastAccounts.filter(
-    (account) => !renderedIds.has(Number(account.characterId))
+    (account) => !groupedIds.has(Number(account.characterId))
   );
 
   if (ungrouped.length) {
-    if (html) {
-      html += ESP.groupHeaderHtml('Ungrouped', ungrouped.length, false);
-    }
+    const ungroupedCollapsed = Boolean(
+      (groupsData.__ungrouped__ || {}).collapsed
+    );
 
-    for (const account of ungrouped) {
-      html += ESP.characterTabHtml(account, { grouped: false });
+    html += `
+<div
+  class="group-header"
+  data-group="__ungrouped__"
+  style="display:flex; justify-content:space-between; align-items:center; margin:14px 0 6px; padding:6px 10px; background:rgba(90,140,190,0.12); border:1px solid rgba(90,140,190,0.3); border-radius:8px; cursor:pointer; font-weight:700;"
+>
+  <span>Ungrouped</span>
+  <span style="font-weight:400; font-size:12px; color:#9fb3c8;">
+    ${ungrouped.length} character${ungrouped.length === 1 ? '' : 's'} ${ungroupedCollapsed ? '▸' : '▾'}
+  </span>
+</div>
+`;
+
+    if (!ungroupedCollapsed) {
+      for (const account of ungrouped) {
+        html += ESP.characterTabHtml(account, { grouped: false });
+      }
     }
   }
 
@@ -421,6 +445,8 @@ ESP.bindEvents = function () {
         let current = '';
 
         for (const [name, group] of Object.entries(ESP.state.groups || {})) {
+          if (name === '__ungrouped__') continue;
+
           if ((group.members || []).map(Number).includes(id)) {
             current = name;
             break;
