@@ -1,6 +1,7 @@
 'use strict';
 
 const toastWindow = require('./toast-window');
+const settings = require('./settings');
 
 function formatIsk(value) {
   return Number(value || 0).toLocaleString('en-US', {
@@ -9,21 +10,38 @@ function formatIsk(value) {
 }
 
 function notifySkillCompleted(payload) {
+  const current = settings.getSettings();
+
+  if (current.notifySkill === false) return;
+
   const safe = payload && typeof payload === 'object' ? payload : {};
+  const sound = current.muteSounds ? null : 'skill';
 
   toastWindow.showToast(
     'Skill complete',
     `${safe.characterName || 'Unknown'}: ${safe.skillName || 'Unknown'} L${
       safe.level ?? '?'
     } finished training.`,
-    'skill'
+    sound
   );
 }
 
 function notifyWalletActivity(payload) {
+  const current = settings.getSettings();
+
+  if (current.notifyWallet === false) return;
+
+  const threshold = Math.max(0, Number(current.walletNotifyThreshold || 0));
   const safe = payload && typeof payload === 'object' ? payload : {};
-  const list = Array.isArray(safe.entries) ? safe.entries : [];
+
+  const list = (Array.isArray(safe.entries) ? safe.entries : []).filter(
+    (entry) => Math.abs(Number(entry.amount || 0)) >= threshold
+  );
+
+  if (!list.length) return;
+
   const shown = list.slice(0, 5);
+  const sound = current.muteSounds ? null : 'wallet';
 
   for (const entry of shown) {
     const amount = Number(entry.amount || 0);
@@ -34,7 +52,7 @@ function notifyWalletActivity(payload) {
       `${safe.characterName || 'Unknown'}: ${entry.description || ''} (${sign}${formatIsk(
         Math.abs(amount)
       )} ISK)`,
-      'wallet'
+      sound
     );
   }
 
@@ -42,7 +60,7 @@ function notifyWalletActivity(payload) {
     toastWindow.showToast(
       'Wallet activity',
       `${safe.characterName || 'Unknown'}: ${list.length - shown.length} more wallet entries.`,
-      'wallet'
+      sound
     );
   }
 }
