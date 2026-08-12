@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   addAccount: () => ipcRenderer.invoke('accounts:add'),
   removeAccount: (characterId) => ipcRenderer.invoke('accounts:remove', characterId),
   refreshAll: () => ipcRenderer.invoke('accounts:refresh'),
+  getCorpInfo: (characterId) => ipcRenderer.invoke('accounts:getCorpInfo', characterId),
 
   // --- Wallet ---
   getWalletDetails: (characterId) => ipcRenderer.invoke('accounts:getWalletDetails', characterId),
