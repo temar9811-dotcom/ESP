@@ -203,6 +203,10 @@ async function addAccount(scopeChoice) {
   }
 }
 
+function cancelLogin() {
+  sso.cancelLogin();
+}
+
 function removeAccount(characterId) {
   const numericId = Number(characterId);
 
@@ -226,5 +230,6 @@ module.exports = {
   refreshCharacter,
   refreshAll,
   addAccount,
+  cancelLogin,
   removeAccount
 };

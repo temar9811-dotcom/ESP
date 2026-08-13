@@ -32,6 +32,11 @@ function registerIpcHandlers() {
     return accounts.addAccount(scopeChoice);
   });
 
+  ipcMain.handle('accounts:cancelLogin', () => {
+    accounts.cancelLogin();
+    return true;
+  });
+
   ipcMain.handle('accounts:remove', async (_event, characterId) => {
     accounts.removeAccount(characterId);
     return accounts.getPublicAccounts();
