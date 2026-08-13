@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('eveApi', {
 
   // --- Accounts & Characters ---
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
-  addAccount: () => ipcRenderer.invoke('accounts:add'),
+  addAccount: (scopeChoice) => ipcRenderer.invoke('accounts:add', scopeChoice),
   removeAccount: (characterId) => ipcRenderer.invoke('accounts:remove', characterId),
   refreshAll: () => ipcRenderer.invoke('accounts:refresh'),
   getCorpInfo: (characterId) => ipcRenderer.invoke('accounts:getCorpInfo', characterId),
