@@ -7,3 +7,4 @@ out/
 package-lock.json
 Notes.txt
 config.json
+test/test-mode.json
