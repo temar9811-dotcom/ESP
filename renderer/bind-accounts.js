@@ -201,19 +201,8 @@ ESP.bindTopbarEvents = function () {
   }
 
   if (addBtn) {
-    addBtn.addEventListener('click', async () => {
-      addBtn.disabled = true;
-      ESP.setStatus('Opening EVE login...');
-
-      try {
-        await window.eveApi.addAccount();
-        await ESP.load();
-        ESP.setStatus('Character added.');
-      } catch (err) {
-        ESP.setStatus(err?.message || String(err), true);
-      } finally {
-        addBtn.disabled = false;
-      }
+    addBtn.addEventListener('click', () => {
+      ESP.openAddCharacterModal();
     });
   }
 
