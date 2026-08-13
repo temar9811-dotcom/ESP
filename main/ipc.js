@@ -28,8 +28,8 @@ function registerIpcHandlers() {
     return accounts.getPublicAccounts();
   });
 
-  ipcMain.handle('accounts:add', async () => {
-    return accounts.addAccount();
+  ipcMain.handle('accounts:add', async (_event, scopeChoice) => {
+    return accounts.addAccount(scopeChoice);
   });
 
   ipcMain.handle('accounts:remove', async (_event, characterId) => {
