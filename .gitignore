@@ -11,3 +11,4 @@ test/test-mode.json
 test/test-main.js
 renderer/test-panel.js
 /test
+test/test-mode.json

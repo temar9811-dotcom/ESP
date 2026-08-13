@@ -6,12 +6,11 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-
-
-## Current Features (v1.1.0)
+## Current Features (v1.1.7-beta)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
+- **Scope-choice add-character modal** — Essential (minimum) or future-proof Full access scopes
 - **Automatic + manual refresh** of character data
 - **Active skill training** with live progress bar and completion countdown
 - **Full skill queue table** — positions, SP costs, start/finish times and totals
@@ -25,25 +24,27 @@ Built with Electron and the EVE ESI API.
 - **Collapsible groups** and a collapsible Ungrouped section
 - **Per-character tabs** — Overview, Skill Queue, Wallet, Skill Plans
 - **System tray** integration with a live training-status tooltip
-- **Single-instance app** and a live **EVE time clock**
+- **Single-instance app** and a live EVE time clock
 
 ### Notifications & Alerts
 - **Click-through toast bubbles** that appear above the taskbar
 - **Skill complete alerts** with an ascending chime
 - **Wallet activity alerts** with a double-blip chime (new activity only)
+- **Queue-running-dry warning** with its own descending chime — toggle and lead time configurable in Settings
 - **Granular controls** — per-type toggles, mute sounds, minimum ISK threshold
 
 ### Skill Plans
 - **Clipboard import** of EVE client skill plans
+- **Friendly empty-clipboard message** with Try again when no plan is found
 - **Global or character-specific** plans
-- **SP cost and estimated training time** per skill, with plan totals
+- **SP cost and estimated training time per skill**, with plan totals
 - **Visual indicators** when a plan is already trained or in the queue
 
 ### Settings & System
 - **Start with Windows** and **start minimized to tray**
-- **Hide primary character** when a group is collapsed (optional)
+- **Hide primary character when a group is collapsed** (optional)
 - **Legacy import** from the old EVE Skill Tray app
-- **Test panel** available in test builds only
+- **One-click self-test suite** with on-panel results (test builds only)
 
 ## Roadmap
 
@@ -58,8 +59,6 @@ Built with Electron and the EVE ESI API.
 - Ship loss notifications (public ESI killmails)
 
 ### UI, Notifications & Quality of Life
-- Add-character popup with scope choice (current scopes vs. all future scopes)
-- Queue-empty warning (notify before the skill queue runs dry)
 - Implant-aware training time estimates (real SP/hour)
 - Per-character mute
 - Streamer mode (blur ISK values and character names)
@@ -73,22 +72,22 @@ Built with Electron and the EVE ESI API.
 - Auto-update feature
 - What's-new popup after updates
 
-
----
-
 ## Updates / Alpha Builds
 
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
+
 
 ```
 npm install
 npm start
 ```
 
-**Currently tracked version: v1.1.6**
+
+**Currently tracked version: v1.1.7-beta**
 
 ### Changelog
-- **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split; cancellable login retries.
+- **v1.1.7-beta** — Queue-running-dry warning with configurable lead time and its own descending chime; expanded self-test suite; first beta build.
+- **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split.
 - **v1.1.5** — SP cost + estimated training time in skill plans; fixed skill rank lookup via ESI dogma attributes.
 - **v1.1.4** — Friendly "No skill plan found" clipboard message with Try again.
 - **v1.1.3** — Notification settings (mute, per-type toggles, minimum ISK threshold); start minimized to tray.
