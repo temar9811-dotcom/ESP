@@ -2,6 +2,7 @@
 
 const storage = require('../storage');
 const eve = require('../eve');
+const sso = require('../eve/sso');
 const eveConfig = require('../eve/config');
 
 let accounts = [];
@@ -166,7 +167,8 @@ async function refreshAll() {
 
 async function addAccount(scopeChoice) {
   if (loginInProgress) {
-    throw new Error('Login already in progress.');
+    sso.cancelLogin();
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
   loginInProgress = true;

@@ -116,7 +116,12 @@ ESP.bindModalEvents = function () {
         await ESP.load();
         ESP.setStatus('Character added.');
       } catch (err) {
-        ESP.setStatus(err?.message || String(err), true);
+        const msg = err?.message || String(err);
+
+        if (msg !== 'Login cancelled.') {
+          ESP.setStatus(msg, true);
+        }
+
         addCharBtn.disabled = false;
       }
 
