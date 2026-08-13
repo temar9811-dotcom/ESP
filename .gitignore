@@ -8,3 +8,6 @@ package-lock.json
 Notes.txt
 config.json
 test/test-mode.json
+test/test-main.js
+renderer/test-panel.js
+/test
