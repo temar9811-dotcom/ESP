@@ -22,6 +22,7 @@ let testHarness = null;
 
 function sendToRenderer(channel, payload) {
   const win = windowTray.getWindow();
+
   if (win && !win.isDestroyed()) {
     win.webContents.send(channel, payload);
   }
@@ -34,6 +35,10 @@ function onAccountsBroadcast(publicAccounts) {
 
 function onSkillCompleted(payload) {
   notifications.notifySkillCompleted(payload);
+}
+
+function onQueueWarning(payload) {
+  notifications.notifyQueueWarning(payload);
 }
 
 function onWalletActivity(payload) {
@@ -58,6 +63,7 @@ async function bootstrap() {
   accounts.init({
     onBroadcast: onAccountsBroadcast,
     onSkillCompleted,
+    onQueueWarning,
     onAccountRemoved
   });
 
@@ -90,7 +96,6 @@ async function bootstrap() {
 
   if (currentSettings.startMinimized) {
     const win = windowTray.getWindow();
-
     if (win && !win.isDestroyed()) {
       win.hide();
     }

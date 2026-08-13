@@ -12,6 +12,8 @@ const DEFAULT_SETTINGS = {
   muteSounds: false,
   notifySkill: true,
   notifyWallet: true,
+  notifyQueueEmpty: true,
+  queueWarnHours: 24,
   walletNotifyThreshold: 0
 };
 

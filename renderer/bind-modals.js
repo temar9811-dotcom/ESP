@@ -78,6 +78,19 @@ ESP.bindModalEvents = function () {
       return;
     }
 
+    if (event.target.id === 'settingNotifyQueueEmpty') {
+      persistSetting('notifyQueueEmpty', event.target.checked);
+      return;
+    }
+
+    if (event.target.id === 'settingQueueWarnHours') {
+      persistSetting(
+        'queueWarnHours',
+        Math.min(72, Math.max(1, Number(event.target.value) || 24))
+      );
+      return;
+    }
+
     if (event.target.id === 'settingWalletThreshold') {
       persistSetting(
         'walletNotifyThreshold',

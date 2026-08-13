@@ -9,6 +9,18 @@ function formatIsk(value) {
   });
 }
 
+function formatDuration(ms) {
+  const totalMinutes = Math.max(0, Math.round(Number(ms || 0) / 60000));
+
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 function notifySkillCompleted(payload) {
   const current = settings.getSettings();
 
@@ -19,9 +31,22 @@ function notifySkillCompleted(payload) {
 
   toastWindow.showToast(
     'Skill complete',
-    `${safe.characterName || 'Unknown'}: ${safe.skillName || 'Unknown'} L${
-      safe.level ?? '?'
-    } finished training.`,
+    `${safe.characterName || 'Unknown'}: ${safe.skillName || 'Unknown'} L${safe.level ?? '?'} finished training.`,
+    sound
+  );
+}
+
+function notifyQueueWarning(payload) {
+  const current = settings.getSettings();
+
+  if (current.notifyQueueEmpty === false) return;
+
+  const safe = payload && typeof payload === 'object' ? payload : {};
+  const sound = current.muteSounds ? null : 'wallet';
+
+  toastWindow.showToast(
+    'Queue running dry',
+    `${safe.characterName || 'Unknown'}: skill queue ends in ${formatDuration(safe.remainingMs)}.`,
     sound
   );
 }
@@ -67,5 +92,6 @@ function notifyWalletActivity(payload) {
 
 module.exports = {
   notifySkillCompleted,
+  notifyQueueWarning,
   notifyWalletActivity
 };

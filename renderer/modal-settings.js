@@ -6,11 +6,14 @@ ESP.settingsModalHtml = function (settings) {
   const importEnabled = !settings || settings.importEnabled !== false;
   const hidePrimary = Boolean(settings && settings.hidePrimaryWhenCollapsed);
   const openAtLogin = Boolean(settings && settings.openAtLogin);
+  const startMinimized = Boolean(settings && settings.startMinimized);
   const muteSounds = Boolean(settings && settings.muteSounds);
   const notifySkill = !settings || settings.notifySkill !== false;
   const notifyWallet = !settings || settings.notifyWallet !== false;
-  const startMinimized = Boolean(settings && settings.startMinimized);
+  const notifyQueue = !settings || settings.notifyQueueEmpty !== false;
   const threshold = Number((settings && settings.walletNotifyThreshold) || 0);
+  const queueHours =
+    Number((settings && settings.queueWarnHours) ?? 24) || 24;
 
   const importRow = importEnabled
     ? `
@@ -43,6 +46,19 @@ ESP.settingsModalHtml = function (settings) {
     ${checkbox('settingMuteSounds', muteSounds, 'Mute notification sounds')}
     ${checkbox('settingNotifySkill', notifySkill, 'Show skill complete notifications')}
     ${checkbox('settingNotifyWallet', notifyWallet, 'Show wallet activity notifications')}
+    ${checkbox('settingNotifyQueueEmpty', notifyQueue, 'Warn me before the skill queue runs dry')}
+
+    <div class="form-row">
+      <label for="settingQueueWarnHours">Warn when the queue has less time left than (hours)</label>
+      <input
+        id="settingQueueWarnHours"
+        type="number"
+        min="1"
+        max="72"
+        step="1"
+        value="${queueHours}"
+      />
+    </div>
 
     <div class="form-row">
       <label for="settingWalletThreshold">Minimum ISK for wallet notifications</label>
