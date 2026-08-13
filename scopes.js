@@ -1,7 +1,8 @@
 'use strict';
 
 // EVE SSO scopes for ESP.
-// Split into Essential (minimum for current core features) and Future-Proof (everything the app might ever need).
+// Split into Essential (minimum for current core features) and
+// Future-Proof (everything the app may ever need).
 
 const ESSENTIAL_SCOPES = [
   'publicData',
@@ -60,8 +61,6 @@ const FUTURE_PROOF_SCOPES = [
   'esi-corporations.read_fw_stats.v1',
   'esi-corporations.read_projects.v1',
   'esi-corporations.read_freelance_jobs.v1',
-  'esi-corporations.read_titles.v1',
-  'esi-corporations.read_blueprints.v1',
   'esi-assets.read_assets.v1',
   'esi-assets.read_corporation_assets.v1',
   'esi-planets.manage_planets.v1',

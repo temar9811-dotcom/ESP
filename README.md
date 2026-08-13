@@ -88,7 +88,7 @@ npm start
 **Currently tracked version: v1.1.6**
 
 ### Changelog
-- **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split.
+- **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split; cancellable login retries.
 - **v1.1.5** — SP cost + estimated training time in skill plans; fixed skill rank lookup via ESI dogma attributes.
 - **v1.1.4** — Friendly "No skill plan found" clipboard message with Try again.
 - **v1.1.3** — Notification settings (mute, per-type toggles, minimum ISK threshold); start minimized to tray.
