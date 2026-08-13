@@ -82,21 +82,32 @@ async function run(command, payload) {
         return { ok: true, result: 'pong' };
       }
 
+      case 'app.version': {
+        const { VERSION } = require('../version');
+        return { ok: true, result: VERSION };
+      }
+
       case 'bubble.skill': {
         const notifications = require('../main/notifications');
-
         notifications.notifySkillCompleted({
           characterName: safePayload.characterName || 'Test Character',
           skillName: safePayload.skillName || 'Test Skill',
           level: safePayload.level ?? 5
         });
+        return { ok: true };
+      }
 
+      case 'bubble.queue': {
+        const notifications = require('../main/notifications');
+        notifications.notifyQueueWarning({
+          characterName: safePayload.characterName || 'Test Character',
+          remainingMs: Number(safePayload.remainingMs ?? 7 * 3600000 + 25 * 60000)
+        });
         return { ok: true };
       }
 
       case 'bubble.wallet': {
         const notifications = require('../main/notifications');
-
         const rawAmount = safePayload.amount;
         const parsedAmount = Number(rawAmount);
         const amount =
@@ -113,7 +124,6 @@ async function run(command, payload) {
             }
           ]
         });
-
         return { ok: true };
       }
 
@@ -126,7 +136,6 @@ async function run(command, payload) {
           await api.refreshAll();
           return { ok: true };
         }
-
         return { ok: false, error: 'refreshAll not available.' };
       }
 
@@ -135,10 +144,132 @@ async function run(command, payload) {
           api.showWindow();
           return { ok: true };
         }
-
         return { ok: false, error: 'showWindow not available.' };
       }
-            case 'debug.legacy': {
+
+      case 'login.cancelIdle': {
+        const accountsMod = require('../main/accounts');
+        accountsMod.cancelLogin();
+        return { ok: true, result: 'cancelLogin() ran with no pending login.' };
+      }
+
+      case 'groups.read': {
+        const groups = require('../main/groups');
+        const groupMap = await groups.getGroups();
+        return { ok: true, result: Object.keys(groupMap || {}) };
+      }
+
+      case 'settings.roundtrip': {
+        const settings = require('../main/settings');
+        const before = settings.getSettings();
+        const testVal = Number(before.queueWarnHours) === 5 ? 6 : 5;
+
+        settings.setSettings({ queueWarnHours: testVal });
+        const mid = settings.getSettings();
+
+        settings.setSettings({ queueWarnHours: before.queueWarnHours });
+        const after = settings.getSettings();
+
+        return {
+          ok: Number(mid.queueWarnHours) === testVal &&
+            Number(after.queueWarnHours) === Number(before.queueWarnHours),
+          result: {
+            original: before.queueWarnHours,
+            testVal,
+            restored: after.queueWarnHours
+          }
+        };
+      }
+
+      case 'plans.roundtrip': {
+        const plans = require('../main/plans');
+
+        const temp = {
+          name: 'ESP Self-Test Plan',
+          scope: 'global',
+          characterId: null,
+          entries: [{ skillId: 3412, name: 'Self Test Skill', level: 4 }]
+        };
+
+        await plans.savePlan(temp);
+        const list = await plans.loadPlans();
+        const found = (list || []).find(
+          (p) => p.name === 'ESP Self-Test Plan'
+        );
+
+        if (!found) {
+          return { ok: false, error: 'Saved plan not found in list.' };
+        }
+
+        await plans.deletePlan(found.id);
+        const after = await plans.loadPlans();
+        const gone = !(after || []).some((p) => p.id === found.id);
+
+        return { ok: gone, result: { savedId: found.id, deleted: gone } };
+      }
+
+      case 'skills.meta': {
+        const skillMeta = require('../main/skill-meta');
+        const accountsMod = require('../main/accounts');
+
+        const withQueue = accountsMod
+          .getAccounts()
+          .find((a) => Array.isArray(a.queue) && a.queue.length);
+
+        const ids = withQueue
+          ? withQueue.queue.slice(0, 3).map((q) => q.skill_id).filter(Boolean)
+          : [3412];
+
+        const meta = await skillMeta.getMetaForIds(ids);
+
+        const ranks = ids.map((id) => ({
+          id,
+          rank: meta && meta[id] ? meta[id].rank : null
+        }));
+
+        return {
+          ok: ranks.every((r) => r.rank != null),
+          result: ranks
+        };
+      }
+
+      case 'wallet.details': {
+        const accountsMod = require('../main/accounts');
+        const eve = require('../eve');
+
+        const first = accountsMod.getAccounts()[0];
+
+        if (!first) {
+          return { ok: false, error: 'No characters added.' };
+        }
+
+        const token = await accountsMod.getValidAccessToken(first, false);
+        const details = await eve.getWalletDetails(first.characterId, token, 7);
+
+        return {
+          ok: true,
+          result: {
+            character: first.characterName,
+            keys: Object.keys(details || {})
+          }
+        };
+      }
+
+      case 'corp.info': {
+        const corpInfo = require('../main/corp-info');
+        const accountsMod = require('../main/accounts');
+
+        const first = accountsMod.getAccounts()[0];
+
+        if (!first) {
+          return { ok: false, error: 'No characters added.' };
+        }
+
+        const info = await corpInfo.getCorpAlliance(first.characterId);
+        return { ok: true, result: info };
+      }
+
+      case 'debug.legacy': {
         const storage = require('../storage');
         const accountsMod = require('../main/accounts');
         const { legacyDir, legacyAccounts } = readLegacyAccounts();
@@ -195,12 +326,10 @@ async function run(command, payload) {
 
           try {
             const tokens = await eve.refreshAccessToken(plaintext);
-
             esp.refreshTokenEnc = storage.encryptSecret(tokens.refreshToken);
             esp.accessTokenEnc = storage.encryptSecret(tokens.accessToken);
             esp.accessTokenExpiresAt = tokens.expiresAt;
             esp.lastError = null;
-
             results.push({ characterId: old.characterId, status: 'migrated' });
           } catch (err) {
             results.push({
@@ -212,7 +341,6 @@ async function run(command, payload) {
         }
 
         await accountsMod.refreshAll();
-
         return { ok: true, result: { legacyDir, results } };
       }
 

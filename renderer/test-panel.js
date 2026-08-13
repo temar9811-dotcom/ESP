@@ -1,6 +1,26 @@
 'use strict';
 
 (function () {
+  function setResult(ok, text) {
+    const el = document.getElementById('test-result');
+    if (!el) return;
+    el.textContent = `${ok ? '✓' : '✕'} ${text}`;
+    el.style.color = ok ? '#9fd6a0' : '#e08585';
+  }
+
+  function summarize(res) {
+    if (!res || res.ok === undefined) return 'no response';
+    if (!res.ok) return res.error || 'failed';
+    if (res.result === undefined) return 'ok';
+
+    try {
+      const s = JSON.stringify(res.result);
+      return s.length > 90 ? `${s.slice(0, 90)}…` : s;
+    } catch {
+      return 'ok';
+    }
+  }
+
   function build() {
     if (!window.eveApi || !window.eveApi.testEnabled) return;
 
@@ -13,7 +33,7 @@
           position: fixed;
           left: 16px;
           bottom: 16px;
-          width: 220px;
+          width: 240px;
           background: rgba(18, 24, 32, 0.96);
           border: 1px solid rgba(90, 140, 190, 0.45);
           border-radius: 10px;
@@ -32,6 +52,10 @@
         #test-panel-header .tp-btns button {
           margin-left: 4px;
         }
+        #test-panel-body {
+          max-height: 340px;
+          overflow-y: auto;
+        }
         #test-panel button {
           display: block;
           width: 100%;
@@ -49,6 +73,12 @@
           width: auto;
           margin: 0;
           padding: 2px 8px;
+        }
+        #test-result {
+          margin-top: 8px;
+          font-size: 11px;
+          min-height: 14px;
+          word-break: break-word;
         }
         #test-fab {
           position: fixed;
@@ -77,11 +107,22 @@
         </div>
         <div id="test-panel-body">
           <button type="button" data-cmd="ping">Ping</button>
+          <button type="button" data-cmd="app.version">Version</button>
           <button type="button" data-cmd="bubble.skill">Skill bubble</button>
+          <button type="button" data-cmd="bubble.queue">Queue bubble</button>
           <button type="button" data-cmd="bubble.wallet">Wallet bubble</button>
+          <button type="button" data-cmd="accounts.summary">Accounts summary</button>
           <button type="button" data-cmd="app.refresh">Force refresh</button>
           <button type="button" data-cmd="app.showWindow">Show window</button>
+          <button type="button" data-cmd="login.cancelIdle">Cancel idle login</button>
+          <button type="button" data-cmd="groups.read">Groups read</button>
+          <button type="button" data-cmd="settings.roundtrip">Settings roundtrip</button>
+          <button type="button" data-cmd="plans.roundtrip">Plans roundtrip</button>
+          <button type="button" data-cmd="skills.meta">Skill meta</button>
+          <button type="button" data-cmd="wallet.details">Wallet details</button>
+          <button type="button" data-cmd="corp.info">Corp info</button>
         </div>
+        <div id="test-result"></div>
       `;
 
       const fab = document.createElement('button');
@@ -97,10 +138,20 @@
         const cmdBtn = event.target.closest('[data-cmd]');
 
         if (cmdBtn) {
+          const cmd = cmdBtn.dataset.cmd;
+
+          setResult(true, `running ${cmd}…`);
+
           window.eveApi
-            .testRun(cmdBtn.dataset.cmd)
-            .then((res) => console.log('test:', cmdBtn.dataset.cmd, res))
-            .catch(() => {});
+            .testRun(cmd)
+            .then((res) => {
+              console.log('test:', cmd, res);
+              setResult(Boolean(res && res.ok), `${cmd}: ${summarize(res)}`);
+            })
+            .catch((err) => {
+              setResult(false, `${cmd}: ${err?.message || String(err)}`);
+            });
+
           return;
         }
 
