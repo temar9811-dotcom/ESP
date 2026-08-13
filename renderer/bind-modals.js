@@ -118,7 +118,7 @@ ESP.bindModalEvents = function () {
       } catch (err) {
         const msg = err?.message || String(err);
 
-        if (msg !== 'Login cancelled.') {
+        if (!msg.includes('Login cancelled.')) {
           ESP.setStatus(msg, true);
         }
 
