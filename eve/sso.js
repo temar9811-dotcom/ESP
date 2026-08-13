@@ -10,7 +10,7 @@ const scopesModule = require('../scopes');
 function base64url(buffer) {
   return buffer
     .toString('base64')
-    .replace(/+/g, '-')
+    .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 }
