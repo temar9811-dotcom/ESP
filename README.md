@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-!!Warning!! the app currently pulls almost all scopes. this was to make it update proof. I will be adding a less invasive option soon for those who wish not to auth more scopes than are needed.
+
 
 ## Current Features (v1.1.0)
 
@@ -72,6 +72,29 @@ Built with Electron and the EVE ESI API.
 - Create skill plans in-app and export to the game
 - Auto-update feature
 - What's-new popup after updates
+
+
+---
+
+## Updates / Alpha Builds
+
+This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
+
+```
+npm install
+npm start
+```
+
+**Currently tracked version: v1.1.6**
+
+### Changelog
+- **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split.
+- **v1.1.5** — SP cost + estimated training time in skill plans; fixed skill rank lookup via ESI dogma attributes.
+- **v1.1.4** — Friendly "No skill plan found" clipboard message with Try again.
+- **v1.1.3** — Notification settings (mute, per-type toggles, minimum ISK threshold); start minimized to tray.
+- **v1.1.2** — Hide primary in collapsed groups; start with Windows.
+- **v1.1.1** — Renderer code split into modules.
+- **v1.1.0** — First tester build.
 
 
 ---
