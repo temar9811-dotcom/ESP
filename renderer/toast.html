@@ -61,7 +61,6 @@
 
     <script>
       const stack = document.getElementById('toast-stack');
-
       let audioCtx = null;
 
       function playChime(kind) {
@@ -70,12 +69,20 @@
             audioCtx ||
             new (window.AudioContext || window.webkitAudioContext)();
 
-          const notes =
-            kind === 'skill'
-              ? [880, 1174.66, 1567.98]
-              : kind === 'wallet'
-                ? [523.25, 659.25]
-                : null;
+          let notes = null;
+          let wave = 'sine';
+          let spacing = 0.12;
+
+          if (kind === 'skill') {
+            notes = [880, 1174.66, 1567.98];
+          } else if (kind === 'wallet') {
+            notes = [523.25, 659.25];
+            wave = 'triangle';
+          } else if (kind === 'queue') {
+            notes = [659.25, 523.25, 392];
+            wave = 'triangle';
+            spacing = 0.15;
+          }
 
           if (!notes) return;
 
@@ -83,10 +90,10 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = kind === 'skill' ? 'sine' : 'triangle';
+            osc.type = wave;
             osc.frequency.value = freq;
 
-            const start = audioCtx.currentTime + i * 0.12;
+            const start = audioCtx.currentTime + i * spacing;
 
             gain.gain.setValueAtTime(0.0001, start);
             gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
@@ -94,7 +101,6 @@
 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
             osc.start(start);
             osc.stop(start + 0.4);
           });

@@ -42,7 +42,7 @@ function notifyQueueWarning(payload) {
   if (current.notifyQueueEmpty === false) return;
 
   const safe = payload && typeof payload === 'object' ? payload : {};
-  const sound = current.muteSounds ? null : 'wallet';
+  const sound = current.muteSounds ? null : 'queue';
 
   toastWindow.showToast(
     'Queue running dry',
