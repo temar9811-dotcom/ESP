@@ -6,3 +6,4 @@ out/
 .DS_Store
 package-lock.json
 Notes.txt
+config.json

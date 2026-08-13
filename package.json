@@ -1,12 +1,12 @@
 {
   "name": "eve-status-perception",
   "productName": "EVE Status Perception",
-  "version": "1.1.0",
+  "version": "1.1.5",
   "description": "EVE Online skill training and wallet status tray app",
   "main": "main.js",
   "author": {
     "name": "Bezekira Windfury",
-    "email": "Temar9811@gmail.com"
+    "email": "Temar9811-dotcom"
   },
   "license": "MIT",
   "private": true,
