@@ -2,6 +2,8 @@
 
 window.ESP = window.ESP || {};
 
+let loginAttempt = 0;
+
 ESP.bindModalEvents = function () {
   const modalRoot = ESP.getModalRoot();
 
@@ -17,6 +19,16 @@ ESP.bindModalEvents = function () {
 
     if (rerender) {
       ESP.render(ESP.state.lastAccounts);
+    }
+  }
+
+  function cancelPendingLoginIfOpen() {
+    if (
+      ESP.state.addCharacter &&
+      window.eveApi &&
+      window.eveApi.cancelLogin
+    ) {
+      window.eveApi.cancelLogin().catch(() => {});
     }
   }
 
@@ -91,6 +103,8 @@ ESP.bindModalEvents = function () {
     const cancelBtn = event.target.closest('.modal-cancel');
 
     if (closeBtn || cancelBtn) {
+      cancelPendingLoginIfOpen();
+
       ESP.state.addPlanState = null;
       ESP.state.planDetail = null;
       ESP.state.settingsOpen = false;
@@ -105,6 +119,7 @@ ESP.bindModalEvents = function () {
     if (addCharBtn) {
       addCharBtn.disabled = true;
       const scope = (ESP.state.addCharacter || {}).scope || 'future';
+      const myAttempt = ++loginAttempt;
 
       ESP.setStatus('Opening EVE login...');
 
@@ -120,6 +135,8 @@ ESP.bindModalEvents = function () {
 
         if (!msg.includes('Login cancelled.')) {
           ESP.setStatus(msg, true);
+        } else if (myAttempt === loginAttempt) {
+          ESP.setStatus('Login cancelled.');
         }
 
         addCharBtn.disabled = false;
@@ -177,6 +194,8 @@ ESP.bindModalEvents = function () {
     }
 
     if (event.target.classList.contains('modal-overlay')) {
+      cancelPendingLoginIfOpen();
+
       ESP.state.addPlanState = null;
       ESP.state.planDetail = null;
       ESP.state.settingsOpen = false;
