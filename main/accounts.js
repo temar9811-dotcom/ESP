@@ -56,12 +56,14 @@ async function getValidAccessToken(account, force = false) {
     account.accessTokenExpiresAt > now + safetyMs
   ) {
     const token = storage.decryptSecret(account.accessTokenEnc);
+
     if (token) {
       return token;
     }
   }
 
   const refreshToken = storage.decryptSecret(account.refreshTokenEnc);
+
   if (!refreshToken) {
     throw new Error('Missing refresh token. Remove and add this character again.');
   }
@@ -74,7 +76,6 @@ async function getValidAccessToken(account, force = false) {
   account.lastError = null;
 
   saveAccounts();
-
   return tokens.accessToken;
 }
 
@@ -156,16 +157,14 @@ async function refreshAll() {
     await Promise.allSettled(
       accounts.map((account) => refreshCharacter(account))
     );
-
     broadcastAccounts();
-
     return getPublicAccounts();
   } finally {
     refreshInProgress = false;
   }
 }
 
-async function addAccount() {
+async function addAccount(scopeChoice) {
   if (loginInProgress) {
     throw new Error('Login already in progress.');
   }
@@ -173,7 +172,7 @@ async function addAccount() {
   loginInProgress = true;
 
   try {
-    const login = await eve.startLogin(true);
+    const login = await eve.startLogin(true, scopeChoice);
 
     let account = accounts.find(
       (existing) => Number(existing.characterId) === Number(login.characterId)
@@ -196,7 +195,6 @@ async function addAccount() {
 
     await refreshCharacter(account);
     broadcastAccounts();
-
     return getPublicAccounts();
   } finally {
     loginInProgress = false;
@@ -212,7 +210,6 @@ function removeAccount(characterId) {
 
   callbacks.onAccountRemoved(numericId);
   broadcastAccounts();
-
   return getPublicAccounts();
 }
 
