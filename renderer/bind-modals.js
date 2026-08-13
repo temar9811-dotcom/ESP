@@ -31,6 +31,11 @@ ESP.bindModalEvents = function () {
   });
 
   modalRoot.addEventListener('change', (event) => {
+    if (ESP.state.addCharacter && event.target.name === 'addScope') {
+      ESP.state.addCharacter.scope = event.target.value;
+      return;
+    }
+
     if (event.target.id === 'settingHidePrimary') {
       persistSetting('hidePrimaryWhenCollapsed', event.target.checked, true);
       return;
@@ -90,7 +95,31 @@ ESP.bindModalEvents = function () {
       ESP.state.planDetail = null;
       ESP.state.settingsOpen = false;
       ESP.state.groupState = null;
+      ESP.state.addCharacter = null;
       ESP.renderModals();
+      return;
+    }
+
+    const addCharBtn = event.target.closest('.add-character-save');
+
+    if (addCharBtn) {
+      addCharBtn.disabled = true;
+      const scope = (ESP.state.addCharacter || {}).scope || 'future';
+
+      ESP.setStatus('Opening EVE login...');
+
+      try {
+        await window.eveApi.addAccount(scope);
+
+        ESP.state.addCharacter = null;
+        ESP.renderModals();
+        await ESP.load();
+        ESP.setStatus('Character added.');
+      } catch (err) {
+        ESP.setStatus(err?.message || String(err), true);
+        addCharBtn.disabled = false;
+      }
+
       return;
     }
 
@@ -147,6 +176,7 @@ ESP.bindModalEvents = function () {
       ESP.state.planDetail = null;
       ESP.state.settingsOpen = false;
       ESP.state.groupState = null;
+      ESP.state.addCharacter = null;
       ESP.renderModals();
     }
   });
