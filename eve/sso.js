@@ -7,6 +7,8 @@ const { shell } = require('electron');
 const config = require('./config');
 const scopesModule = require('../scopes');
 
+let cancelActiveLogin = null;
+
 function base64url(buffer) {
   return buffer
     .toString('base64')
@@ -41,7 +43,9 @@ function waitForCallback(expectedState) {
     redirectUrl.port || (redirectUrl.protocol === 'https:' ? 443 : 80)
   );
 
-  return new Promise((resolve, reject) => {
+  let cancel = () => {};
+
+  const promise = new Promise((resolve, reject) => {
     let finished = false;
 
     const finish = (fn, value) => {
@@ -56,6 +60,8 @@ function waitForCallback(expectedState) {
 
       fn(value);
     };
+
+    cancel = () => finish(reject, new Error('Login cancelled.'));
 
     const server = http.createServer((req, res) => {
       const url = new URL(req.url || '/', config.SSO.redirectUri);
@@ -96,6 +102,16 @@ function waitForCallback(expectedState) {
       finish(reject, new Error('Login timed out.'));
     }, config.SSO.loginTimeoutMs).unref();
   });
+
+  return { promise, cancel };
+}
+
+function cancelLogin() {
+  if (cancelActiveLogin) {
+    const cancel = cancelActiveLogin;
+    cancelActiveLogin = null;
+    cancel();
+  }
 }
 
 async function exchangeCode(code, verifier) {
@@ -206,6 +222,8 @@ async function getCharacterFromToken(accessToken) {
 }
 
 async function startLogin(promptLogin = true, scopeChoice = 'future') {
+  cancelLogin();
+
   const { verifier, challenge } = generatePkce();
   const state = base64url(crypto.randomBytes(16));
 
@@ -224,17 +242,25 @@ async function startLogin(promptLogin = true, scopeChoice = 'future') {
     authUrl.searchParams.set('prompt', 'login');
   }
 
-  const codePromise = waitForCallback(state);
+  const wait = waitForCallback(state);
+  cancelActiveLogin = wait.cancel;
+
   await shell.openExternal(authUrl.toString());
-  const code = await codePromise;
 
-  const tokens = await exchangeCode(code, verifier);
-  const character = await getCharacterFromToken(tokens.accessToken);
-
-  return { ...tokens, ...character };
+  try {
+    const code = await wait.promise;
+    const tokens = await exchangeCode(code, verifier);
+    const character = await getCharacterFromToken(tokens.accessToken);
+    return { ...tokens, ...character };
+  } finally {
+    if (cancelActiveLogin === wait.cancel) {
+      cancelActiveLogin = null;
+    }
+  }
 }
 
 module.exports = {
   startLogin,
-  refreshAccessToken
+  refreshAccessToken,
+  cancelLogin
 };
