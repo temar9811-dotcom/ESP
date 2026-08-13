@@ -5,11 +5,12 @@ const http = require('http');
 const { shell } = require('electron');
 
 const config = require('./config');
+const scopesModule = require('../scopes');
 
 function base64url(buffer) {
   return buffer
     .toString('base64')
-    .replace(/\+/g, '-')
+    .replace(/+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 }
@@ -20,6 +21,16 @@ function generatePkce() {
     crypto.createHash('sha256').update(verifier).digest()
   );
   return { verifier, challenge };
+}
+
+function resolveScopeList(scopeChoice) {
+  if (Array.isArray(scopesModule)) {
+    return scopesModule;
+  }
+
+  return scopeChoice === 'essential'
+    ? scopesModule.ESSENTIAL_SCOPES
+    : scopesModule.FUTURE_PROOF_SCOPES;
 }
 
 function waitForCallback(expectedState) {
@@ -36,11 +47,13 @@ function waitForCallback(expectedState) {
     const finish = (fn, value) => {
       if (finished) return;
       finished = true;
+
       try {
         server.close();
       } catch {
         // ignore
       }
+
       fn(value);
     };
 
@@ -117,6 +130,7 @@ async function exchangeCode(code, verifier) {
     scopes: data.scope
   };
 }
+
 async function refreshAccessToken(refreshToken) {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
@@ -158,6 +172,7 @@ async function getCharacterFromToken(accessToken) {
 
     if (res.ok) {
       const data = await res.json();
+
       if (data.CharacterID) {
         return {
           characterId: Number(data.CharacterID),
@@ -176,6 +191,7 @@ async function getCharacterFromToken(accessToken) {
     );
 
     const characterId = Number(String(payload.sub || '').split(':').pop());
+
     if (!characterId || Number.isNaN(characterId)) {
       throw new Error('Could not parse character ID from token.');
     }
@@ -189,13 +205,11 @@ async function getCharacterFromToken(accessToken) {
   }
 }
 
-async function startLogin(promptLogin = true) {
+async function startLogin(promptLogin = true, scopeChoice = 'future') {
   const { verifier, challenge } = generatePkce();
   const state = base64url(crypto.randomBytes(16));
 
-  const scopes = Array.isArray(config.SSO.scopes)
-    ? config.SSO.scopes.join(' ')
-    : config.SSO.scopes;
+  const scopes = resolveScopeList(scopeChoice).join(' ');
 
   const authUrl = new URL(config.SSO.authorizeUrl);
   authUrl.searchParams.set('response_type', 'code');
@@ -213,6 +227,7 @@ async function startLogin(promptLogin = true) {
   const codePromise = waitForCallback(state);
   await shell.openExternal(authUrl.toString());
   const code = await codePromise;
+
   const tokens = await exchangeCode(code, verifier);
   const character = await getCharacterFromToken(tokens.accessToken);
 
