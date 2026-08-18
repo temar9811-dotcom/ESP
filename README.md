@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.1.10-beta)
+## Current Features (v1.1.11-beta)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -24,6 +24,7 @@ Built with Electron and the EVE ESI API.
 - **Primary character star** — collapsed groups show the primary; expanded groups sort it to the top
 - **Collapsible groups** and a collapsible Ungrouped section
 - **Per-character tabs** — Overview, Skill Queue, Wallet, Skill Plans
+- **Per-character notes** — editable Notes tab on each character sheet, saved locally
 - **System tray** integration with a live training-status tooltip
 - **Single-instance app** and a live EVE time clock
 
@@ -80,9 +81,10 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.1.10-beta**
+**Currently tracked version: v1.1.11-beta**
 
 ### Changelog
+- **v1.1.11-beta** — Per-character notes: editable Notes tab on each character sheet, saved locally per character.
 - **v1.1.10-beta** — Recently completed skills list (last 7 days) on the Overview; collapsible with auto-collapse above 5 entries; Will only list skills completed after character is added to the app
 - **v1.1.9-beta** — Overview next-skill detection fixed for queues where ESI removes completed entries without renumbering.
 - **v1.1.8-beta** — Batched character refresh plus ESI rate-limit cooldown with automatic back-off; Refresh button locks during refreshes and cooldowns.
