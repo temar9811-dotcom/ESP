@@ -455,6 +455,43 @@ ESP.bindSkillSearch = function () {
 
   ESP.bindSkillSearchListeners();
 
+  if (!ESP.skillSearchPopupBound) {
+    ESP.skillSearchPopupBound = true;
+
+    document.addEventListener('click', (event) => {
+      const ss = ESP.state.skillSearch;
+      if (!ss || !ss.popup) return;
+
+      const closeBtn = event.target.closest('.skill-search-card .modal-close');
+      if (closeBtn) {
+        event.stopPropagation();
+        ss.popup = null;
+        ss.minimized = false;
+        ESP.renderModals();
+        return;
+      }
+
+      const minBtn = event.target.closest('.skill-search-minimize');
+      if (minBtn) {
+        event.stopPropagation();
+        ss.minimized = true;
+        ESP.renderModals();
+        return;
+      }
+    }, true);
+
+    document.addEventListener('click', (event) => {
+      const pill = event.target.closest('.skill-search-pill');
+      if (pill) {
+        event.stopPropagation();
+        const ss = ESP.state.skillSearch;
+        if (!ss) return;
+        ss.minimized = false;
+        ESP.renderModals();
+      }
+    }, true);
+  }
+
   if (!ESP.skillSearchKeydownBound) {
     ESP.skillSearchKeydownBound = true;
 

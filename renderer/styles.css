@@ -689,7 +689,19 @@ tfoot td {
 }
 
 .skill-search-card {
-  width: min(500px, calc(100vw - 40px));
+  width: fit-content;
+  max-width: min(500px, calc(100vw - 40px));
+}
+
+.skill-search-card table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.skill-search-card th:first-child,
+.skill-search-card td:first-child {
+  width: 1%;
+  white-space: nowrap;
 }
 
 .skill-search-header {
@@ -707,6 +719,10 @@ tfoot td {
 .skill-search-controls {
   display: flex;
   gap: 6px;
+}
+
+.skill-search-controls .modal-close {
+  position: static;
 }
 
 .skill-search-minimize {

@@ -66,7 +66,8 @@ async function getMetaForIds(ids) {
     const key = String(id);
 
     if (cache[key] != null) {
-      out[id] = { rank: cache[key] };
+      const rank = typeof cache[key] === 'object' ? cache[key].rank : cache[key];
+      out[id] = { rank };
     } else {
       missing.push([key, id]);
     }
@@ -88,7 +89,10 @@ async function getMetaForIds(ids) {
 
     for (const [key, originalId, rank] of fetched) {
       if (rank != null) {
-        cache[key] = rank;
+        if (!cache[key] || typeof cache[key] !== 'object') {
+          cache[key] = {};
+        }
+        cache[key].rank = rank;
         out[originalId] = { rank };
         changed = true;
       }
@@ -109,9 +113,14 @@ async function resolveNames(ids) {
 
   for (const id of unique) {
     const key = String(id);
-    if (cache[key] && cache[key].name) {
+
+    if (cache[key] && typeof cache[key] === 'object' && cache[key].name) {
       map.set(id, cache[key].name);
     } else {
+      if (cache[key] && typeof cache[key] !== 'object') {
+        cache[key] = { rank: cache[key] };
+      }
+
       missing.push(id);
     }
   }
