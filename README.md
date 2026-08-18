@@ -86,6 +86,7 @@ npm start
 **Currently tracked version: v1.1.8-beta**
 
 ### Changelog
+- **v1.1.9-beta** — ESI rate-limit cooldown with automatic back-off; Refresh button locks during refreshes and cooldowns.
 - **v1.1.8-beta** — Batched character refresh (5 at a time) fixes "fetch failed" errors with large character lists.
 - **v1.1.7-beta** — Queue-running-dry warning with configurable lead time and its own descending chime; expanded self-test suite; first beta build.
 - **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split.
