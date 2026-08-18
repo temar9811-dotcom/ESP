@@ -85,6 +85,7 @@ ESP.overviewHtml = function (account) {
 </div>
 ${ESP.activeHtml(account)}
 ${ESP.nextSkillHtml(account)}
+${ESP.recentSkillsHtml(account)}
 `;
 };
 
@@ -494,5 +495,64 @@ ESP.characterTabHtml = function (account, opts = {}) {
     ${ESP.characterSheetHtml(account, opts)}
   </div>
 </section>
+`;
+};
+ESP.recentIsOpen = function (account, count) {
+  const map = ESP.state.recentOpen || {};
+  const id = Number(account.characterId);
+
+  if (map[id] != null) return Boolean(map[id]);
+
+  return count <= 5;
+};
+
+ESP.recentSkillsHtml = function (account) {
+  const list = Array.isArray(account.recentCompletions)
+    ? account.recentCompletions
+    : [];
+
+  if (!list.length) return '';
+
+  const id = Number(account.characterId);
+  const open = ESP.recentIsOpen(account, list.length);
+
+  const rows = list
+    .map(
+      (e) => `
+<tr>
+  <td>${ESP.escapeHtml(e.skillName || 'Unknown')}</td>
+  <td>L${ESP.escapeHtml(e.level ?? '')}</td>
+  <td>${ESP.formatDate(e.finishedAt)}</td>
+</tr>
+`
+    )
+    .join('');
+
+  return `
+<div class="recent-skills" style="margin-top:12px;">
+  <button
+    type="button"
+    class="recent-toggle"
+    data-id="${id}"
+    style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:6px 10px; background:rgba(90,140,190,0.12); border:1px solid rgba(90,140,190,0.3); border-radius:8px; cursor:pointer; font-weight:700; color:inherit;"
+  >
+    <span>Skills completed in the last 7 days (${list.length})</span>
+    <span style="font-weight:400; font-size:12px; color:#9fb3c8;">${open ? '▴' : '▾'}</span>
+  </button>
+  ${
+    open
+      ? `
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Skill</th><th>Level</th><th>Completed</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+  `
+      : ''
+  }
+</div>
 `;
 };

@@ -121,6 +121,7 @@
           <button type="button" data-cmd="skills.meta">Skill meta</button>
           <button type="button" data-cmd="wallet.details">Wallet details</button>
           <button type="button" data-cmd="corp.info">Corp info</button>
+          <button type="button" data-cmd="history.inject">Inject recent skills</button>
         </div>
         <div id="test-result"></div>
       `;

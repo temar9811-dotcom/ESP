@@ -6,14 +6,15 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.1.7-beta)
+## Current Features (v1.1.10-beta)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
 - **Scope-choice add-character modal** — Essential (minimum) or future-proof Full access scopes
-- **Automatic + manual refresh** of character data
+- **Automatic + manual refresh** of character data, batched to stay under ESI connection limits
 - **Active skill training** with live progress bar and completion countdown
 - **Full skill queue table** — positions, SP costs, start/finish times and totals
+- **Recently completed skills** — collapsible last-7-days list on each Overview (auto-collapsed above 5 entries)
 - **Wallet tracking** — balance plus a 7-day wallet journal with ISK in/out summary
 - **Location & ship** shown directly on each character row
 - **Corporation & alliance** names in the character header
@@ -57,8 +58,10 @@ Built with Electron and the EVE ESI API.
 - Market orders tab (active buy/sell orders)
 - Cross-character skill search
 - Ship loss notifications (public ESI killmails)
+- Skill browser with trained / prerequisites met / not trained status
 
 ### UI, Notifications & Quality of Life
+- Window remembers size and position between sessions
 - Implant-aware training time estimates (real SP/hour)
 - Per-character mute
 - Streamer mode (blur ISK values and character names)
@@ -77,17 +80,12 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-```
-npm install
-npm start
-```
-
-
-**Currently tracked version: v1.1.8-beta**
+**Currently tracked version: v1.1.10-beta**
 
 ### Changelog
-- **v1.1.9-beta** — ESI rate-limit cooldown with automatic back-off; Refresh button locks during refreshes and cooldowns.
-- **v1.1.8-beta** — Batched character refresh (5 at a time) fixes "fetch failed" errors with large character lists.
+- **v1.1.10-beta** — Recently completed skills list (last 7 days) on the Overview; collapsible with auto-collapse above 5 entries; test command injects expiring sample entries.
+- **v1.1.9-beta** — Overview next-skill detection fixed for queues where ESI removes completed entries without renumbering.
+- **v1.1.8-beta** — Batched character refresh plus ESI rate-limit cooldown with automatic back-off; Refresh button locks during refreshes and cooldowns.
 - **v1.1.7-beta** — Queue-running-dry warning with configurable lead time and its own descending chime; expanded self-test suite; first beta build.
 - **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split.
 - **v1.1.5** — SP cost + estimated training time in skill plans; fixed skill rank lookup via ESI dogma attributes.
@@ -96,7 +94,6 @@ npm start
 - **v1.1.2** — Hide primary in collapsed groups; start with Windows.
 - **v1.1.1** — Renderer code split into modules.
 - **v1.1.0** — First tester build.
-
 
 ---
 

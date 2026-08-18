@@ -4,6 +4,7 @@ const storage = require('../storage');
 const eve = require('../eve');
 const sso = require('../eve/sso');
 const settings = require('./settings');
+const skillHistory = require('./skill-history');
 const eveConfig = require('../eve/config');
 
 let accounts = [];
@@ -28,6 +29,10 @@ function init(newCallbacks) {
 
 function loadAccounts() {
   accounts = storage.loadAccounts();
+
+  for (const account of accounts) {
+    account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
+  }
 }
 
 function getAccounts() {
@@ -146,6 +151,13 @@ function checkSkillCompletion(account, dashboard) {
         : 'none';
 
       if (lastKey !== currentKey) {
+        skillHistory.recordCompletion(account.characterId, {
+          skillId: lastSkill.skill_id,
+          skillName: lastSkill.skillName || 'Unknown skill',
+          level: lastSkill.finished_level || 0,
+          finishedAt: lastSkill.finish_date
+        });
+
         callbacks.onSkillCompleted({
           characterName: account.characterName || 'Unknown',
           skillName: lastSkill.skillName || 'Unknown skill',
@@ -213,6 +225,9 @@ async function refreshCharacter(account) {
     applyDashboard(account, dashboard);
     checkSkillCompletion(account, dashboard);
     checkQueueWarning(account, dashboard);
+
+    skillHistory.seedFromQueue(account.characterId, dashboard.queue);
+    account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
   } catch (err) {
     account.lastError = err?.message || String(err);
     console.error(
