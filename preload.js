@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('eveApi', {
 
   // --- Skills ---
   getSkillMeta: (ids) => ipcRenderer.invoke('skills:getMeta', ids),
+  resolveNames: (ids) => ipcRenderer.invoke('skills:resolveNames', ids),
 
   // --- Wallet ---
   getWalletDetails: (characterId) => ipcRenderer.invoke('accounts:getWalletDetails', characterId),

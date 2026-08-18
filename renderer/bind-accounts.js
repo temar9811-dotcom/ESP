@@ -267,3 +267,246 @@ ESP.bindTopbarEvents = function () {
     });
   }
 };
+
+ESP.renderSearchDropdown = function () {
+  const dropdown = document.querySelector('.skill-search-dropdown');
+  if (!dropdown) return;
+
+  const ss = ESP.state.skillSearch;
+  if (!ss.suggestions.length) {
+    dropdown.innerHTML = '';
+    dropdown.style.display = 'none';
+    return;
+  }
+
+  dropdown.style.display = 'block';
+  dropdown.innerHTML = ss.suggestions
+    .map((entry, i) => {
+      const cls =
+        i === ss.selectedIndex
+          ? 'skill-search-suggestion active'
+          : 'skill-search-suggestion';
+      const count = entry.characters.length;
+      return `<div class="${cls}" data-index="${i}">${ESP.escapeHtml(entry.name)} <span class="skill-search-count">(${count})</span></div>`;
+    })
+    .join('');
+};
+
+ESP.renderSkillSearch = function () {
+  const existing = document.getElementById('skillSearchInputWrap');
+  const ss = ESP.state.skillSearch;
+
+  if (!ss.open) {
+    if (existing) existing.remove();
+    ESP.renderSearchDropdown();
+    return;
+  }
+
+  if (!existing) {
+    const wrap = document.createElement('div');
+    wrap.id = 'skillSearchInputWrap';
+    wrap.className = 'skill-search-input-wrap';
+    wrap.innerHTML = `
+      <input
+        type="text"
+        class="skill-search-input"
+        placeholder="Search skills across all characters..."
+        value="${ESP.escapeHtml(ss.query)}"
+      />
+      <div class="skill-search-dropdown"></div>
+    `;
+    const actions = document.querySelector('.actions');
+    if (actions) actions.parentNode.insertBefore(wrap, actions);
+  }
+
+  ESP.renderSearchDropdown();
+  ESP.renderModals();
+};
+
+ESP.selectSkillSearchResult = function (entry) {
+  const ss = ESP.state.skillSearch;
+  ss.suggestions = [];
+  ss.query = entry.name;
+  ss.minimized = false;
+
+  const results = ESP.state.lastAccounts.map((account) => {
+    const charName = account.characterName || `Character ${account.characterId}`;
+    const match = entry.characters.find(
+      (c) => Number(c.characterId) === Number(account.characterId)
+    );
+    return {
+      characterId: account.characterId,
+      characterName: charName,
+      level: match ? match.level : 0
+    };
+  });
+
+  results.sort((a, b) => a.characterName.localeCompare(b.characterName));
+
+  ss.popup = { skillName: entry.name, results };
+
+  ESP.renderSearchDropdown();
+  ESP.renderModals();
+};
+
+ESP.bindSkillSearchListeners = function () {
+  if (ESP.skillSearchListenersBound) return;
+  ESP.skillSearchListenersBound = true;
+
+  document.addEventListener('input', (event) => {
+    if (event.target.classList.contains('skill-search-input')) {
+      const query = event.target.value;
+      ESP.state.skillSearch.query = query;
+
+      if (!ESP.state.skillSearch.index) return;
+
+      const q = query.toLowerCase().trim();
+      if (!q) {
+        ESP.state.skillSearch.suggestions = [];
+      } else {
+        const matches = [];
+        for (const entry of ESP.state.skillSearch.index.values()) {
+          if (entry.name.toLowerCase().includes(q)) {
+            matches.push(entry);
+            if (matches.length >= 8) break;
+          }
+        }
+        matches.sort(
+          (a, b) =>
+            a.name.toLowerCase().indexOf(q) -
+            b.name.toLowerCase().indexOf(q)
+        );
+        ESP.state.skillSearch.suggestions = matches;
+      }
+      ESP.state.skillSearch.selectedIndex = 0;
+      ESP.renderSearchDropdown();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const suggestion = event.target.closest('.skill-search-suggestion');
+
+    if (suggestion) {
+      const idx = Number(suggestion.dataset.index);
+      const pick = ESP.state.skillSearch.suggestions[idx];
+      if (pick) ESP.selectSkillSearchResult(pick);
+      return;
+    }
+
+    const ssMinimize = event.target.closest('.skill-search-minimize');
+    if (ssMinimize) {
+      ESP.state.skillSearch.minimized = true;
+      ESP.renderModals();
+      return;
+    }
+
+    const ssPill = event.target.closest('.skill-search-pill');
+    if (ssPill) {
+      ESP.state.skillSearch.minimized = false;
+      ESP.renderModals();
+      return;
+    }
+  });
+};
+
+ESP.bindSkillSearch = function () {
+  const searchBtn = document.getElementById('skillSearch');
+  if (!searchBtn || ESP.skillSearchButtonBound) return;
+  ESP.skillSearchButtonBound = true;
+
+  searchBtn.addEventListener('click', async () => {
+    const ss = ESP.state.skillSearch;
+
+    if (ss.open) {
+      ss.open = false;
+      ss.query = '';
+      ss.suggestions = [];
+      ss.popup = null;
+      ss.minimized = false;
+      ESP.renderSkillSearch();
+      return;
+    }
+
+    ss.open = true;
+    ESP.renderSkillSearch();
+
+    if (!ss.index) {
+      try {
+        const allIds = new Set();
+        for (const account of ESP.state.lastAccounts) {
+          for (const id of Object.keys(account.skillLevels || {})) {
+            allIds.add(Number(id));
+          }
+        }
+
+        const nameMapRaw = await window.eveApi.resolveNames([...allIds]);
+        const nameMap = new Map(
+          Object.entries(nameMapRaw).map(([k, v]) => [Number(k), v])
+        );
+        ss.index = ESP.buildSkillIndex(ESP.state.lastAccounts, nameMap);
+      } catch {
+        ss.index = new Map();
+      }
+    }
+
+    const input = document.querySelector('.skill-search-input');
+    if (input) input.focus();
+  });
+
+  ESP.bindSkillSearchListeners();
+
+  if (!ESP.skillSearchKeydownBound) {
+    ESP.skillSearchKeydownBound = true;
+
+    document.addEventListener('keydown', (event) => {
+      const ss = ESP.state.skillSearch;
+      if (!ss || !ss.open) return;
+
+      if (event.key === 'Escape') {
+        if (ss.popup && !ss.minimized) {
+          ss.popup = null;
+          ss.minimized = false;
+          ESP.renderModals();
+        } else if (ss.suggestions.length) {
+          ss.suggestions = [];
+          ESP.renderSearchDropdown();
+        } else {
+          ss.open = false;
+          ss.query = '';
+          ss.suggestions = [];
+          ss.popup = null;
+          ss.minimized = false;
+          ESP.renderSkillSearch();
+        }
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (ss.suggestions.length) {
+          const pick =
+            ss.suggestions[ss.selectedIndex] || ss.suggestions[0];
+          ESP.selectSkillSearchResult(pick);
+        }
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        ss.selectedIndex = Math.min(
+          ss.selectedIndex + 1,
+          ss.suggestions.length - 1
+        );
+        ESP.renderSearchDropdown();
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        ss.selectedIndex = Math.max(ss.selectedIndex - 1, 0);
+        ESP.renderSearchDropdown();
+        return;
+      }
+    });
+  }
+};

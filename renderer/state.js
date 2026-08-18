@@ -9,7 +9,16 @@ ESP.state = {
   walletState: {},
   plans: [],
   addPlanState: null,
-  planDetail: null
+  planDetail: null,
+  skillSearch: {
+    open: false,
+    query: '',
+    suggestions: [],
+    selectedIndex: 0,
+    popup: null,
+    minimized: false,
+    index: null
+  }
 };
 
 ESP.setStatus = function (message, isError = false) {

@@ -102,6 +102,11 @@ function registerIpcHandlers() {
     return skillMeta.getMetaForIds(ids);
   });
 
+  ipcMain.handle('skills:resolveNames', async (_event, ids) => {
+    const map = await skillMeta.resolveNames(ids);
+    return Object.fromEntries(map);
+  });
+
     ipcMain.handle('notes:get', (_event, characterId) => {
     return notes.getNote(characterId);
   });

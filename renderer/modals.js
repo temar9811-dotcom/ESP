@@ -12,28 +12,33 @@ ESP.renderModals = function () {
 
   if (ESP.state.addPlanState) {
     modalRoot.innerHTML = ESP.addPlanModalHtml();
-    return;
-  }
-
-  if (ESP.state.groupState) {
+  } else if (ESP.state.groupState) {
     modalRoot.innerHTML = ESP.groupModalHtml();
-    return;
-  }
-
-  if (ESP.state.planDetail) {
+  } else if (ESP.state.planDetail) {
     modalRoot.innerHTML = ESP.planDetailModalHtml(ESP.state.planDetail);
-    return;
-  }
-
-  if (ESP.state.settingsOpen) {
+  } else if (ESP.state.settingsOpen) {
     modalRoot.innerHTML = ESP.settingsModalHtml(ESP.state.settings);
-    return;
-  }
-
-  if (ESP.state.addCharacter) {
+  } else if (ESP.state.addCharacter) {
     modalRoot.innerHTML = ESP.addCharacterModalHtml();
-    return;
+  } else {
+    modalRoot.innerHTML = '';
   }
 
-  modalRoot.innerHTML = '';
+  // Append skill search popup into modal-root (outside early returns)
+  const searchPopup = ESP.skillSearchPopupHtml ? ESP.skillSearchPopupHtml() : '';
+  if (searchPopup) {
+    modalRoot.insertAdjacentHTML('beforeend', searchPopup);
+  }
+
+  // Manage the minimized pill on document.body
+  const existingPill = document.querySelector('.skill-search-pill');
+  const newPill = ESP.skillSearchPillHtml ? ESP.skillSearchPillHtml() : '';
+
+  if (existingPill && !newPill) {
+    existingPill.remove();
+  } else if (newPill && !existingPill) {
+    document.body.insertAdjacentHTML('beforeend', newPill);
+  } else if (newPill && existingPill) {
+    existingPill.outerHTML = newPill;
+  }
 };

@@ -3,6 +3,7 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { publicPost } = require('../eve/http');
 
 const DOGMA_RANK_ATTRIBUTE = 275;
 
@@ -99,6 +100,49 @@ async function getMetaForIds(ids) {
   return out;
 }
 
+async function resolveNames(ids) {
+  loadCache();
+
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  const map = new Map();
+  const missing = [];
+
+  for (const id of unique) {
+    const key = String(id);
+    if (cache[key] && cache[key].name) {
+      map.set(id, cache[key].name);
+    } else {
+      missing.push(id);
+    }
+  }
+
+  if (missing.length) {
+    for (let i = 0; i < missing.length; i += 1000) {
+      const chunk = missing.slice(i, i + 1000);
+
+      try {
+        const arr = await publicPost('/universe/names/', chunk);
+
+        if (Array.isArray(arr)) {
+          for (const item of arr) {
+            const key = String(item.id);
+            if (!cache[key]) cache[key] = {};
+            cache[key].name = item.name;
+            map.set(item.id, item.name);
+          }
+        }
+      } catch {
+        // Ignore chunk resolution failures.
+      }
+    }
+
+    saveCache();
+  }
+
+  return map;
+}
+
 module.exports = {
-  getMetaForIds
+  getMetaForIds,
+  resolveNames
 };
