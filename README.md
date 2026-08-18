@@ -83,7 +83,7 @@ This repository tracks the latest development (alpha) code. If you want to run t
 **Currently tracked version: v1.1.10-beta**
 
 ### Changelog
-- **v1.1.10-beta** — Recently completed skills list (last 7 days) on the Overview; collapsible with auto-collapse above 5 entries; test command injects expiring sample entries.
+- **v1.1.10-beta** — Recently completed skills list (last 7 days) on the Overview; collapsible with auto-collapse above 5 entries; Will only list skills completed after character is added to the app
 - **v1.1.9-beta** — Overview next-skill detection fixed for queues where ESI removes completed entries without renumbering.
 - **v1.1.8-beta** — Batched character refresh plus ESI rate-limit cooldown with automatic back-off; Refresh button locks during refreshes and cooldowns.
 - **v1.1.7-beta** — Queue-running-dry warning with configurable lead time and its own descending chime; expanded self-test suite; first beta build.

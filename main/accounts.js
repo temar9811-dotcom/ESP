@@ -5,6 +5,7 @@ const eve = require('../eve');
 const sso = require('../eve/sso');
 const settings = require('./settings');
 const skillHistory = require('./skill-history');
+const notesStore = require('./notes');
 const eveConfig = require('../eve/config');
 
 let accounts = [];
@@ -32,6 +33,7 @@ function loadAccounts() {
 
   for (const account of accounts) {
     account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
+    account.notes = notesStore.getNote(account.characterId);
   }
 }
 

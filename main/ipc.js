@@ -12,6 +12,7 @@ const toastWindow = require('./toast-window');
 const corpInfo = require('./corp-info');
 const groups = require('./groups');
 const skillMeta = require('./skill-meta');
+const notes = require('./notes');
 
 let testHarness = null;
 
@@ -99,6 +100,25 @@ function registerIpcHandlers() {
 
   ipcMain.handle('skills:getMeta', async (_event, ids) => {
     return skillMeta.getMetaForIds(ids);
+  });
+
+    ipcMain.handle('notes:get', (_event, characterId) => {
+    return notes.getNote(characterId);
+  });
+
+  ipcMain.handle('notes:set', (_event, characterId, text) => {
+    const saved = notes.setNote(characterId, text);
+
+    const account = accounts
+      .getAccounts()
+      .find((a) => Number(a.characterId) === Number(characterId));
+
+    if (account) {
+      account.notes = saved;
+      accounts.broadcastAccounts();
+    }
+
+    return saved;
   });
 
   ipcMain.handle('plans:readClipboard', async () => {

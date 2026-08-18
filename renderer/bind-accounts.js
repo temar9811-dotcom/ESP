@@ -7,6 +7,14 @@ ESP.bindAccountEvents = function () {
 
   if (!accountsEl) return;
 
+  accountsEl.addEventListener('input', (event) => {
+    if (event.target.classList.contains('notes-input')) {
+      const id = Number(event.target.dataset.id);
+      ESP.state.notesDraft = ESP.state.notesDraft || {};
+      ESP.state.notesDraft[id] = event.target.value;
+    }
+  });
+
   accountsEl.addEventListener('click', async (event) => {
     const starBtn = event.target.closest('.group-star');
 
@@ -179,6 +187,30 @@ ESP.bindAccountEvents = function () {
       }
 
       ESP.renderModals();
+    }
+
+    const notesSaveBtn = event.target.closest('.notes-save');
+
+    if (notesSaveBtn) {
+      const id = Number(notesSaveBtn.dataset.id);
+      const draftMap = ESP.state.notesDraft || {};
+      const text = draftMap[id] != null ? draftMap[id] : '';
+
+      try {
+        await window.eveApi.setNotes(id, text);
+
+        const account = ESP.state.lastAccounts.find(
+          (a) => Number(a.characterId) === id
+        );
+        if (account) account.notes = text;
+
+        delete draftMap[id];
+        ESP.setStatus('Notes saved.');
+      } catch (err) {
+        ESP.setStatus(err?.message || String(err), true);
+      }
+
+      return;
     }
   });
 };

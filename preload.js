@@ -73,6 +73,10 @@ contextBridge.exposeInMainWorld('eveApi', {
     };
   },
 
+    // --- Notes ---
+  getNotes: (characterId) => ipcRenderer.invoke('notes:get', characterId),
+  setNotes: (characterId, text) => ipcRenderer.invoke('notes:set', characterId, text),
+
   onRefreshState: (callback) => {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('refresh-state', listener);
