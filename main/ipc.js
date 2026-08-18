@@ -24,6 +24,10 @@ function registerIpcHandlers() {
     return VERSION;
   });
 
+  ipcMain.handle('app:getRefreshState', () => {
+    return accounts.getRefreshState();
+  });
+
   ipcMain.handle('accounts:list', () => {
     return accounts.getPublicAccounts();
   });

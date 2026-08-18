@@ -41,6 +41,10 @@ function onQueueWarning(payload) {
   notifications.notifyQueueWarning(payload);
 }
 
+function onRefreshState(state) {
+  sendToRenderer('refresh-state', state);
+}
+
 function onWalletActivity(payload) {
   notifications.notifyWalletActivity(payload);
 }
@@ -64,6 +68,7 @@ async function bootstrap() {
     onBroadcast: onAccountsBroadcast,
     onSkillCompleted,
     onQueueWarning,
+    onRefreshState,
     onAccountRemoved
   });
 

@@ -183,6 +183,12 @@ async function refreshCharacter(account) {
     checkQueueWarning(account, dashboard);
   } catch (err) {
     account.lastError = err?.message || String(err);
+    console.error(
+      '[ESI]',
+      account.characterName || account.characterId,
+      err?.status ?? '',
+      err?.message || String(err)
+    );
   }
 }
 
@@ -194,9 +200,18 @@ async function refreshAll() {
   refreshInProgress = true;
 
   try {
-    await Promise.allSettled(
-      accounts.map((account) => refreshCharacter(account))
-    );
+    const queue = [...accounts];
+    const concurrency = Math.min(5, queue.length || 1);
+
+    const workers = Array.from({ length: concurrency }, async () => {
+      while (queue.length) {
+        const account = queue.shift();
+        await refreshCharacter(account);
+      }
+    });
+
+    await Promise.allSettled(workers);
+
     broadcastAccounts();
     return getPublicAccounts();
   } finally {
