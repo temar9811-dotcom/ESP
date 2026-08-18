@@ -170,8 +170,8 @@ async function enrichQueueWithSpCost(queue, skillsMap) {
   const currentSkillPoints = new Map();
 
   for (const skill of skillsMap.values()) {
-    currentLevels.set(skill.skill_id, Number(skill.current_skill_level || 0));
-    currentSkillPoints.set(skill.skill_id, Number(skill.skillpoints || 0));
+    currentLevels.set(skill.skill_id, Number(skill.trained_skill_level ?? skill.active_skill_level ?? 0));
+    currentSkillPoints.set(skill.skill_id, Number(skill.skillpoints_in_skill || 0));
   }
 
   let totalSpCost = 0;
@@ -280,7 +280,7 @@ async function getDashboard(characterId, accessToken) {
   const skillLevels = {};
   if (skills && Array.isArray(skills.skills)) {
     for (const skill of skills.skills) {
-      skillLevels[skill.skill_id] = Number(skill.current_skill_level || 0);
+      skillLevels[skill.skill_id] = Number(skill.trained_skill_level ?? skill.active_skill_level ?? 0);
     }
   }
 

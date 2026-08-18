@@ -257,6 +257,7 @@ ESP.bindTopbarEvents = function () {
 
   if (window.eveApi && window.eveApi.onAccountsUpdated) {
     const unsubscribe = window.eveApi.onAccountsUpdated((accounts) => {
+      ESP.state.skillSearch.index = null;
       ESP.render(accounts);
     });
 
