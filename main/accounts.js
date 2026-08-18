@@ -9,11 +9,13 @@ const eveConfig = require('../eve/config');
 let accounts = [];
 let loginInProgress = false;
 let refreshInProgress = false;
+let rateLimitedUntil = 0;
 
 let callbacks = {
   onBroadcast: () => {},
   onSkillCompleted: () => {},
   onQueueWarning: () => {},
+  onRefreshState: () => {},
   onAccountRemoved: () => {}
 };
 
@@ -37,6 +39,36 @@ function getPublicAccounts() {
     const { refreshTokenEnc, accessTokenEnc, ...safe } = account;
     return safe;
   });
+}
+
+function getRefreshState() {
+  return {
+    refreshing: refreshInProgress,
+    rateLimitedUntil
+  };
+}
+
+function emitRefreshState() {
+  callbacks.onRefreshState(getRefreshState());
+}
+
+function enterRateLimit(seconds) {
+  const cooldown = Math.max(5, Number(seconds) || 60);
+  const until = Date.now() + cooldown * 1000;
+
+  if (until > rateLimitedUntil) {
+    rateLimitedUntil = until;
+    console.warn(`[ESI] rate limited — cooling down ${cooldown}s`);
+    emitRefreshState();
+  }
+}
+
+async function waitRateLimit() {
+  const waitMs = rateLimitedUntil - Date.now();
+
+  if (waitMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
 }
 
 function saveAccounts() {
@@ -189,6 +221,10 @@ async function refreshCharacter(account) {
       err?.status ?? '',
       err?.message || String(err)
     );
+
+    if (err && err.status === 420) {
+      enterRateLimit(Number(err.resetSeconds) || 60);
+    }
   }
 }
 
@@ -198,6 +234,7 @@ async function refreshAll() {
   }
 
   refreshInProgress = true;
+  emitRefreshState();
 
   try {
     const queue = [...accounts];
@@ -205,6 +242,7 @@ async function refreshAll() {
 
     const workers = Array.from({ length: concurrency }, async () => {
       while (queue.length) {
+        await waitRateLimit();
         const account = queue.shift();
         await refreshCharacter(account);
       }
@@ -212,10 +250,15 @@ async function refreshAll() {
 
     await Promise.allSettled(workers);
 
+    if (rateLimitedUntil && rateLimitedUntil <= Date.now()) {
+      rateLimitedUntil = 0;
+    }
+
     broadcastAccounts();
     return getPublicAccounts();
   } finally {
     refreshInProgress = false;
+    emitRefreshState();
   }
 }
 
@@ -278,6 +321,7 @@ module.exports = {
   loadAccounts,
   getAccounts,
   getPublicAccounts,
+  getRefreshState,
   saveAccounts,
   broadcastAccounts,
   getValidAccessToken,
