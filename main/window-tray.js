@@ -20,11 +20,66 @@ let win = null;
 let tray = null;
 let isQuitting = false;
 let tooltipAccounts = [];
+let saveBoundsTimer = null;
 
 let actions = {
   refreshAll: async () => {},
   addAccount: async () => {}
 };
+
+function boundsFile() {
+  return path.join(app.getPath('userData'), 'window-bounds.json');
+}
+
+function loadBounds() {
+  try {
+    const raw = fs.readFileSync(boundsFile(), 'utf8');
+    const b = JSON.parse(raw);
+    if (
+      typeof b.x === 'number' &&
+      typeof b.y === 'number' &&
+      typeof b.width === 'number' &&
+      typeof b.height === 'number' &&
+      b.width >= 200 &&
+      b.height >= 150
+    ) {
+      return b;
+    }
+  } catch {
+    // No saved bounds yet.
+  }
+
+  return null;
+}
+
+function saveBounds() {
+  if (!win || win.isDestroyed()) return;
+
+  const bounds = win.getBounds();
+  const display = require('electron').screen.getDisplayMatching(bounds);
+  const workArea = display.workArea;
+  const clamped = {
+    x: Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - 100)),
+    y: Math.max(workArea.y, Math.min(bounds.y, workArea.y + workArea.height - 100)),
+    width: Math.max(200, Math.min(bounds.width, workArea.width)),
+    height: Math.max(150, Math.min(bounds.height, workArea.height))
+  };
+
+  try {
+    fs.mkdirSync(path.dirname(boundsFile()), { recursive: true });
+    fs.writeFileSync(boundsFile(), JSON.stringify(clamped), 'utf8');
+  } catch {
+    // Ignore write errors.
+  }
+}
+
+function debounceSaveBounds() {
+  if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
+  saveBoundsTimer = setTimeout(() => {
+    saveBoundsTimer = null;
+    saveBounds();
+  }, 500);
+}
 
 function setActions(newActions) {
   actions = {
@@ -137,7 +192,9 @@ function setTooltipAccounts(accounts) {
 }
 
 function createWindow() {
-  win = new BrowserWindow({
+  const saved = loadBounds();
+
+  const windowOpts = {
     width: 1150,
     height: 760,
     show: false,
@@ -150,7 +207,16 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false
     }
-  });
+  };
+
+  if (saved) {
+    windowOpts.x = saved.x;
+    windowOpts.y = saved.y;
+    windowOpts.width = saved.width;
+    windowOpts.height = saved.height;
+  }
+
+  win = new BrowserWindow(windowOpts);
 
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
@@ -158,11 +224,17 @@ function createWindow() {
     win.show();
   });
 
+  win.on('resize', debounceSaveBounds);
+  win.on('move', debounceSaveBounds);
+
   win.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault();
       win.hide();
+      return;
     }
+
+    saveBounds();
   });
 
   win.on('closed', () => {

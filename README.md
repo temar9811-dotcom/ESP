@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.1.11-beta)
+## Current Features (v1.1.12-beta)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -25,6 +25,8 @@ Built with Electron and the EVE ESI API.
 - **Collapsible groups** and a collapsible Ungrouped section
 - **Per-character tabs** — Overview, Skill Queue, Wallet, Skill Plans
 - **Per-character notes** — editable Notes tab on each character sheet, saved locally
+- **Cross-character skill search** — search box in topbar, autocomplete dropdown, popup showing all characters' levels for a skill, with minimize to a pill
+- **Window remembers size and position** between sessions
 - **System tray** integration with a live training-status tooltip
 - **Single-instance app** and a live EVE time clock
 
@@ -57,12 +59,10 @@ Built with Electron and the EVE ESI API.
 - Contracts tab (active contracts + completion notifications)
 - Industry tab (active jobs)
 - Market orders tab (active buy/sell orders)
-- Cross-character skill search
 - Ship loss notifications (public ESI killmails)
 - Skill browser with trained / prerequisites met / not trained status
 
 ### UI, Notifications & Quality of Life
-- Window remembers size and position between sessions
 - Implant-aware training time estimates (real SP/hour)
 - Per-character mute
 - Streamer mode (blur ISK values and character names)
@@ -81,9 +81,10 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.1.11-beta**
+**Currently tracked version: v1.1.12-beta**
 
 ### Changelog
+- **v1.1.12-beta** — Cross-character skill search; window remembers size and position; fixed ESI field names for skill levels and SP (queue costs now accurate); fixed notes not saving.
 - **v1.1.11-beta** — Per-character notes: editable Notes tab on each character sheet, saved locally per character.
 - **v1.1.10-beta** — Recently completed skills list (last 7 days) on the Overview; collapsible with auto-collapse above 5 entries; Will only list skills completed after character is added to the app
 - **v1.1.9-beta** — Overview next-skill detection fixed for queues where ESI removes completed entries without renumbering.
