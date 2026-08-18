@@ -24,6 +24,7 @@ async function getCharacterShip(characterId, accessToken) {
 
 async function getTypeNames(ids) {
   const unique = [...new Set(ids.filter(Boolean))];
+
   if (unique.length === 0) return new Map();
 
   const arr = await publicPost('/universe/names/', unique);
@@ -33,9 +34,10 @@ async function getTypeNames(ids) {
 async function getSkillIdsFromNames(names) {
   const unique = [...new Set(names.filter(Boolean))];
   const map = new Map();
+
   if (!unique.length) return map;
 
-  const data = await publicPost('/universe/ids/', unique);
+  const data = await publicPost('/universe/ids/', names);
   const inventoryTypes = Array.isArray(data.inventory_types)
     ? data.inventory_types
     : [];
@@ -60,6 +62,26 @@ function getActiveSkill(queue) {
       (q) => q.queue_position === 0 && new Date(q.finish_date).getTime() > now
     ) ||
     null
+  );
+}
+
+function getNextSkill(queue, active) {
+  const now = Date.now();
+
+  const upcoming = queue.find((q) => {
+    const start = q.start_date ? new Date(q.start_date).getTime() : null;
+    return start != null && start > now;
+  });
+
+  if (upcoming) return upcoming;
+
+  if (active) return null;
+
+  return (
+    queue.find((q) => {
+      const finish = q.finish_date ? new Date(q.finish_date).getTime() : null;
+      return finish != null && finish > now;
+    }) || null
   );
 }
 
@@ -102,13 +124,16 @@ async function resolveLocationName(location, accessToken) {
 
   return null;
 }
+
 const typeRankCache = new Map();
 const typeRankInFlight = new Map();
 
 function skillPointsAtLevel(rank, level) {
   const safeRank = Number(rank) > 0 ? Number(rank) : 1;
   const safeLevel = Number(level) || 0;
+
   if (safeLevel <= 0) return 0;
+
   return Math.round(250 * safeRank * Math.pow(Math.sqrt(32), safeLevel - 1));
 }
 
@@ -119,11 +144,14 @@ async function getSkillRank(skillId) {
   const promise = (async () => {
     try {
       const data = await publicFetch(`/universe/types/${skillId}/`);
+
       const rankAttr = Array.isArray(data.dogma_attributes)
         ? data.dogma_attributes.find((attr) => attr.attribute_id === 275)
         : null;
+
       const rank = Number(rankAttr?.value);
       const safeRank = Number.isFinite(rank) && rank > 0 ? rank : 1;
+
       typeRankCache.set(skillId, safeRank);
       return safeRank;
     } catch {
@@ -153,6 +181,7 @@ async function enrichQueueWithSpCost(queue, skillsMap) {
     const skillId = q.skill_id;
     const toLevel = Number(q.finished_level || 0);
     const fromLevel = currentLevels.get(skillId) || 0;
+
     let spCost = null;
 
     if (toLevel > fromLevel) {
@@ -163,8 +192,10 @@ async function enrichQueueWithSpCost(queue, skillsMap) {
         currentSkillPoints.get(skillId) || 0,
         baseSpForFromLevel
       );
+
       spCost = Math.max(0, Math.round(targetSp - knownSp));
       totalSpCost += spCost;
+
       currentLevels.set(skillId, toLevel);
       currentSkillPoints.set(skillId, targetSp);
     } else {
@@ -240,12 +271,12 @@ async function getDashboard(characterId, accessToken) {
   }
 
   const active = getActiveSkill(enrichedQueue);
-  const nextSkill =
-    enrichedQueue.find((q) => q.queue_position === 1) ||
-    (!active ? enrichedQueue[0] || null : null);
+  const nextSkill = getNextSkill(enrichedQueue, active);
+
   const times = getQueueTimes(enrichedQueue);
 
   const totalSp = skills && typeof skills.total_sp === 'number' ? skills.total_sp : null;
+
   const skillLevels = {};
   if (skills && Array.isArray(skills.skills)) {
     for (const skill of skills.skills) {
@@ -261,7 +292,9 @@ async function getDashboard(characterId, accessToken) {
     try {
       const typeNames = await getTypeNames([ship.ship_type_id]);
       shipType = typeNames.get(ship.ship_type_id) || null;
-    } catch { shipType = null; }
+    } catch {
+      shipType = null;
+    }
   }
 
   return {
