@@ -6,7 +6,8 @@ const { startLogin, refreshAccessToken } = require('./sso');
 const {
   getDashboard,
   getTypeNames,
-  getSkillIdsFromNames
+  getSkillIdsFromNames,
+  resolveLocationName
 } = require('./dashboard');
 const {
   getWalletDetails,
@@ -14,6 +15,13 @@ const {
   resolveNames,
   formatRefType
 } = require('./wallet');
+const {
+  getClones,
+  getMarketPrices,
+  getImplantSlot,
+  inferActiveClone,
+  loadImplantSlotCache
+} = require('./clones');
 
 module.exports = {
   config,
@@ -28,6 +36,13 @@ module.exports = {
   getDashboard,
   getTypeNames,
   getSkillIdsFromNames,
+  resolveLocationName,
+
+  getClones,
+  getMarketPrices,
+  getImplantSlot,
+  inferActiveClone,
+  loadImplantSlotCache,
 
   getWalletDetails,
   getRecentWalletEntries,

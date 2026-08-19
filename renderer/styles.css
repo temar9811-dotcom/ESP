@@ -757,3 +757,143 @@ tfoot td {
 .skill-search-pill:hover {
   background: #223140;
 }
+
+/* --- Assets / Clone Tab --- */
+
+.assets-empty {
+  padding: 24px;
+  text-align: center;
+  color: #8899aa;
+  font-size: 13px;
+}
+
+.active-clone {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(90, 140, 190, 0.08);
+  border: 1px solid rgba(90, 140, 190, 0.25);
+  border-radius: 8px;
+}
+
+.active-clone-uncertain {
+  border-color: rgba(200, 170, 60, 0.4);
+  background: rgba(200, 170, 60, 0.06);
+}
+
+.active-clone-label {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #dfe7ef;
+}
+
+.active-clone-value {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8899aa;
+  text-align: right;
+}
+
+.standby-section {
+  margin-bottom: 16px;
+}
+
+.standby-header {
+  font-weight: 700;
+  font-size: 13px;
+  color: #9fb3c8;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clone-card {
+  margin-bottom: 6px;
+  border: 1px solid rgba(90, 140, 190, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.clone-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  background: rgba(90, 140, 190, 0.06);
+  font-size: 13px;
+  color: #dfe7ef;
+}
+
+.clone-header:hover {
+  background: rgba(90, 140, 190, 0.12);
+}
+
+.clone-expand {
+  width: 14px;
+  color: #667788;
+}
+
+.clone-name {
+  font-weight: 600;
+}
+
+.clone-location {
+  color: #8899aa;
+  flex: 1;
+  text-align: right;
+  font-size: 12px;
+}
+
+.clone-count {
+  color: #667788;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.clone-value {
+  color: #c5a54a;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.clone-implants {
+  padding: 6px 10px 8px;
+  background: rgba(20, 28, 36, 0.5);
+  border-top: 1px solid rgba(90, 140, 190, 0.12);
+}
+
+.implant-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.implant-table td {
+  padding: 2px 6px;
+  color: #c8d6e5;
+}
+
+.implant-slot {
+  width: 1%;
+  white-space: nowrap;
+  color: #667788;
+  font-family: monospace;
+}
+
+.implant-name {
+  /* fills remaining space */
+}
+
+.implant-price {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  color: #8899aa;
+}
+
+.clone-footer {
+  font-size: 12px;
+  color: #667788;
+  padding: 8px 0;
+}

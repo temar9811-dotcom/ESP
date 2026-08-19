@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('eveApi', {
   // --- Wallet ---
   getWalletDetails: (characterId) => ipcRenderer.invoke('accounts:getWalletDetails', characterId),
 
+  // --- Clones ---
+  getCloneDetails: (characterId) => ipcRenderer.invoke('accounts:getCloneDetails', characterId),
+
   // --- Skill Plans ---
   readClipboardPlan: () => ipcRenderer.invoke('plans:readClipboard'),
   listPlans: () => ipcRenderer.invoke('plans:list'),

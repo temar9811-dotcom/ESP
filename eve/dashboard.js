@@ -317,5 +317,6 @@ async function getDashboard(characterId, accessToken) {
 module.exports = {
   getDashboard,
   getTypeNames,
-  getSkillIdsFromNames
+  getSkillIdsFromNames,
+  resolveLocationName
 };

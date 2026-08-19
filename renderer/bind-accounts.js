@@ -78,6 +78,10 @@ ESP.bindAccountEvents = function () {
         ESP.loadWalletDetails(id);
       }
 
+      if (tab === 'assets') {
+        ESP.loadCloneDetails(id);
+      }
+
       ESP.render(ESP.state.lastAccounts);
       return;
     }
@@ -87,6 +91,17 @@ ESP.bindAccountEvents = function () {
     if (retryBtn) {
       const id = Number(retryBtn.dataset.id);
       ESP.loadWalletDetails(id, true);
+      return;
+    }
+
+    const cloneHeader = event.target.closest('.clone-header');
+
+    if (cloneHeader) {
+      const charId = Number(cloneHeader.dataset.characterId);
+      const cloneId = cloneHeader.dataset.cloneId;
+      ESP.state.cloneExpandByCharacter[charId] = ESP.state.cloneExpandByCharacter[charId] || {};
+      ESP.state.cloneExpandByCharacter[charId][cloneId] = !ESP.state.cloneExpandByCharacter[charId][cloneId];
+      ESP.render(ESP.state.lastAccounts);
       return;
     }
 

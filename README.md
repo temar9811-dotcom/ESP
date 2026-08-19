@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.1.12-beta)
+## Current Features (v1.1.13-beta)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -16,6 +16,7 @@ Built with Electron and the EVE ESI API.
 - **Full skill queue table** — positions, SP costs, start/finish times and totals
 - **Recently completed skills** — collapsible last-7-days list on each Overview (auto-collapsed above 5 entries)
 - **Wallet tracking** — balance plus a 7-day wallet journal with ISK in/out summary
+- **Clone locations & implants** — Assets tab shows active clone detection, standby clones with expandable implant lists, implant slot numbers and ISK valuations
 - **Location & ship** shown directly on each character row
 - **Corporation & alliance** names in the character header
 
@@ -23,7 +24,7 @@ Built with Electron and the EVE ESI API.
 - **Account groups** with custom names (e.g. "Main account", "Industry alts")
 - **Primary character star** — collapsed groups show the primary; expanded groups sort it to the top
 - **Collapsible groups** and a collapsible Ungrouped section
-- **Per-character tabs** — Overview, Skill Queue, Wallet, Skill Plans
+- **Per-character tabs** — Overview, Skill Queue, Wallet, Skill Plans, Assets
 - **Per-character notes** — editable Notes tab on each character sheet, saved locally
 - **Cross-character skill search** — search box in topbar, autocomplete dropdown, popup showing all characters' levels for a skill, with minimize to a pill
 - **Window remembers size and position** between sessions
@@ -54,7 +55,6 @@ Built with Electron and the EVE ESI API.
 
 ### Core Data & ESI Features
 - Market Jita price lookup
-- Clone locations and implants
 - Asset search
 - Contracts tab (active contracts + completion notifications)
 - Industry tab (active jobs)
@@ -81,9 +81,10 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.1.12-beta**
+**Currently tracked version: v1.1.13-beta**
 
 ### Changelog
+- **v1.1.13-beta** — Assets tab: clone locations & implants; diff-based active clone detection; implant slot numbers via dogma attributes; market price valuations; lazy fetch on tab open. Existing users must re-add characters with Full scopes.
 - **v1.1.12-beta** — Cross-character skill search; window remembers size and position; fixed ESI field names for skill levels and SP (queue costs now accurate); fixed notes not saving.
 - **v1.1.11-beta** — Per-character notes: editable Notes tab on each character sheet, saved locally per character.
 - **v1.1.10-beta** — Recently completed skills list (last 7 days) on the Overview; collapsible with auto-collapse above 5 entries; Will only list skills completed after character is added to the app

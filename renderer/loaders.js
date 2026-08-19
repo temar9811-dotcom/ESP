@@ -58,6 +58,29 @@ ESP.maybeAutoLoadWallet = function () {
   }
 };
 
+ESP.loadCloneDetails = async function (characterId, force) {
+  const account = ESP.state.lastAccounts.find(
+    (a) => Number(a.characterId) === Number(characterId)
+  );
+  if (!account) return;
+
+  if (account.clones && !force) {
+    return;
+  }
+
+  account.clones = null;
+  ESP.render(ESP.state.lastAccounts);
+
+  try {
+    const details = await window.eveApi.getCloneDetails(characterId);
+    account.clones = details;
+  } catch (err) {
+    account.clones = { error: err?.message || String(err) };
+  }
+
+  ESP.render(ESP.state.lastAccounts);
+};
+
 ESP.load = async function () {
   try {
     const accounts = await window.eveApi.listAccounts();

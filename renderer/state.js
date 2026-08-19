@@ -10,6 +10,7 @@ ESP.state = {
   plans: [],
   addPlanState: null,
   planDetail: null,
+  cloneExpandByCharacter: {},
   skillSearch: {
     open: false,
     query: '',
