@@ -32,6 +32,9 @@ contextBridge.exposeInMainWorld('eveApi', {
 
   // --- Clones ---
   getCloneDetails: (characterId) => ipcRenderer.invoke('accounts:getCloneDetails', characterId),
+  getCloneNickname: (cloneId) => ipcRenderer.invoke('cloneNicknames:get', cloneId),
+  setCloneNickname: (cloneId, name) => ipcRenderer.invoke('cloneNicknames:set', cloneId, name),
+  getAllCloneNicknames: () => ipcRenderer.invoke('cloneNicknames:getAll'),
 
   // --- Skill Plans ---
   readClipboardPlan: () => ipcRenderer.invoke('plans:readClipboard'),

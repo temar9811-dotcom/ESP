@@ -94,6 +94,54 @@ ESP.bindAccountEvents = function () {
       return;
     }
 
+    const cloneEditIcon = event.target.closest('.clone-edit-icon');
+
+    if (cloneEditIcon) {
+      event.stopPropagation();
+
+      const charId = Number(cloneEditIcon.dataset.characterId);
+      const cloneId = cloneEditIcon.dataset.cloneId;
+      const currentName = cloneEditIcon.dataset.currentName || '';
+
+      const nameWrap = cloneEditIcon.closest('.clone-name-wrap');
+      if (!nameWrap) return;
+
+      nameWrap.innerHTML = `
+        <input
+          type="text"
+          class="clone-nickname-input"
+          data-character-id="${charId}"
+          data-clone-id="${cloneId}"
+          value="${ESP.escapeHtml(currentName)}"
+          placeholder="Nickname..."
+        />
+      `;
+
+      const input = nameWrap.querySelector('.clone-nickname-input');
+      input.focus();
+      input.select();
+
+      const save = async () => {
+        const newName = input.value.trim();
+        try {
+          await window.eveApi.setCloneNickname(cloneId, newName);
+          await ESP.loadCloneDetails(charId, true);
+          ESP.setStatus(newName ? 'Nickname saved.' : 'Nickname cleared.');
+        } catch (err) {
+          ESP.setStatus(err?.message || String(err), true);
+        }
+      };
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { ESP.render(ESP.state.lastAccounts); }
+      });
+
+      input.addEventListener('blur', save);
+
+      return;
+    }
+
     const cloneHeader = event.target.closest('.clone-header');
 
     if (cloneHeader) {

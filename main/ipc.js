@@ -14,11 +14,22 @@ const groups = require('./groups');
 const skillMeta = require('./skill-meta');
 const notes = require('./notes');
 const clonesHistory = require('./clones-history');
+const cloneNicknames = require('./clones-nicknames');
 
 let testHarness = null;
 
 function setTestHarness(harness) {
   testHarness = harness;
+}
+
+function withTimeout(promise, ms) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+    })
+  ]).finally(() => clearTimeout(timer));
 }
 
 async function inferFirstRunActiveClone(characterId, token, jumpClones, clonesData) {
@@ -53,27 +64,49 @@ async function inferFirstRunActiveClone(characterId, token, jumpClones, clonesDa
 
 async function fetchCloneDetails(account, token) {
   const id = account.characterId;
+  const scopes = typeof account.scopes === 'string'
+    ? account.scopes.split(' ')
+    : Array.isArray(account.scopes) ? account.scopes : null;
 
-  const scopes = Array.isArray(account.scopes) ? account.scopes : [];
-  const hasClonesScope = scopes.includes('esi-clones.read_clones.v1');
+  // If scopes were never stored (pre-v1.1.13 account), don't gate — try the fetch
+  // and handle 403 gracefully. If scopes are stored, check for the clone scope.
+  if (scopes !== null) {
+    const hasClonesScope = scopes.includes('esi-clones.read_clones.v1');
 
-  if (!hasClonesScope) {
-    return {
-      homeLocation: null,
-      jumpClones: [],
-      lastCloneJumpDate: null,
-      activeClone: null,
-      fetchedAt: new Date().toISOString()
-    };
+    if (!hasClonesScope) {
+      return {
+        homeLocation: null,
+        jumpClones: [],
+        lastCloneJumpDate: null,
+        activeClone: null,
+        fetchedAt: new Date().toISOString()
+      };
+    }
   }
 
-  const clonesData = await eve.getClones(id, token);
+  let clonesData;
+
+  try {
+    clonesData = await withTimeout(eve.getClones(id, token), 10000);
+  } catch (err) {
+    if (err && err.status === 403) {
+      account.scopes = '';
+      return {
+        homeLocation: null,
+        jumpClones: [],
+        lastCloneJumpDate: null,
+        activeClone: null,
+        fetchedAt: new Date().toISOString()
+      };
+    }
+    throw err;
+  }
 
   const previousSnapshot = clonesHistory.getSnapshot(id);
   const detection = eve.inferActiveClone(clonesData, previousSnapshot);
   clonesHistory.setSnapshot(id, clonesData);
 
-  const priceMap = await eve.getMarketPrices();
+  const priceMap = await withTimeout(eve.getMarketPrices(), 15000);
 
   const locationIds = (clonesData.jump_clones || []).map((jc) => jc.location_id);
 
@@ -87,7 +120,7 @@ async function fetchCloneDetails(account, token) {
     const locationObj = { structure_id: locId, station_id: locId };
 
     try {
-      const name = await eve.resolveLocationName(locationObj, token);
+      const name = await withTimeout(eve.resolveLocationName(locationObj, token), 10000);
       if (name) locationNames.set(locId, name);
     } catch { /* skip */ }
   }
@@ -102,9 +135,11 @@ async function fetchCloneDetails(account, token) {
 
   if (allImplantTypeIds.size > 0) {
     try {
-      implantNames = await eve.getTypeNames([...allImplantTypeIds]);
+      implantNames = await withTimeout(eve.getTypeNames([...allImplantTypeIds]), 10000);
     } catch { /* ignore */ }
   }
+
+  const nicknames = cloneNicknames.getAllNicknames();
 
   const jumpClones = [];
 
@@ -113,7 +148,7 @@ async function fetchCloneDetails(account, token) {
     let totalValue = 0;
 
     for (const typeId of jc.implants || []) {
-      const slot = await eve.getImplantSlot(typeId);
+      const slot = await withTimeout(eve.getImplantSlot(typeId), 10000);
       const price = (priceMap.get(typeId) || {}).averagePrice || 0;
 
       implants.push({
@@ -128,8 +163,11 @@ async function fetchCloneDetails(account, token) {
 
     implants.sort((a, b) => (a.slot || 99) - (b.slot || 99));
 
+    const nickname = nicknames[String(jc.jump_clone_id)]?.name || null;
+
     jumpClones.push({
-      name: jc.name || null,
+      name: nickname || jc.name || null,
+      nickname: nickname || null,
       locationId: jc.location_id,
       locationName: locationNames.get(jc.location_id) || null,
       jumpCloneId: jc.jump_clone_id,
@@ -146,7 +184,7 @@ async function fetchCloneDetails(account, token) {
     let totalValue = 0;
 
     for (const typeId of jc.implants || []) {
-      const slot = await eve.getImplantSlot(typeId);
+      const slot = await withTimeout(eve.getImplantSlot(typeId), 10000);
       const price = (priceMap.get(typeId) || {}).averagePrice || 0;
 
       implants.push({
@@ -169,7 +207,7 @@ async function fetchCloneDetails(account, token) {
       confidence: detection.confidence
     };
   } else if (detection.status === 'first_run') {
-    activeClone = await inferFirstRunActiveClone(id, token, jumpClones, clonesData);
+    activeClone = await withTimeout(inferFirstRunActiveClone(id, token, jumpClones, clonesData), 10000);
   }
 
   let homeLocation = null;
@@ -181,13 +219,15 @@ async function fetchCloneDetails(account, token) {
     };
   }
 
-  return {
+  account.clones = {
     homeLocation,
     jumpClones,
     lastCloneJumpDate: clonesData.last_clone_jump_date || null,
     activeClone,
     fetchedAt: new Date().toISOString()
   };
+
+  return account.clones;
 }
 
 function registerIpcHandlers() {
@@ -265,17 +305,29 @@ function registerIpcHandlers() {
       let token = await accounts.getValidAccessToken(account, false);
 
       try {
-        return await fetchCloneDetails(account, token);
+        return await withTimeout(fetchCloneDetails(account, token), 30000);
       } catch (err) {
         if (err && err.status === 401) {
           token = await accounts.getValidAccessToken(account, true);
-          return await fetchCloneDetails(account, token);
+          return await withTimeout(fetchCloneDetails(account, token), 30000);
         }
         throw err;
       }
     } catch (err) {
       throw new Error(err?.message || String(err));
     }
+  });
+
+  ipcMain.handle('cloneNicknames:get', (_event, cloneId) => {
+    return cloneNicknames.getNickname(cloneId);
+  });
+
+  ipcMain.handle('cloneNicknames:set', (_event, cloneId, name) => {
+    return cloneNicknames.setNickname(cloneId, name);
+  });
+
+  ipcMain.handle('cloneNicknames:getAll', () => {
+    return cloneNicknames.getAllNicknames();
   });
 
   ipcMain.handle('groups:get', () => {

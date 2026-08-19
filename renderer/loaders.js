@@ -64,10 +64,6 @@ ESP.loadCloneDetails = async function (characterId, force) {
   );
   if (!account) return;
 
-  if (account.clones && !force) {
-    return;
-  }
-
   account.clones = null;
   ESP.render(ESP.state.lastAccounts);
 

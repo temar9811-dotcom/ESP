@@ -838,6 +838,47 @@ tfoot td {
   font-weight: 600;
 }
 
+.clone-name-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.clone-edit-icon {
+  display: none;
+  font-size: 11px;
+  color: #667788;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.clone-header:hover .clone-edit-icon {
+  display: inline;
+}
+
+.clone-edit-icon:hover {
+  color: #9fb3c8;
+  background: rgba(90, 140, 190, 0.15);
+}
+
+.clone-nickname-input {
+  background: #1b2430;
+  color: #e8eef5;
+  border: 1px solid rgba(90, 140, 190, 0.4);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 12px;
+  width: 160px;
+  outline: none;
+}
+
+.clone-nickname-input:focus {
+  border-color: rgba(90, 140, 190, 0.7);
+}
+
 .clone-location {
   color: #8899aa;
   flex: 1;

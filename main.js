@@ -9,6 +9,7 @@ app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const eveConfig = require('./eve/config');
+const eve = require('./eve');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
 const walletMonitor = require('./main/wallet-monitor');
@@ -63,6 +64,8 @@ async function bootstrap() {
   });
 
   accounts.loadAccounts();
+
+  eve.loadImplantSlotCache();
 
   accounts.init({
     onBroadcast: onAccountsBroadcast,

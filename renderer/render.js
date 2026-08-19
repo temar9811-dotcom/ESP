@@ -779,7 +779,10 @@ ESP.clonesTabHtml = function (account) {
           <div class="clone-card">
             <div class="clone-header" data-character-id="${id}" data-clone-id="${jc.jumpCloneId}">
               <span class="clone-expand">${expanded ? '\u25BE' : '\u25B8'}</span>
-              <span class="clone-name">${ESP.escapeHtml(jc.name || 'Unnamed')}</span>
+              <span class="clone-name-wrap">
+                <span class="clone-name">${ESP.escapeHtml(jc.nickname || jc.name || jc.locationName || 'Unnamed')}</span>
+                <span class="clone-edit-icon" data-character-id="${id}" data-clone-id="${jc.jumpCloneId}" data-current-name="${ESP.escapeHtml(jc.nickname || '')}" title="Edit nickname">&#9998;</span>
+              </span>
               <span class="clone-location">${ESP.escapeHtml(locDisplay)}</span>
               <span class="clone-count">${jc.implants.length} implants</span>
               <span class="clone-value">${ESP.formatIsk(jc.totalValue)} ISK</span>
@@ -798,6 +801,8 @@ ESP.clonesTabHtml = function (account) {
     ? ESP.formatDate(clones.lastCloneJumpDate)
     : 'Never';
 
+  const allClonesTotal = (clones.jumpClones || []).reduce((sum, jc) => sum + (jc.totalValue || 0), 0);
+
   return `
     ${activeHtml}
     <div class="standby-section">
@@ -805,6 +810,7 @@ ESP.clonesTabHtml = function (account) {
       ${standbyHtml}
     </div>
     <div class="clone-footer">
+      <div>Total clone value: ${ESP.formatIsk(allClonesTotal)} ISK</div>
       <div>Home Location: ${ESP.escapeHtml(homeName)}</div>
       <div>Last clone jump: ${jumpDate}</div>
     </div>

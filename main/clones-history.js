@@ -36,8 +36,8 @@ function getSnapshot(characterId) {
 function setSnapshot(characterId, data) {
   const all = load();
   all[String(characterId)] = {
-    jumpClones: data.jump_clones || [],
-    lastCloneJumpDate: data.last_clone_jump_date || null,
+    jump_clones: data.jump_clones || [],
+    last_clone_jump_date: data.last_clone_jump_date || null,
     fetchedAt: new Date().toISOString()
   };
   save();
