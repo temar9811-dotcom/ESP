@@ -106,23 +106,10 @@ async function fetchCloneDetails(account, token) {
   const detection = eve.inferActiveClone(clonesData, previousSnapshot);
   clonesHistory.setSnapshot(id, clonesData);
 
-  const priceMap = await withTimeout(eve.getMarketPrices(), 15000);
-
   const locationIds = (clonesData.jump_clones || []).map((jc) => jc.location_id);
 
   if (clonesData.home_location && clonesData.home_location.location_id) {
     locationIds.push(clonesData.home_location.location_id);
-  }
-
-  const locationNames = new Map();
-
-  for (const locId of locationIds) {
-    const locationObj = { structure_id: locId, station_id: locId };
-
-    try {
-      const name = await withTimeout(eve.resolveLocationName(locationObj, token), 10000);
-      if (name) locationNames.set(locId, name);
-    } catch { /* skip */ }
   }
 
   const allImplantTypeIds = new Set();
@@ -131,24 +118,33 @@ async function fetchCloneDetails(account, token) {
     for (const tid of jc.implants || []) allImplantTypeIds.add(tid);
   }
 
-  let implantNames = new Map();
-
-  if (allImplantTypeIds.size > 0) {
-    try {
-      implantNames = await withTimeout(eve.getTypeNames([...allImplantTypeIds]), 10000);
-    } catch { /* ignore */ }
-  }
+  const [priceMap, locationNames, implantNames, implantSlots] = await Promise.all([
+    withTimeout(eve.getMarketPrices(), 15000),
+    Promise.all(locationIds.map(async (locId) => {
+      try {
+        const name = await withTimeout(eve.resolveLocationName({ structure_id: locId, station_id: locId }, token), 10000);
+        return [locId, name];
+      } catch { return [locId, null]; }
+    })).then((entries) => new Map(entries.filter(([, n]) => n))),
+    allImplantTypeIds.size > 0
+      ? withTimeout(eve.getTypeNames([...allImplantTypeIds]), 10000).catch(() => new Map())
+      : Promise.resolve(new Map()),
+    allImplantTypeIds.size > 0
+      ? Promise.all([...allImplantTypeIds].map(async (typeId) => {
+          const slot = await withTimeout(eve.getImplantSlot(typeId), 10000).catch(() => null);
+          return [typeId, slot];
+        })).then((entries) => new Map(entries))
+      : Promise.resolve(new Map())
+  ]);
 
   const nicknames = cloneNicknames.getAllNicknames();
 
-  const jumpClones = [];
-
-  for (const jc of clonesData.jump_clones || []) {
+  function buildImplants(typeIds) {
     const implants = [];
     let totalValue = 0;
 
-    for (const typeId of jc.implants || []) {
-      const slot = await withTimeout(eve.getImplantSlot(typeId), 10000);
+    for (const typeId of typeIds || []) {
+      const slot = implantSlots.get(typeId) || null;
       const price = (priceMap.get(typeId) || {}).averagePrice || 0;
 
       implants.push({
@@ -162,7 +158,13 @@ async function fetchCloneDetails(account, token) {
     }
 
     implants.sort((a, b) => (a.slot || 99) - (b.slot || 99));
+    return { implants, totalValue };
+  }
 
+  const jumpClones = [];
+
+  for (const jc of clonesData.jump_clones || []) {
+    const { implants, totalValue } = buildImplants(jc.implants);
     const nickname = nicknames[String(jc.jump_clone_id)]?.name || null;
 
     jumpClones.push({
@@ -180,24 +182,7 @@ async function fetchCloneDetails(account, token) {
 
   if (detection.status === 'occupied') {
     const jc = detection.clone;
-    const implants = [];
-    let totalValue = 0;
-
-    for (const typeId of jc.implants || []) {
-      const slot = await withTimeout(eve.getImplantSlot(typeId), 10000);
-      const price = (priceMap.get(typeId) || {}).averagePrice || 0;
-
-      implants.push({
-        typeId,
-        name: implantNames.get(typeId) || `Implant ${typeId}`,
-        slot,
-        price
-      });
-
-      totalValue += price;
-    }
-
-    implants.sort((a, b) => (a.slot || 99) - (b.slot || 99));
+    const { implants, totalValue } = buildImplants(jc.implants);
 
     activeClone = {
       jumpCloneId: jc.jump_clone_id,
