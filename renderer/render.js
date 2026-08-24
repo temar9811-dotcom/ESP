@@ -173,6 +173,7 @@ ${banner}
 ${ESP.queueHtmlFull(account)}
 `;
 };
+
 ESP.amountHtml = function (amount) {
   const value = Number(amount || 0);
   const className = value >= 0 ? 'positive' : 'negative';
@@ -331,7 +332,9 @@ ESP.tabContentHtml = function (account, activeTab) {
   }
 
   if (activeTab === 'assets') {
-    return ESP.clonesTabHtml(account);
+    return typeof ESP.assetsTabHtml === 'function'
+      ? ESP.assetsTabHtml(account)
+      : ESP.clonesTabHtml(account);
   }
 
   if (activeTab === 'notes') {
@@ -355,6 +358,7 @@ ESP.groupHeaderHtml = function (name, count, collapsed) {
 </div>
 `;
 };
+
 ESP.characterSheetHtml = function (account, opts = {}) {
   const id = Number(account.characterId);
   const activeTab = ESP.getActiveTab(id);
@@ -440,14 +444,14 @@ ESP.characterSheetHtml = function (account, opts = {}) {
   >
     Assets
   </button>
-      <button
-      type="button"
-      class="sheet-tab ${activeTab === 'notes' ? 'active' : ''}"
-      data-id="${id}"
-      data-tab="notes"
-    >
-      Notes
-    </button>
+  <button
+    type="button"
+    class="sheet-tab ${activeTab === 'notes' ? 'active' : ''}"
+    data-id="${id}"
+    data-tab="notes"
+  >
+    Notes
+  </button>
 </nav>
 <div class="sheet-panel">
   ${ESP.tabContentHtml(account, activeTab)}
@@ -521,6 +525,7 @@ ESP.characterTabHtml = function (account, opts = {}) {
 </section>
 `;
 };
+
 ESP.recentIsOpen = function (account, count) {
   const map = ESP.state.recentOpen || {};
   const id = Number(account.characterId);
@@ -691,26 +696,6 @@ ESP.skillSearchPillHtml = function () {
 </div>`;
 };
 
-ESP.implantListHtml = function (implants) {
-  if (!implants || !implants.length) return '';
-
-  const sorted = [...implants].sort((a, b) => (a.slot || 99) - (b.slot || 99));
-
-  return `
-    <table class="implant-table">
-      <tbody>
-${sorted.map((imp) => `
-        <tr>
-          <td class="implant-slot">${imp.slot != null ? `[${imp.slot}]` : ''}</td>
-          <td class="implant-name">${ESP.escapeHtml(imp.name)}</td>
-          <td class="implant-price">${ESP.formatIsk(imp.price)} ISK</td>
-        </tr>
-`).join('')}
-      </tbody>
-    </table>
-  `;
-};
-
 ESP.clonesTabHtml = function (account) {
   const id = Number(account.characterId);
   const clones = account.clones;
@@ -734,31 +719,32 @@ ESP.clonesTabHtml = function (account) {
     const label = ac.confidence === 'uncertain'
       ? `Active: uncertain — last jump ${ESP.formatDate(clones.lastCloneJumpDate)}`
       : `Active: ${ESP.escapeHtml(ac.name || 'Unknown')}${ac.confidence === 'likely' ? ' (likely)' : ''}`;
+
     activeHtml = `
-      <div class="active-clone ${ac.confidence === 'uncertain' ? 'active-clone-uncertain' : ''}">
-        <div class="active-clone-label">${label}</div>
-        ${ac.implants.length
-          ? ESP.implantListHtml(ac.implants)
-          : '<div class="idle">Implants tracked after the next observed jump</div>'}
-        ${ac.implants.length
-          ? `<div class="active-clone-value">Total estimated: ${ESP.formatIsk(ac.totalValue)} ISK</div>`
-          : ''}
-      </div>
-    `;
+<div class="active-clone ${ac.confidence === 'uncertain' ? 'active-clone-uncertain' : ''}">
+  <div class="active-clone-label">${label}</div>
+  ${ac.implants.length
+    ? ESP.implantListHtml(ac.implants)
+    : '<div class="idle">Implants tracked after the next observed jump</div>'}
+  ${ac.implants.length
+    ? `<div class="active-clone-value">Total estimated: ${ESP.formatIsk(ac.totalValue)} ISK</div>`
+    : ''}
+</div>
+`;
   } else if (ac && ac.confidence === 'unknown') {
     activeHtml = `
-      <div class="active-clone">
-        <div class="active-clone-label">Active: ${ESP.escapeHtml(ac.name || 'Unknown')}</div>
-        <div class="idle">Implants tracked after the next observed jump</div>
-      </div>
-    `;
+<div class="active-clone">
+  <div class="active-clone-label">Active: ${ESP.escapeHtml(ac.name || 'Unknown')}</div>
+  <div class="idle">Implants tracked after the next observed jump</div>
+</div>
+`;
   } else {
     activeHtml = '<div class="active-clone"><div class="idle">Active clone unknown</div></div>';
   }
 
   const expandState = ESP.state.cloneExpandByCharacter[id] || {};
-
   const activeCloneId = ac && ac.jumpCloneId;
+
   const standbyClones = (clones.jumpClones || []).filter((jc) => {
     if (activeCloneId && jc.jumpCloneId === activeCloneId) return false;
     return true;
@@ -774,22 +760,21 @@ ESP.clonesTabHtml = function (account) {
       .map((jc) => {
         const expanded = expandState[jc.jumpCloneId];
         const locDisplay = jc.locationName || `Location ${jc.locationId}`;
-
         return `
-          <div class="clone-card">
-            <div class="clone-header" data-character-id="${id}" data-clone-id="${jc.jumpCloneId}">
-              <span class="clone-expand">${expanded ? '\u25BE' : '\u25B8'}</span>
-              <span class="clone-name-wrap">
-                <span class="clone-name">${ESP.escapeHtml(jc.nickname || jc.name || jc.locationName || 'Unnamed')}</span>
-                <span class="clone-edit-icon" data-character-id="${id}" data-clone-id="${jc.jumpCloneId}" data-current-name="${ESP.escapeHtml(jc.nickname || '')}" title="Edit nickname">&#9998;</span>
-              </span>
-              <span class="clone-location">${ESP.escapeHtml(locDisplay)}</span>
-              <span class="clone-count">${jc.implants.length} implants</span>
-              <span class="clone-value">${ESP.formatIsk(jc.totalValue)} ISK</span>
-            </div>
-            ${expanded ? `<div class="clone-implants">${ESP.implantListHtml(jc.implants)}</div>` : ''}
-          </div>
-        `;
+<div class="clone-card">
+  <div class="clone-header" data-character-id="${id}" data-clone-id="${jc.jumpCloneId}">
+    <span class="clone-expand">${expanded ? '\u25BE' : '\u25B8'}</span>
+    <span class="clone-name-wrap">
+      <span class="clone-name">${ESP.escapeHtml(jc.nickname || jc.name || jc.locationName || 'Unnamed')}</span>
+      <span class="clone-edit-icon" data-character-id="${id}" data-clone-id="${jc.jumpCloneId}" data-current-name="${ESP.escapeHtml(jc.nickname || '')}" title="Edit nickname">&#9998;</span>
+    </span>
+    <span class="clone-location">${ESP.escapeHtml(locDisplay)}</span>
+    <span class="clone-count">${jc.implants.length} implants</span>
+    <span class="clone-value">${ESP.formatIsk(jc.totalValue)} ISK</span>
+  </div>
+  ${expanded ? `<div class="clone-implants">${ESP.implantListHtml(jc.implants)}</div>` : ''}
+</div>
+`;
       })
       .join('');
   }
@@ -801,18 +786,41 @@ ESP.clonesTabHtml = function (account) {
     ? ESP.formatDate(clones.lastCloneJumpDate)
     : 'Never';
 
-  const allClonesTotal = (clones.jumpClones || []).reduce((sum, jc) => sum + (jc.totalValue || 0), 0);
+  const allClonesTotal = (clones.jumpClones || []).reduce(
+    (sum, jc) => sum + (jc.totalValue || 0),
+    0
+  );
 
   return `
-    ${activeHtml}
-    <div class="standby-section">
-      <div class="standby-header">Standby Clones</div>
-      ${standbyHtml}
-    </div>
-    <div class="clone-footer">
-      <div>Total clone value: ${ESP.formatIsk(allClonesTotal)} ISK</div>
-      <div>Home Location: ${ESP.escapeHtml(homeName)}</div>
-      <div>Last clone jump: ${jumpDate}</div>
-    </div>
-  `;
+${activeHtml}
+<div class="standby-section">
+  <div class="standby-header">Standby Clones</div>
+  ${standbyHtml}
+</div>
+<div class="clone-footer">
+  <div>Total clone value: ${ESP.formatIsk(allClonesTotal)} ISK</div>
+  <div>Home Location: ${ESP.escapeHtml(homeName)}</div>
+  <div>Last clone jump: ${jumpDate}</div>
+</div>
+`;
+};
+
+ESP.implantListHtml = function (implants) {
+  if (!implants || !implants.length) return '';
+
+  const sorted = [...implants].sort((a, b) => (a.slot || 99) - (b.slot || 99));
+
+  return `
+<table class="implant-table">
+  <tbody>
+${sorted.map((imp) => `
+    <tr>
+      <td class="implant-slot">${imp.slot != null ? `[${imp.slot}]` : ''}</td>
+      <td class="implant-name">${ESP.escapeHtml(imp.name)}</td>
+      <td class="implant-price">${ESP.formatIsk(imp.price)} ISK</td>
+    </tr>
+`).join('')}
+  </tbody>
+</table>
+`;
 };

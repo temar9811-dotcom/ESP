@@ -1,0 +1,266 @@
+'use strict';
+
+window.ESP = window.ESP || {};
+
+// --- State helpers ---
+
+function assetsState() {
+  const st = ESP.state;
+  st.assetsSubTabByCharacter = st.assetsSubTabByCharacter || {};
+  st.assetsCacheByCharacter = st.assetsCacheByCharacter || {};
+  st.assetsExpandByCharacter = st.assetsExpandByCharacter || {};
+  st.assetTypeNames = st.assetTypeNames || new Map();
+  return st;
+}
+
+function cacheSlot(id, kind) {
+  const st = assetsState();
+  st.assetsCacheByCharacter[id] = st.assetsCacheByCharacter[id] || {};
+  if (!st.assetsCacheByCharacter[id][kind]) {
+    st.assetsCacheByCharacter[id][kind] = { status: 'idle', data: null };
+  }
+  return st.assetsCacheByCharacter[id][kind];
+}
+
+// --- Data loading ---
+
+// Lazy-load the disk cache for one character + kind ('personal' | 'corp')
+ESP.loadAssets = async function (id, kind, force) {
+  const slot = cacheSlot(id, kind);
+  if (slot.status === 'loading') return;
+  if (slot.status === 'done' && !force) return;
+
+  slot.status = 'loading';
+  ESP.render(ESP.state.lastAccounts);
+
+  try {
+    const data = kind === 'personal'
+      ? await window.eveApi.getPersonalAssets(id)
+      : await window.eveApi.getCorpAssets(id);
+
+    slot.data = data || null;
+    slot.status = 'done';
+
+    if (data && data.tree) {
+      await ESP.ensureAssetTypeNames(data.tree);
+    }
+  } catch (err) {
+    slot.status = 'error';
+    slot.error = err?.message || String(err);
+  }
+
+  ESP.render(ESP.state.lastAccounts);
+};
+
+// Resolve item type ids to names (shared bridge, cached main-side)
+ESP.ensureAssetTypeNames = async function (tree) {
+  const ids = new Set();
+  for (const region of Object.values(tree.regions || {})) {
+    for (const system of Object.values(region.systems || {})) {
+      for (const station of Object.values(system.stations || {})) {
+        for (const item of station.items || []) {
+          if (!ESP.state.assetTypeNames.has(item.typeId)) ids.add(item.typeId);
+        }
+      }
+    }
+  }
+  if (!ids.size) return;
+
+  try {
+    const raw = await window.eveApi.resolveNames([...ids]);
+    for (const [k, v] of Object.entries(raw || {})) {
+      ESP.state.assetTypeNames.set(Number(k), v);
+    }
+  } catch {
+    // Names stay as "Type <id>" fallback
+  }
+};
+
+// --- Rendering ---
+
+ESP.assetsTabHtml = function (account) {
+  const id = Number(account.characterId);
+  const st = assetsState();
+  const sub = st.assetsSubTabByCharacter[id] || 'clones';
+
+  let content = '';
+  if (sub === 'clones') {
+    content = typeof ESP.clonesTabHtml === 'function'
+      ? ESP.clonesTabHtml(account)
+      : '<div class="idle">Clones module not available.</div>';
+  } else if (sub === 'assets') {
+    content = ESP.assetPaneHtml(account, 'personal');
+  } else if (sub === 'corp') {
+    content = ESP.assetPaneHtml(account, 'corp');
+  }
+
+  const corpBtn = account.hasCorpAccess
+    ? `<button type="button" class="assets-subtab ${sub === 'corp' ? 'active' : ''}" data-assets-subtab="corp" data-id="${id}">Corp Assets</button>`
+    : '';
+
+  return `
+<div class="assets-subtabs">
+  <button type="button" class="assets-subtab ${sub === 'clones' ? 'active' : ''}" data-assets-subtab="clones" data-id="${id}">Clones</button>
+  <button type="button" class="assets-subtab ${sub === 'assets' ? 'active' : ''}" data-assets-subtab="assets" data-id="${id}">Assets</button>
+  ${corpBtn}
+</div>
+<div class="assets-content">${content}</div>
+`;
+};
+
+ESP.assetPaneHtml = function (account, kind) {
+  const id = Number(account.characterId);
+  const slot = cacheSlot(id, kind);
+
+  const lastFetch = kind === 'personal'
+    ? account.assetLastFetch
+    : account.corpAssetLastFetch;
+
+  const header = `
+<div class="assets-pane-header">
+  <span class="assets-last-fetch">Last live fetch: ${lastFetch ? ESP.formatDate(lastFetch) : 'never'}</span>
+  <button type="button" class="assets-refresh" data-assets-refresh="${kind}" data-id="${id}">Refresh now</button>
+</div>`;
+
+  if (slot.status === 'idle') {
+    ESP.loadAssets(id, kind, false); // lazy trigger, guarded against loops
+    return header + '<div class="idle">Loading assets…</div>';
+  }
+  if (slot.status === 'loading') {
+    return header + '<div class="idle">Loading assets…</div>';
+  }
+  if (slot.status === 'error') {
+    return header + `<div class="error">${ESP.escapeHtml(slot.error || 'Failed to load assets.')}</div>`;
+  }
+  if (!slot.data || !slot.data.tree) {
+    return header + '<div class="idle">No asset data yet — the background queue will fetch it soon.</div>';
+  }
+
+  const expand = assetsState().assetsExpandByCharacter[id] || {};
+  return header + ESP.assetTreeHtmlFor(id, expand, kind, slot.data.tree);
+};
+
+ESP.assetTreeHtmlFor = function (id, expand, kind, tree) {
+  const prefix = kind === 'personal' ? 'p:' : 'c:';
+  const names = assetsState().assetTypeNames;
+  const nameOf = (typeId) => names.get(typeId) || ('Type ' + typeId);
+
+  const regionNames = Object.keys(tree.regions || {}).sort();
+  if (!regionNames.length) return '<div class="idle">No assets found.</div>';
+
+  return `<div class="asset-tree">${regionNames.map((regionName) => {
+    const region = tree.regions[regionName];
+    const rKey = prefix + 'r:' + regionName;
+    const rOpen = Boolean(expand[rKey]);
+
+    const systemsHtml = rOpen ? Object.keys(region.systems || {}).sort().map((systemName) => {
+      const system = region.systems[systemName];
+      const sKey = prefix + 's:' + regionName + '|' + systemName;
+      const sOpen = Boolean(expand[sKey]);
+
+      const stationsHtml = sOpen ? Object.keys(system.stations || {}).sort().map((stationName) => {
+        const station = system.stations[stationName];
+        const tKey = prefix + 't:' + regionName + '|' + systemName + '|' + stationName;
+        const tOpen = Boolean(expand[tKey]);
+
+        const items = groupItems(station.items || []);
+        items.sort((a, b) => nameOf(a.typeId).localeCompare(nameOf(b.typeId)));
+
+        const itemsHtml = tOpen ? `
+<table class="asset-items">
+  <thead><tr><th>Item</th><th>Qty</th></tr></thead>
+  <tbody>${items.map((it) => `
+    <tr>
+      <td>${ESP.escapeHtml(nameOf(it.typeId))}</td>
+      <td>${ESP.formatNumber(it.quantity)}</td>
+    </tr>`).join('')}
+  </tbody>
+</table>` : '';
+
+        return `
+<div class="asset-node station">
+  <div class="asset-node-row" data-assets-toggle="${tKey}" data-id="${id}">
+    <span class="expand-icon">${tOpen ? '▾' : '▸'}</span>
+    <span class="node-name">${ESP.escapeHtml(stationName)}</span>
+    <span class="node-count">${items.length}</span>
+  </div>
+  ${tOpen ? `<div class="asset-children">${itemsHtml}</div>` : ''}
+</div>`;
+      }).join('') : '';
+
+      return `
+<div class="asset-node system">
+  <div class="asset-node-row" data-assets-toggle="${sKey}" data-id="${id}">
+    <span class="expand-icon">${sOpen ? '▾' : '▸'}</span>
+    <span class="node-name">${ESP.escapeHtml(systemName)}</span>
+    <span class="node-count">${Object.keys(system.stations || {}).length}</span>
+  </div>
+  ${sOpen ? `<div class="asset-children">${stationsHtml}</div>` : ''}
+</div>`;
+    }).join('') : '';
+
+    return `
+<div class="asset-node region">
+  <div class="asset-node-row" data-assets-toggle="${rKey}" data-id="${id}">
+    <span class="expand-icon">${rOpen ? '▾' : '▸'}</span>
+    <span class="node-name">${ESP.escapeHtml(regionName)}</span>
+    <span class="node-count">${Object.keys(region.systems || {}).length}</span>
+  </div>
+  ${rOpen ? `<div class="asset-children">${systemsHtml}</div>` : ''}
+</div>`;
+  }).join('')}</div>`;
+};
+
+function groupItems(items) {
+  const byType = new Map();
+  for (const item of items) {
+    const cur = byType.get(item.typeId) || { typeId: item.typeId, quantity: 0 };
+    cur.quantity += Number(item.quantity) || 1;
+    byType.set(item.typeId, cur);
+  }
+  return [...byType.values()];
+}
+
+// --- Event bindings (delegated, bound once) ---
+
+ESP.bindAssetsListeners = function () {
+  if (ESP.assetsListenersBound) return;
+  ESP.assetsListenersBound = true;
+
+  document.addEventListener('click', async (event) => {
+    const subBtn = event.target.closest('[data-assets-subtab]');
+    if (subBtn) {
+      const id = Number(subBtn.dataset.id);
+      assetsState().assetsSubTabByCharacter[id] = subBtn.dataset.assetsSubtab;
+      ESP.render(ESP.state.lastAccounts);
+      return;
+    }
+
+    const toggle = event.target.closest('[data-assets-toggle]');
+    if (toggle) {
+      const id = Number(toggle.dataset.id);
+      const key = toggle.dataset.assetsToggle;
+      const st = assetsState();
+      st.assetsExpandByCharacter[id] = st.assetsExpandByCharacter[id] || {};
+      st.assetsExpandByCharacter[id][key] = !st.assetsExpandByCharacter[id][key];
+      ESP.render(ESP.state.lastAccounts);
+      return;
+    }
+
+    const refreshBtn = event.target.closest('[data-assets-refresh]');
+    if (refreshBtn) {
+      const id = Number(refreshBtn.dataset.id);
+      const kind = refreshBtn.dataset.assetsRefresh;
+      refreshBtn.disabled = true;
+      try {
+        await window.eveApi.refreshAssetsNow(id);
+        await ESP.loadAssets(id, kind, true);
+      } catch (err) {
+        ESP.setStatus(err?.message || String(err), true);
+      } finally {
+        refreshBtn.disabled = false;
+      }
+      return;
+    }
+  });
+};

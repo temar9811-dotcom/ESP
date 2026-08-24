@@ -7,6 +7,7 @@ ESP.bindEvents = function () {
   ESP.bindAccountEvents();
   ESP.bindTopbarEvents();
   ESP.bindSkillSearch();
+  ESP.bindAssetsListeners();
 };
 
 ESP.startEveTimeClock = function () {

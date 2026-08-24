@@ -100,6 +100,8 @@ window.eveApi.testEnabled().then((enabled) => {
      </div>
      <div id="test-panel-body">
        <button type="button" data-cmd="ping">Ping</button>
+       <button type="button" data-cmd="assets.debug">Assets debug</button>
+       <button type="button" data-cmd="assets.debug2">Assets debug 2</button>
        <button type="button" data-cmd="app.version">Version</button>
        <button type="button" data-cmd="bubble.skill">Skill bubble</button>
        <button type="button" data-cmd="bubble.queue">Queue bubble</button>

@@ -36,6 +36,12 @@ contextBridge.exposeInMainWorld('eveApi', {
   setCloneNickname: (cloneId, name) => ipcRenderer.invoke('cloneNicknames:set', cloneId, name),
   getAllCloneNicknames: () => ipcRenderer.invoke('cloneNicknames:getAll'),
 
+  // --- Assets ---
+  getPersonalAssets: (characterId) => ipcRenderer.invoke('assets:getPersonal', characterId),
+  getCorpAssets: (characterId) => ipcRenderer.invoke('assets:getCorp', characterId),
+  refreshAssetsNow: (characterId) => ipcRenderer.invoke('assets:refreshNow', characterId),
+  getAssetsQueueState: () => ipcRenderer.invoke('assets:getQueueState'),
+
   // --- Skill Plans ---
   readClipboardPlan: () => ipcRenderer.invoke('plans:readClipboard'),
   listPlans: () => ipcRenderer.invoke('plans:list'),
@@ -54,6 +60,10 @@ contextBridge.exposeInMainWorld('eveApi', {
   testEnabled: () => ipcRenderer.invoke('test:enabled'),
   testRun: (command, payload) => ipcRenderer.invoke('test:run', command, payload),
 
+  // --- Notes ---
+  getNotes: (characterId) => ipcRenderer.invoke('notes:get', characterId),
+  setNotes: (characterId, text) => ipcRenderer.invoke('notes:set', characterId, text),
+
   // --- Event Subscriptions ---
   // These return an unsubscribe function for cleanup.
   onAccountsUpdated: (callback) => {
@@ -63,7 +73,6 @@ contextBridge.exposeInMainWorld('eveApi', {
       ipcRenderer.removeListener('accounts-updated', listener);
     };
   },
-
   onSkillCompleted: (callback) => {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('notification:skill-complete', listener);
@@ -71,7 +80,6 @@ contextBridge.exposeInMainWorld('eveApi', {
       ipcRenderer.removeListener('notification:skill-complete', listener);
     };
   },
-
   onWalletActivity: (callback) => {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('notification:wallet-activity', listener);
@@ -79,11 +87,6 @@ contextBridge.exposeInMainWorld('eveApi', {
       ipcRenderer.removeListener('notification:wallet-activity', listener);
     };
   },
-
-    // --- Notes ---
-  getNotes: (characterId) => ipcRenderer.invoke('notes:get', characterId),
-  setNotes: (characterId, text) => ipcRenderer.invoke('notes:set', characterId, text),
-
   onRefreshState: (callback) => {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('refresh-state', listener);

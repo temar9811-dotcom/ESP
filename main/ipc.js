@@ -1,7 +1,6 @@
 'use strict';
 
 const { ipcMain, app } = require('electron');
-
 const { VERSION } = require('../version');
 const eve = require('../eve');
 const accounts = require('./accounts');
@@ -15,6 +14,8 @@ const skillMeta = require('./skill-meta');
 const notes = require('./notes');
 const clonesHistory = require('./clones-history');
 const cloneNicknames = require('./clones-nicknames');
+const assets = require('./assets');
+const assetsQueue = require('./assets-queue');
 
 let testHarness = null;
 
@@ -72,7 +73,6 @@ async function fetchCloneDetails(account, token) {
   // and handle 403 gracefully. If scopes are stored, check for the clone scope.
   if (scopes !== null) {
     const hasClonesScope = scopes.includes('esi-clones.read_clones.v1');
-
     if (!hasClonesScope) {
       return {
         homeLocation: null,
@@ -85,7 +85,6 @@ async function fetchCloneDetails(account, token) {
   }
 
   let clonesData;
-
   try {
     clonesData = await withTimeout(eve.getClones(id, token), 10000);
   } catch (err) {
@@ -106,65 +105,55 @@ async function fetchCloneDetails(account, token) {
   const detection = eve.inferActiveClone(clonesData, previousSnapshot);
   clonesHistory.setSnapshot(id, clonesData);
 
-  const locationIds = (clonesData.jump_clones || []).map((jc) => jc.location_id);
+  const priceMap = await withTimeout(eve.getMarketPrices(), 15000);
 
+  const locationIds = (clonesData.jump_clones || []).map((jc) => jc.location_id);
   if (clonesData.home_location && clonesData.home_location.location_id) {
     locationIds.push(clonesData.home_location.location_id);
   }
 
-  const allImplantTypeIds = new Set();
+  const locationNames = new Map();
+  for (const locId of locationIds) {
+    const locationObj = { structure_id: locId, station_id: locId };
+    try {
+      const name = await withTimeout(eve.resolveLocationName(locationObj, token), 10000);
+      if (name) locationNames.set(locId, name);
+    } catch { /* skip */ }
+  }
 
+  const allImplantTypeIds = new Set();
   for (const jc of clonesData.jump_clones || []) {
     for (const tid of jc.implants || []) allImplantTypeIds.add(tid);
   }
 
-  const [priceMap, locationNames, implantNames, implantSlots] = await Promise.all([
-    withTimeout(eve.getMarketPrices(), 15000),
-    Promise.all(locationIds.map(async (locId) => {
-      try {
-        const name = await withTimeout(eve.resolveLocationName({ structure_id: locId, station_id: locId }, token), 10000);
-        return [locId, name];
-      } catch { return [locId, null]; }
-    })).then((entries) => new Map(entries.filter(([, n]) => n))),
-    allImplantTypeIds.size > 0
-      ? withTimeout(eve.getTypeNames([...allImplantTypeIds]), 10000).catch(() => new Map())
-      : Promise.resolve(new Map()),
-    allImplantTypeIds.size > 0
-      ? Promise.all([...allImplantTypeIds].map(async (typeId) => {
-          const slot = await withTimeout(eve.getImplantSlot(typeId), 10000).catch(() => null);
-          return [typeId, slot];
-        })).then((entries) => new Map(entries))
-      : Promise.resolve(new Map())
-  ]);
+  let implantNames = new Map();
+  if (allImplantTypeIds.size > 0) {
+    try {
+      implantNames = await withTimeout(eve.getTypeNames([...allImplantTypeIds]), 10000);
+    } catch { /* ignore */ }
+  }
 
   const nicknames = cloneNicknames.getAllNicknames();
+  const jumpClones = [];
 
-  function buildImplants(typeIds) {
+  for (const jc of clonesData.jump_clones || []) {
     const implants = [];
     let totalValue = 0;
 
-    for (const typeId of typeIds || []) {
-      const slot = implantSlots.get(typeId) || null;
+    for (const typeId of jc.implants || []) {
+      const slot = await withTimeout(eve.getImplantSlot(typeId), 10000);
       const price = (priceMap.get(typeId) || {}).averagePrice || 0;
-
       implants.push({
         typeId,
         name: implantNames.get(typeId) || `Implant ${typeId}`,
         slot,
         price
       });
-
       totalValue += price;
     }
 
     implants.sort((a, b) => (a.slot || 99) - (b.slot || 99));
-    return { implants, totalValue };
-  }
 
-  const jumpClones = [];
-
-  for (const jc of clonesData.jump_clones || []) {
-    const { implants, totalValue } = buildImplants(jc.implants);
     const nickname = nicknames[String(jc.jump_clone_id)]?.name || null;
 
     jumpClones.push({
@@ -182,7 +171,22 @@ async function fetchCloneDetails(account, token) {
 
   if (detection.status === 'occupied') {
     const jc = detection.clone;
-    const { implants, totalValue } = buildImplants(jc.implants);
+    const implants = [];
+    let totalValue = 0;
+
+    for (const typeId of jc.implants || []) {
+      const slot = await withTimeout(eve.getImplantSlot(typeId), 10000);
+      const price = (priceMap.get(typeId) || {}).averagePrice || 0;
+      implants.push({
+        typeId,
+        name: implantNames.get(typeId) || `Implant ${typeId}`,
+        slot,
+        price
+      });
+      totalValue += price;
+    }
+
+    implants.sort((a, b) => (a.slot || 99) - (b.slot || 99));
 
     activeClone = {
       jumpCloneId: jc.jump_clone_id,
@@ -192,11 +196,13 @@ async function fetchCloneDetails(account, token) {
       confidence: detection.confidence
     };
   } else if (detection.status === 'first_run') {
-    activeClone = await withTimeout(inferFirstRunActiveClone(id, token, jumpClones, clonesData), 10000);
+    activeClone = await withTimeout(
+      inferFirstRunActiveClone(id, token, jumpClones, clonesData),
+      10000
+    );
   }
 
   let homeLocation = null;
-
   if (clonesData.home_location && clonesData.home_location.location_id) {
     homeLocation = {
       locationId: clonesData.home_location.location_id,
@@ -255,14 +261,11 @@ function registerIpcHandlers() {
     const account = accounts.getAccounts().find(
       (a) => Number(a.characterId) === Number(characterId)
     );
-
     if (!account) {
       throw new Error('Character not found.');
     }
-
     try {
       let token = await accounts.getValidAccessToken(account, false);
-
       try {
         return await eve.getWalletDetails(account.characterId, token, 7);
       } catch (err) {
@@ -281,14 +284,11 @@ function registerIpcHandlers() {
     const account = accounts.getAccounts().find(
       (a) => Number(a.characterId) === Number(characterId)
     );
-
     if (!account) {
       throw new Error('Character not found.');
     }
-
     try {
       let token = await accounts.getValidAccessToken(account, false);
-
       try {
         return await withTimeout(fetchCloneDetails(account, token), 30000);
       } catch (err) {
@@ -313,6 +313,27 @@ function registerIpcHandlers() {
 
   ipcMain.handle('cloneNicknames:getAll', () => {
     return cloneNicknames.getAllNicknames();
+  });
+
+  // --- Assets (passive cache reads + manual refresh) ---
+  ipcMain.handle('assets:getPersonal', (_event, characterId) => {
+    return assets.getPersonalCache(characterId);
+  });
+
+  ipcMain.handle('assets:getCorp', (_event, characterId) => {
+    const account = accounts.getAccounts().find(
+      (a) => Number(a.characterId) === Number(characterId)
+    );
+    if (!account || !account.corporationId) return null;
+    return assets.getCorpCache(account.corporationId);
+  });
+
+  ipcMain.handle('assets:refreshNow', async (_event, characterId) => {
+    return assetsQueue.refreshCharacterAssets(characterId);
+  });
+
+  ipcMain.handle('assets:getQueueState', () => {
+    return assetsQueue.getState();
   });
 
   ipcMain.handle('groups:get', () => {
@@ -340,22 +361,19 @@ function registerIpcHandlers() {
     return Object.fromEntries(map);
   });
 
-    ipcMain.handle('notes:get', (_event, characterId) => {
+  ipcMain.handle('notes:get', (_event, characterId) => {
     return notes.getNote(characterId);
   });
 
   ipcMain.handle('notes:set', (_event, characterId, text) => {
     const saved = notes.setNote(characterId, text);
-
     const account = accounts
       .getAccounts()
       .find((a) => Number(a.characterId) === Number(characterId));
-
     if (account) {
       account.notes = saved;
       accounts.broadcastAccounts();
     }
-
     return saved;
   });
 
@@ -381,27 +399,21 @@ function registerIpcHandlers() {
 
   ipcMain.handle('settings:set', (_event, patch) => {
     const updated = settings.setSettings(patch);
-
     if (patch && typeof patch.openAtLogin === 'boolean') {
       app.setLoginItemSettings({ openAtLogin: patch.openAtLogin });
     }
-
     return updated;
   });
 
   ipcMain.handle('import:legacy', async () => {
     const current = settings.getSettings();
-
     if (!current.importEnabled) {
       return { ok: false, error: 'Import is disabled in settings.' };
     }
-
     const summary = await importer.importLegacy();
-
     if (summary.ok) {
       accounts.broadcastAccounts();
     }
-
     return summary;
   });
 

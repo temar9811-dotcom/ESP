@@ -199,8 +199,6 @@ function checkQueueWarning(account, dashboard) {
 
   if (account.lastQueueWarnKey === key) return;
 
-  account.lastQueueWarnKey = key;
-
   callbacks.onQueueWarning({
     characterName: account.characterName || 'Unknown',
     remainingMs: remaining
@@ -342,6 +340,8 @@ module.exports = {
   saveAccounts,
   broadcastAccounts,
   getValidAccessToken,
+  enterRateLimit,
+  waitRateLimit,
   refreshCharacter,
   refreshAll,
   addAccount,

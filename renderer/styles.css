@@ -938,3 +938,126 @@ tfoot td {
   color: #667788;
   padding: 8px 0;
 }
+
+/* --- Assets Sub-tabs & Tree --- */
+.assets-subtabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.assets-subtab {
+  background: #24313f;
+  color: #cfe0f2;
+  border: 1px solid rgba(90, 140, 190, 0.35);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.assets-subtab.active {
+  background: #2d4356;
+  border-color: #4a7ab5;
+  font-weight: 700;
+}
+
+.assets-pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #9fb3c8;
+}
+
+.assets-refresh {
+  background: #24313f;
+  color: #cfe0f2;
+  border: 1px solid rgba(90, 140, 190, 0.35);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.assets-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.asset-tree {
+  border-left: 1px solid rgba(90, 140, 190, 0.2);
+  padding-left: 8px;
+}
+
+.asset-node {
+  margin: 2px 0;
+}
+
+.asset-node-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.asset-node-row:hover {
+  background: rgba(90, 140, 190, 0.1);
+}
+
+.asset-node.region > .asset-node-row {
+  font-weight: 700;
+}
+
+.asset-node.system > .asset-node-row {
+  font-weight: 600;
+  color: #c8d6e5;
+}
+
+.asset-node.station > .asset-node-row {
+  color: #9fb3c8;
+}
+
+.asset-children {
+  margin-left: 16px;
+  border-left: 1px solid rgba(90, 140, 190, 0.15);
+  padding-left: 6px;
+}
+
+.expand-icon {
+  width: 12px;
+  color: #667788;
+}
+
+.node-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-count {
+  color: #667788;
+  font-size: 11px;
+}
+
+.asset-items {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 2px 0 6px;
+}
+
+.asset-items th {
+  text-align: left;
+  color: #9fb3c8;
+  font-weight: 600;
+  padding: 2px 6px;
+}
+
+.asset-items td {
+  padding: 2px 6px;
+  color: #c8d6e5;
+}

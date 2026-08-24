@@ -8,6 +8,7 @@ app.disableHardwareAcceleration();
 // Allow notification chimes to play without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+const assetsQueue = require('./main/assets-queue');
 const eveConfig = require('./eve/config');
 const eve = require('./eve');
 const windowTray = require('./main/window-tray');
@@ -99,6 +100,8 @@ async function bootstrap() {
   }
 
   ipc.registerIpcHandlers();
+
+  assetsQueue.start();
 
   windowTray.createWindow();
 
