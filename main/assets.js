@@ -78,10 +78,85 @@ async function getCorpAssets(corpId, accessToken) {
   return fetchAllPages(`/corporations/${corpId}/assets/`, accessToken);
 }
 
+// --- Persistent universe cache (survives restarts; successes only) ---
+
+const UNIVERSE_TTL_MS = 30 * 24 * 3600 * 1000;
+
+let universeDisk = null;
+let universeDiskDirty = false;
+let universeDiskTimer = null;
+
+function universeCacheFile() {
+  return path.join(app.getPath('userData'), 'universe-cache.json');
+}
+
+function getUniverseDisk() {
+  if (universeDisk) return universeDisk;
+  try {
+    universeDisk = JSON.parse(fs.readFileSync(universeCacheFile(), 'utf8')) || {};
+  } catch {
+    universeDisk = {};
+  }
+  return universeDisk;
+}
+
+function flushUniverseDisk() {
+  universeDiskTimer = null;
+  if (!universeDiskDirty) return;
+  universeDiskDirty = false;
+  try {
+    fs.mkdirSync(path.dirname(universeCacheFile()), { recursive: true });
+    fs.writeFileSync(
+      universeCacheFile(),
+      JSON.stringify(universeDisk || {}, null, 2),
+      'utf8'
+    );
+  } catch {
+    // Ignore write errors.
+  }
+}
+
+function setUniverseDiskEntry(section, id, value) {
+  const disk = getUniverseDisk();
+  if (!disk[section]) disk[section] = {};
+  disk[section][String(id)] = { value, savedAt: Date.now() };
+  universeDiskDirty = true;
+  if (!universeDiskTimer) {
+    universeDiskTimer = setTimeout(flushUniverseDisk, 2000);
+  }
+}
+
+function isRateLimit(err) {
+  return Boolean(err && (err.status === 420 || err.status === 429));
+}
+
+async function persistLookup(key, section, id, fetcher, makeFallback) {
+  if (universeCache.has(key)) return universeCache.get(key);
+
+  const disk = getUniverseDisk();
+  const hit = (disk[section] || {})[String(id)];
+  if (hit && hit.value && Date.now() - (hit.savedAt || 0) < UNIVERSE_TTL_MS) {
+    universeCache.set(key, hit.value);
+    return hit.value;
+  }
+
+  try {
+    const value = await fetcher();
+    universeCache.set(key, value);
+    setUniverseDiskEntry(section, id, value);
+    return value;
+  } catch (err) {
+    if (isRateLimit(err)) throw err;
+    const fallback = makeFallback();
+    universeCache.set(key, fallback); // run-only, never persisted
+    return fallback;
+  }
+}
+
 // --- Shared persistent structure cache ---
 
 const STRUCTURE_TTL_MS = 7 * 24 * 3600 * 1000;
-const STRUCTURE_FAIL_TTL_MS = 60 * 60 * 1000; // don't retry 403s for an hour
+const STRUCTURE_FAIL_TTL_MS = 60 * 60 * 1000;
 
 let structureDiskCache = null;
 
@@ -136,53 +211,25 @@ function markStructureFailed(structureId) {
   writeStructureDiskCache();
 }
 
-// --- Universe lookups (cached per run) ---
-
-async function cachedFetch(key, fn) {
-  if (universeCache.has(key)) return universeCache.get(key);
-
-  const value = await fn();
-  universeCache.set(key, value);
-  return value;
-}
-
-// Concurrency-limited map: no more than `limit` ESI calls in flight
-async function mapLimit(items, limit, fn) {
-  const results = new Array(items.length);
-  let index = 0;
-
-  const workers = Array.from(
-    { length: Math.max(1, Math.min(limit, items.length)) },
-    async () => {
-      while (index < items.length) {
-        const i = index++;
-        results[i] = await fn(items[i], i);
-      }
-    }
-  );
-
-  await Promise.all(workers);
-  return results;
-}
+// --- Universe lookups ---
 
 async function getSystemInfo(systemId) {
-  return cachedFetch(`system:${systemId}`, async () => {
-    try {
-      const sys = await publicFetch(`/universe/systems/${systemId}/`);
-      return {
-        name: sys.name || `System ${systemId}`,
-        constellationId:
-          sys.constellation_id != null ? Number(sys.constellation_id) : null
-      };
-    } catch {
-      return { name: `System ${systemId}`, constellationId: null };
-    }
-  });
+  return persistLookup(`system:${systemId}`, 'system', systemId, async () => {
+    const sys = await publicFetch(`/universe/systems/${systemId}/`);
+    return {
+      name: sys.name || `System ${systemId}`,
+      constellationId:
+        sys.constellation_id != null ? Number(sys.constellation_id) : null
+    };
+  }, () => ({ name: `System ${systemId}`, constellationId: null }));
 }
 
 async function getConstellationInfo(constellationId) {
-  return cachedFetch(`constellation:${constellationId}`, async () => {
-    try {
+  return persistLookup(
+    `constellation:${constellationId}`,
+    'constellation',
+    constellationId,
+    async () => {
       const con = await publicFetch(
         `/universe/constellations/${constellationId}/`
       );
@@ -190,42 +237,33 @@ async function getConstellationInfo(constellationId) {
         name: con.name || `Constellation ${constellationId}`,
         regionId: con.region_id != null ? Number(con.region_id) : null
       };
-    } catch {
-      return { name: `Constellation ${constellationId}`, regionId: null };
-    }
-  });
+    },
+    () => ({ name: `Constellation ${constellationId}`, regionId: null })
+  );
 }
 
 async function getRegionName(regionId) {
-  return cachedFetch(`region:${regionId}`, async () => {
-    try {
-      const region = await publicFetch(`/universe/regions/${regionId}/`);
-      return region.name || `Region ${regionId}`;
-    } catch {
-      return `Region ${regionId}`;
-    }
-  });
+  return persistLookup(`region:${regionId}`, 'region', regionId, async () => {
+    const region = await publicFetch(`/universe/regions/${regionId}/`);
+    return region.name || `Region ${regionId}`;
+  }, () => `Region ${regionId}`);
 }
 
 async function getStationInfo(stationId) {
-  return cachedFetch(`station:${stationId}`, async () => {
-    try {
-      const station = await publicFetch(`/universe/stations/${stationId}/`);
-      return {
-        name: station.name || `Station ${stationId}`,
-        systemId: station.system_id != null ? Number(station.system_id) : null
-      };
-    } catch {
-      return { name: `Station ${stationId}`, systemId: null };
-    }
-  });
+  return persistLookup(`station:${stationId}`, 'station', stationId, async () => {
+    const station = await publicFetch(`/universe/stations/${stationId}/`);
+    return {
+      name: station.name || `Station ${stationId}`,
+      systemId: station.system_id != null ? Number(station.system_id) : null
+    };
+  }, () => ({ name: `Station ${stationId}`, systemId: null }));
 }
 
-// Structures: only hit the authenticated endpoint when the token actually
-// has esi-universe.read_structures.v1 AND we haven't recently 403'd this id.
-// Everything else falls back to disk cache / /universe/names/ (no errors).
 async function getStructureInfo(structureId, accessToken, canReadStructures) {
-  return cachedFetch(`structure:${structureId}`, async () => {
+  const key = `structure:${structureId}`;
+  if (universeCache.has(key)) return universeCache.get(key);
+
+  const value = await (async () => {
     const disk = getStructureDiskCache();
     const hit = disk[String(structureId)];
     const now = Date.now();
@@ -253,7 +291,8 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
         };
         setStructureDiskCacheEntry(structureId, entry);
         return entry;
-      } catch {
+      } catch (err) {
+        if (isRateLimit(err)) throw err;
         markStructureFailed(structureId);
       }
     }
@@ -262,20 +301,16 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
       return { name: hit.name, systemId: null };
     }
 
-    try {
-      const arr = await publicPost('/universe/names/', [structureId]);
-      const found = Array.isArray(arr)
-        ? arr.find((x) => Number(x.id) === Number(structureId))
-        : null;
-      if (found && found.name) {
+    // Batched names result (no live call here — pre-pass filled the cache)
+    const namesHit = universeCache.get(`names:${structureId}`) || null;
+    if (namesHit && namesHit.name) {
+      if (!hit || !hit.name) {
         setStructureDiskCacheEntry(structureId, {
-          name: found.name,
+          name: namesHit.name,
           systemId: null
         });
-        return { name: found.name, systemId: null };
       }
-    } catch {
-      // fall through
+      return { name: namesHit.name, systemId: null };
     }
 
     if (hit && hit.name) {
@@ -286,7 +321,110 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
     }
 
     return { name: `Structure ${structureId}`, systemId: null };
-  });
+  })();
+
+  universeCache.set(key, value);
+  return value;
+}
+
+// --- Batched /universe/names/ (one call per 1000 ids, not one per id) ---
+
+async function batchResolveNames(ids) {
+  const missing = ids.filter(
+    (id) => id != null && !universeCache.has(`names:${id}`)
+  );
+  if (!missing.length) return;
+
+  const chunkSize = 1000;
+  for (let i = 0; i < missing.length; i += chunkSize) {
+    const chunk = missing.slice(i, i + chunkSize);
+    try {
+      const arr = await publicPost('/universe/names/', chunk);
+
+      for (const hit of arr || []) {
+        universeCache.set(`names:${Number(hit.id)}`, {
+          name: hit.name,
+          category: hit.category || null
+        });
+      }
+
+      // Seed structure names into the shared structure cache (name-only)
+      const disk = getStructureDiskCache();
+      let seeded = false;
+      for (const hit of arr || []) {
+        if (hit.category !== 'structure') continue;
+        const key = String(hit.id);
+        const existing = disk[key];
+        if (!existing || !existing.name) {
+          disk[key] = {
+            name: hit.name,
+            systemId: existing && existing.systemId != null
+              ? existing.systemId
+              : null,
+            savedAt: Date.now()
+          };
+          seeded = true;
+        }
+      }
+      if (seeded) writeStructureDiskCache();
+
+      // Mark misses so we don't retry them this run
+      for (const id of chunk) {
+        if (!universeCache.has(`names:${id}`)) {
+          universeCache.set(`names:${id}`, null);
+        }
+      }
+    } catch (err) {
+      if (isRateLimit(err)) throw err; // pause the queue, retry later
+      // Other errors: leave uncached; per-asset fallbacks handle it
+    }
+  }
+}
+
+// --- Walk helper (shared by pre-pass and resolution) ---
+
+function walkToTop(asset, assetsByItemId) {
+  let cur = asset;
+  let missingParentId = null;
+  const seen = new Set();
+
+  while (cur && cur.location_type === 'item') {
+    if (seen.has(cur.item_id)) {
+      missingParentId = cur.location_id;
+      break;
+    }
+
+    seen.add(cur.item_id);
+
+    const parent = assetsByItemId.get(cur.location_id);
+    if (!parent) {
+      missingParentId = cur.location_id;
+      cur = null;
+      break;
+    }
+
+    cur = parent;
+  }
+
+  return { top: cur, missingParentId };
+}
+
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let index = 0;
+
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(limit, items.length)) },
+    async () => {
+      while (index < items.length) {
+        const i = index++;
+        results[i] = await fn(items[i], i);
+      }
+    }
+  );
+
+  await Promise.all(workers);
+  return results;
 }
 
 async function systemAndRegion(systemId) {
@@ -422,7 +560,10 @@ async function resolveMissingParent(
   activeShipContext,
   canReadStructures
 ) {
-  return cachedFetch(`parent:${parentId}`, async () => {
+  const key = `parent:${parentId}`;
+  if (universeCache.has(key)) return universeCache.get(key);
+
+  const value = await (async () => {
     if (
       activeShipContext &&
       Number(parentId) === Number(activeShipContext.shipItemId)
@@ -434,20 +575,10 @@ async function resolveMissingParent(
       };
     }
 
-    let category = null;
-    let name = null;
-    try {
-      const arr = await publicPost('/universe/names/', [parentId]);
-      const hit = Array.isArray(arr)
-        ? arr.find((x) => Number(x.id) === Number(parentId))
-        : null;
-      if (hit) {
-        category = hit.category || null;
-        name = hit.name || null;
-      }
-    } catch {
-      // category stays null
-    }
+    // Read the batched names result (filled by the pre-pass)
+    const namesHit = universeCache.get(`names:${parentId}`) || null;
+    const category = namesHit ? namesHit.category : null;
+    const name = namesHit ? namesHit.name : null;
 
     if (category === 'station') {
       const station = await getStationInfo(parentId);
@@ -472,7 +603,10 @@ async function resolveMissingParent(
       systemName: 'Missing parent container',
       locationName: name || `Container ${parentId}`
     };
-  });
+  })();
+
+  universeCache.set(key, value);
+  return value;
 }
 
 // --- Asset location resolution ---
@@ -484,29 +618,9 @@ async function resolveAssetLocation(
   activeShipContext,
   canReadStructures
 ) {
-  let cur = asset;
-  let missingParentId = null;
-  const seen = new Set();
+  const { top, missingParentId } = walkToTop(asset, assetsByItemId);
 
-  while (cur && cur.location_type === 'item') {
-    if (seen.has(cur.item_id)) {
-      missingParentId = cur.location_id;
-      break;
-    }
-
-    seen.add(cur.item_id);
-
-    const parent = assetsByItemId.get(cur.location_id);
-    if (!parent) {
-      missingParentId = cur.location_id;
-      cur = null;
-      break;
-    }
-
-    cur = parent;
-  }
-
-  if (!cur || cur.location_type === 'item') {
+  if (!top || top.location_type === 'item') {
     if (missingParentId != null) {
       return resolveMissingParent(
         missingParentId,
@@ -523,8 +637,8 @@ async function resolveAssetLocation(
     };
   }
 
-  const locId = cur.location_id;
-  const locType = cur.location_type;
+  const locId = top.location_id;
+  const locType = top.location_type;
 
   if (locType === 'station') {
     const station = await getStationInfo(locId);
@@ -558,6 +672,24 @@ async function buildAssetTree(assets, accessToken, canReadStructures) {
     assetsByItemId.set(asset.item_id, asset);
   }
 
+  // Pre-pass: collect every id that needs a /universe/names/ lookup,
+  // then resolve them all in at most a couple of batched calls.
+  const nameIds = new Set();
+  for (const asset of list) {
+    const { top, missingParentId } = walkToTop(asset, assetsByItemId);
+    if (missingParentId != null) {
+      nameIds.add(Number(missingParentId));
+    } else if (
+      top &&
+      (top.location_type === 'structure' || top.location_type === 'other')
+    ) {
+      nameIds.add(Number(top.location_id));
+    }
+  }
+  if (nameIds.size) {
+    await batchResolveNames([...nameIds]);
+  }
+
   let activeShipContext = null;
   try {
     activeShipContext = await getActiveShipContext(
@@ -574,7 +706,6 @@ async function buildAssetTree(assets, accessToken, canReadStructures) {
   for (let i = 0; i < list.length; i += chunkSize) {
     const chunk = list.slice(i, i + chunkSize);
 
-    // Max 10 concurrent ESI lookups — no more 500-wide bursts
     const resolved = await mapLimit(chunk, 10, async (asset) => {
       const loc = await resolveAssetLocation(
         asset,
@@ -617,6 +748,8 @@ async function buildAssetTree(assets, accessToken, canReadStructures) {
 
     await new Promise((resolve) => setImmediate(resolve));
   }
+
+  flushUniverseDisk();
 
   return tree;
 }

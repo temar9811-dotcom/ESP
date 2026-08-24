@@ -14,6 +14,7 @@ const ESSENTIAL_SCOPES = [
   'esi-wallet.read_character_wallet.v1',
   'esi-clones.read_clones.v1',
   'esi-assets.read_assets.v1',
+  'esi-universe.read_structures.v1',
   'esi-clones.read_implants.v1'
 ];
 
@@ -86,9 +87,6 @@ const FUTURE_PROOF_SCOPES = [
   'esi-alliances.read_contacts.v1',
   'esi-structures.read_corporation.v1',
   'esi-structures.read_character.v1',
-  'esi-activities.read_character.v1',
-  'esi-universe.read_structures.v1',
-  'esi-assets.read_corporation_assets.v1'
 ];
 
 module.exports = {

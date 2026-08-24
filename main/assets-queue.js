@@ -6,6 +6,8 @@ const { publicFetch } = require('../eve/http');
 
 const CYCLE_DELAY_MS = 2 * 60 * 60 * 1000; // full sweep every 2 hours
 const BETWEEN_CHARS_MS = 2500;            // breathing room between characters
+const MIN_REFETCH_MS = 30 * 60 * 1000;    // don't re-fetch chars fetched <30m ago
+const STARTUP_DELAY_MS = 30 * 1000;       // let the main refresh settle on boot
 
 let running = false;
 let currentCharacterId = null;
@@ -26,8 +28,17 @@ function scopesOf(account) {
   return Array.isArray(account.scopes) ? account.scopes : null;
 }
 
-async function processCharacter(account) {
+function isFresh(iso) {
+  if (!iso) return false;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) && Date.now() - t < MIN_REFETCH_MS;
+}
+
+async function processCharacter(account, force) {
   currentCharacterId = account.characterId;
+
+  // Restart-friendly: skip recently fetched characters unless forced
+  if (!force && isFresh(account.assetLastFetch)) return;
 
   const scopes = scopesOf(account);
 
@@ -159,7 +170,7 @@ async function runCycle() {
     await accounts.waitRateLimit();
 
     try {
-      await processCharacter(account);
+      await processCharacter(account, false);
     } catch (err) {
       if (err && (err.status === 420 || err.status === 429)) {
         accounts.enterRateLimit(Number(err.resetSeconds) || 60);
@@ -179,6 +190,9 @@ async function loop() {
   if (running) return;
   running = true;
 
+  // Let the main 5-minute refresh settle before the first asset sweep
+  await sleep(STARTUP_DELAY_MS);
+
   while (running) {
     lastCycleStartedAt = new Date().toISOString();
     await runCycle();
@@ -194,7 +208,7 @@ function stop() {
   running = false;
 }
 
-// Manual "Refresh now" — clears the corp-denied flag so it retries once
+// Manual "Refresh now" — forces past the fresh-skip and retries corp once
 async function refreshCharacterAssets(characterId) {
   const account = accounts
     .getAccounts()
@@ -205,7 +219,15 @@ async function refreshCharacterAssets(characterId) {
   account.corpAssetsDenied = false;
 
   await accounts.waitRateLimit();
-  await processCharacter(account);
+  try {
+    await processCharacter(account, true);
+  } catch (err) {
+    if (err && (err.status === 420 || err.status === 429)) {
+      accounts.enterRateLimit(Number(err.resetSeconds) || 60);
+    } else {
+      throw err;
+    }
+  }
   accounts.broadcastAccounts();
 
   return {
