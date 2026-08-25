@@ -375,6 +375,22 @@ async function getRegionName(regionId) {
   }, () => `Region ${regionId}`);
 }
 
+async function getPlanetInfo(planetId) {
+  return persistLookup(
+    `planet:${planetId}`,
+    'planets',
+    planetId,
+    async () => {
+      const planet = await publicFetch(`/universe/planets/${planetId}/`);
+      return {
+        name: planet.name || `Planet ${planetId}`,
+        systemId: planet.system_id != null ? Number(planet.system_id) : null
+      };
+    },
+    { name: `Planet ${planetId}`, systemId: null }
+  );
+}
+
 async function getStationInfo(stationId) {
   return persistLookup(`station:${stationId}`, 'station', stationId, async () => {
     const station = await publicFetch(`/universe/stations/${stationId}/`);
@@ -818,11 +834,31 @@ async function resolveAssetLocation(
 
   if (locType === 'structure' || locType === 'other') {
     const structure = await getStructureInfo(locId, accessToken, canReadStructures);
+    if (structure.isContainer) {
+      const flag = (top.location_flag || '').toLowerCase();
+      const label = flag === 'hangar' ? 'Ship in hangar'
+        : flag === 'cargohold' ? 'Container in cargo'
+        : flag === 'deliveries' ? 'Deliveries'
+        : 'Container/ship';
+      return {
+        regionName: 'Carried / in transit',
+        systemName: 'See asset details',
+        locationName: `${label} ${locId}`
+      };
+    }
     const { systemName, regionName } = await systemAndRegion(structure.systemId);
     return { regionName, systemName, locationName: structure.name };
   }
 
   if (locType === 'solar_system') {
+    // PI assets reference the planet directly with location_flag AutoFit
+    // and location_id pointing at the planet, not the system.
+    const flag = (top.location_flag || '').toLowerCase();
+    if (flag === 'autofit' || flag === 'deliveries') {
+      const planet = await getPlanetInfo(locId);
+      const { systemName, regionName } = await systemAndRegion(planet.systemId || locId);
+      return { regionName, systemName, locationName: planet.name };
+    }
     const { systemName, regionName } = await systemAndRegion(locId);
     return { regionName, systemName, locationName: `${systemName} (space)` };
   }
