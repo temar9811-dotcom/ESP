@@ -6,7 +6,15 @@ const fs = require('fs');
 const { esiFetch, publicFetch, publicPost } = require('../eve/http');
 const accounts = require('./accounts');
 
-const universeCache = new Map();
+let lastStructureCallAt = 0;
+const STRUCTURE_CALL_GAP_MS = 150;
+
+async function throttledEsiFetch(url, token) {
+  const wait = lastStructureCallAt + STRUCTURE_CALL_GAP_MS - Date.now();
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastStructureCallAt = Date.now();
+  return esiFetch(url, token);
+}
 
 // --- Resolution diagnostics (counters for the active buildAssetTree sweep) ---
 
