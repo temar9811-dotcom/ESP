@@ -35,6 +35,10 @@ async function handleResponse(res, label) {
   if (!res.ok) {
     const err = new Error(`${label} failed: ${res.status}`);
     err.status = res.status;
+    if (res.status === 420) {
+      const resetSeconds = res.headers.get('x-esi-error-limit-reset');
+      err.resetSeconds = resetSeconds != null ? Number(resetSeconds) : null;
+    }
 
     try {
       const text = await res.text();

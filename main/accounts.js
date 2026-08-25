@@ -124,6 +124,17 @@ function enterRateLimit(seconds) {
   }
 }
 
+// Proactive check: if the ESI error budget is nearly exhausted, wait
+// for the reset window instead of pushing through to a 420.
+async function waitErrorBudget() {
+  const { getErrorLimitState } = require('../eve/http');
+  const { remain, resetAt } = getErrorLimitState();
+  if (remain != null && remain <= 10 && resetAt && resetAt > Date.now()) {
+    const waitMs = Math.min(resetAt - Date.now(), 60000);
+    if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+  }
+}
+
 async function waitRateLimit() {
   const waitMs = rateLimitedUntil - Date.now();
 
@@ -294,6 +305,8 @@ async function refreshCharacter(account) {
 
     if (err && err.status === 420) {
       enterRateLimit(Number(err.resetSeconds) || 60);
+    } else {
+      await waitErrorBudget();
     }
   }
 }
@@ -398,6 +411,7 @@ module.exports = {
   getRefreshState,
   enterRateLimit,
   waitRateLimit,
+  waitErrorBudget,
   saveAccounts,
   broadcastAccounts,
   getValidAccessToken,
