@@ -116,10 +116,16 @@ ESP.assetPaneHtml = function (account, kind) {
     ? account.assetLastFetch
     : account.corpAssetLastFetch;
 
+  const diag = slot.data && slot.data.tree && slot.data.tree._diag ? slot.data.tree._diag : null;
+  const diagBadge =
+    ESP.state.testEnabled && diag && diag.fallbackCount > 0
+      ? ` <span style="opacity:0.6">${diag.fallbackCount} unresolved</span>`
+      : '';
+
   const header = `
 <div class="assets-pane-header">
   <span class="assets-last-fetch">Last live fetch: ${lastFetch ? ESP.formatDate(lastFetch) : 'never'}</span>
-  <button type="button" class="assets-refresh" data-assets-refresh="${kind}" data-id="${id}">Refresh now</button>
+  <button type="button" class="assets-refresh" data-assets-refresh="${kind}" data-id="${id}">Refresh now</button>${diagBadge}
 </div>`;
 
   if (slot.status === 'idle') {

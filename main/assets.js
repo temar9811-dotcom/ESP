@@ -4,8 +4,31 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { esiFetch, publicFetch, publicPost } = require('../eve/http');
+const accounts = require('./accounts');
 
 const universeCache = new Map();
+
+// --- Resolution diagnostics (counters for the active buildAssetTree sweep) ---
+
+let diag = {
+  stationHits: 0,
+  structureHits: 0,
+  namesHits: 0,
+  fallbackCount: 0,
+  failedStructures: []
+};
+
+function diagReset() {
+  diag = { stationHits: 0, structureHits: 0, namesHits: 0, fallbackCount: 0, failedStructures: [] };
+}
+
+function diagRecord(kind, id = null) {
+  if (kind === 'station') diag.stationHits += 1;
+  else if (kind === 'structure') diag.structureHits += 1;
+  else if (kind === 'names') diag.namesHits += 1;
+  else diag.fallbackCount += 1;
+  if (kind === 'fallback' && id != null) diag.failedStructures.push(Number(id));
+}
 
 function assetCacheFile(characterId) {
   return path.join(app.getPath('userData'), `assets-${characterId}.json`);
@@ -147,18 +170,21 @@ async function persistLookup(key, section, id, fetcher, makeFallback) {
     return value;
   } catch (err) {
     if (isRateLimit(err)) throw err;
-    const fallback = makeFallback();
-    universeCache.set(key, fallback); // run-only, never persisted
-    return fallback;
+    // Fallbacks are never cached (in-memory or disk) so a later sweep can retry.
+    return makeFallback();
   }
 }
 
 // --- Shared persistent structure cache ---
 
 const STRUCTURE_TTL_MS = 7 * 24 * 3600 * 1000;
-const STRUCTURE_FAIL_TTL_MS = 60 * 60 * 1000;
+const STRUCTURE_403_FAIL_MS = 24 * 3600 * 1000;
+const STRUCTURE_TRANSIENT_FAIL_MS = 10 * 60 * 1000;
+const STRUCTURE_LOOKUP_CONCURRENCY = 3;
 
 let structureDiskCache = null;
+let structureDiskDirty = false;
+let structureDiskTimer = null;
 
 function structureCacheFile() {
   return path.join(app.getPath('userData'), 'structure-names.json');
@@ -188,6 +214,20 @@ function writeStructureDiskCache() {
   }
 }
 
+function flushStructureDiskCache() {
+  structureDiskTimer = null;
+  if (!structureDiskDirty) return;
+  structureDiskDirty = false;
+  writeStructureDiskCache();
+}
+
+function scheduleStructureDiskWrite() {
+  structureDiskDirty = true;
+  if (!structureDiskTimer) {
+    structureDiskTimer = setTimeout(flushStructureDiskCache, 2000);
+  }
+}
+
 function setStructureDiskCacheEntry(structureId, entry) {
   const cache = getStructureDiskCache();
   cache[String(structureId)] = {
@@ -195,21 +235,46 @@ function setStructureDiskCacheEntry(structureId, entry) {
     systemId: entry.systemId != null ? entry.systemId : null,
     savedAt: Date.now()
   };
-  writeStructureDiskCache();
+  scheduleStructureDiskWrite();
 }
 
-function markStructureFailed(structureId) {
+// Classified failures: 403 = long backoff, anything else = short transient.
+function markStructureFailed(structureId, status) {
   const cache = getStructureDiskCache();
   const key = String(structureId);
   const prev = cache[key] || {};
+  const is403 = Number(status) === 403;
   cache[key] = {
     name: prev.name || null,
     systemId: prev.systemId != null ? prev.systemId : null,
     savedAt: prev.savedAt || 0,
-    failedAt: Date.now()
+    status: status != null ? status : 'transient',
+    failedAt: Date.now(),
+    failedUntil: Date.now() + (is403 ? STRUCTURE_403_FAIL_MS : STRUCTURE_TRANSIENT_FAIL_MS)
   };
-  writeStructureDiskCache();
+  scheduleStructureDiskWrite();
 }
+
+// Small queue that caps concurrent /universe/structures/ requests.
+function createLimiter(max) {
+  let active = 0;
+  const queue = [];
+  return async function limit(task) {
+    if (active >= max) {
+      await new Promise((resolve) => queue.push(resolve));
+    }
+    active += 1;
+    try {
+      return await task();
+    } finally {
+      active -= 1;
+      const resolve = queue.shift();
+      if (resolve) resolve();
+    }
+  };
+}
+
+const structureLimit = createLimiter(STRUCTURE_LOOKUP_CONCURRENCY);
 
 // --- Universe lookups ---
 
@@ -259,9 +324,20 @@ async function getStationInfo(stationId) {
   }, () => ({ name: `Station ${stationId}`, systemId: null }));
 }
 
+function structureFallbackId(value, structureId) {
+  return value && value.name === `Structure ${structureId}` ? structureId : null;
+}
+
 async function getStructureInfo(structureId, accessToken, canReadStructures) {
   const key = `structure:${structureId}`;
   if (universeCache.has(key)) return universeCache.get(key);
+
+  const failureUntil = (hit) => {
+    if (!hit) return 0;
+    if (hit.failedUntil != null) return hit.failedUntil;
+    // Legacy markers without failedUntil computed at 1h from failedAt.
+    return (hit.failedAt || 0) + 3600000;
+  };
 
   const value = await (async () => {
     const disk = getStructureDiskCache();
@@ -269,18 +345,17 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
     const now = Date.now();
     const fresh =
       hit && hit.name && now - (hit.savedAt || 0) < STRUCTURE_TTL_MS;
-    const recentlyFailed =
-      hit && hit.failedAt && now - hit.failedAt < STRUCTURE_FAIL_TTL_MS;
+    const recentlyFailed = failureUntil(hit) > now;
 
     if (fresh && hit.systemId != null) {
+      diagRecord('structure');
       return { name: hit.name, systemId: Number(hit.systemId) };
     }
 
     if (canReadStructures && !recentlyFailed) {
       try {
-        const structure = await esiFetch(
-          `/universe/structures/${structureId}/`,
-          accessToken
+        const structure = await structureLimit(() =>
+          esiFetch(`/universe/structures/${structureId}/`, accessToken)
         );
         const entry = {
           name: structure.name || `Structure ${structureId}`,
@@ -290,14 +365,19 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
               : null
         };
         setStructureDiskCacheEntry(structureId, entry);
+        diagRecord('structure');
         return entry;
       } catch (err) {
-        if (isRateLimit(err)) throw err;
-        markStructureFailed(structureId);
+        if (isRateLimit(err)) {
+          accounts.enterRateLimit(Number(err.resetSeconds) || 60);
+          throw err;
+        }
+        markStructureFailed(structureId, err && err.status);
       }
     }
 
     if (fresh && hit.systemId == null) {
+      diagRecord('structure');
       return { name: hit.name, systemId: null };
     }
 
@@ -310,20 +390,26 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
           systemId: null
         });
       }
+      diagRecord('names');
       return { name: namesHit.name, systemId: null };
     }
 
     if (hit && hit.name) {
+      diagRecord('structure');
       return {
         name: hit.name,
         systemId: hit.systemId != null ? Number(hit.systemId) : null
       };
     }
 
+    diagRecord('fallback', structureId);
     return { name: `Structure ${structureId}`, systemId: null };
   })();
 
-  universeCache.set(key, value);
+  const fallbackId = structureFallbackId(value, structureId);
+  if (fallbackId == null) {
+    universeCache.set(key, value);
+  }
   return value;
 }
 
@@ -366,7 +452,7 @@ async function batchResolveNames(ids) {
           seeded = true;
         }
       }
-      if (seeded) writeStructureDiskCache();
+      if (seeded) scheduleStructureDiskWrite();
 
       // Mark misses so we don't retry them this run
       for (const id of chunk) {
@@ -568,6 +654,7 @@ async function resolveMissingParent(
       activeShipContext &&
       Number(parentId) === Number(activeShipContext.shipItemId)
     ) {
+      diagRecord('structure');
       return {
         regionName: activeShipContext.regionName,
         systemName: activeShipContext.systemName,
@@ -583,6 +670,7 @@ async function resolveMissingParent(
     if (category === 'station') {
       const station = await getStationInfo(parentId);
       const { systemName, regionName } = await systemAndRegion(station.systemId);
+      diagRecord(station.name === `Station ${parentId}` ? 'fallback' : 'station', parentId);
       return { regionName, systemName, locationName: station.name };
     }
 
@@ -598,6 +686,7 @@ async function resolveMissingParent(
       return { regionName, systemName, locationName: name || structure.name };
     }
 
+    diagRecord('fallback', parentId);
     return {
       regionName: 'Carried / in transit',
       systemName: 'Missing parent container',
@@ -605,7 +694,10 @@ async function resolveMissingParent(
     };
   })();
 
-  universeCache.set(key, value);
+  // Only cache resolutions that reached a real location.
+  if (value.regionName !== 'Carried / in transit' || value.systemName !== 'Missing parent container') {
+    universeCache.set(key, value);
+  }
   return value;
 }
 
@@ -630,6 +722,7 @@ async function resolveAssetLocation(
       );
     }
 
+    diagRecord('fallback');
     return {
       regionName: 'Carried / in transit',
       systemName: 'Missing parent container',
@@ -643,6 +736,7 @@ async function resolveAssetLocation(
   if (locType === 'station') {
     const station = await getStationInfo(locId);
     const { systemName, regionName } = await systemAndRegion(station.systemId);
+    diagRecord(station.name === `Station ${locId}` ? 'fallback' : 'station', locId);
     return { regionName, systemName, locationName: station.name };
   }
 
@@ -665,6 +759,7 @@ async function resolveAssetLocation(
 }
 
 async function buildAssetTree(assets, accessToken, canReadStructures) {
+  diagReset();
   const list = Array.isArray(assets) ? assets : [];
 
   const assetsByItemId = new Map();
@@ -750,8 +845,38 @@ async function buildAssetTree(assets, accessToken, canReadStructures) {
   }
 
   flushUniverseDisk();
+  flushStructureDiskCache();
+
+  tree._diag = {
+    stationHits: diag.stationHits,
+    structureHits: diag.structureHits,
+    namesHits: diag.namesHits,
+    fallbackCount: diag.fallbackCount,
+    failedStructures: diag.failedStructures.slice()
+  };
 
   return tree;
+}
+
+// Audit helper used by the test harness: one live structure lookup without
+// touching in-memory or disk caches.
+async function probeStructure(structureId, accessToken) {
+  try {
+    const data = await structureLimit(() =>
+      esiFetch(`/universe/structures/${structureId}/`, accessToken)
+    );
+    return {
+      ok: true,
+      name: data.name || null,
+      systemId: data.solar_system_id != null ? Number(data.solar_system_id) : null
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      status: err && err.status != null ? err.status : null,
+      error: err && err.message ? String(err.message) : String(err)
+    };
+  }
 }
 
 module.exports = {
@@ -761,5 +886,7 @@ module.exports = {
   getPersonalCache,
   getCorpCache,
   savePersonalCache,
-  saveCorpCache
+  saveCorpCache,
+  getStructureDiskCache,
+  probeStructure
 };

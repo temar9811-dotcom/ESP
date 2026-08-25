@@ -512,6 +512,66 @@ switch (command) {
        }
      };
    }
+   case 'assets.structureAudit': {
+     const queue = require('../main/assets-queue');
+     const accountsMod = require('../main/accounts');
+     const assetsMod = require('../main/assets');
+
+     const list = accountsMod.getAccounts();
+     const target =
+       (payload && payload.id && list.find((a) => Number(a.characterId) === Number(payload.id))) ||
+       list[0] ||
+       null;
+     if (!target) return { ok: false, error: 'No characters added.' };
+
+     accountsMod.ensureScopes(target);
+     const scopeList = typeof target.scopes === 'string'
+       ? target.scopes.split(' ').filter(Boolean)
+       : Array.isArray(target.scopes) ? target.scopes : null;
+     const canReadStructures =
+       scopeList == null || scopeList.includes('esi-universe.read_structures.v1');
+
+     const disk = assetsMod.getStructureDiskCache();
+     const markers = Object.entries(disk)
+       .filter(
+         ([, entry]) =>
+           (entry.name || '').startsWith('Structure ') ||
+           entry.failedAt != null ||
+           entry.failedUntil != null
+       )
+       .map(([id, entry]) => ({
+         id: Number(id),
+         name: entry.name || null,
+         status: entry.status || null,
+         savedAt: entry.savedAt || null,
+         failedAt: entry.failedAt || null,
+         failedUntil: entry.failedUntil || null
+       }));
+
+     let probe = null;
+     if (markers.length) {
+       try {
+         const token = await accountsMod.getValidAccessToken(target, false);
+         await accountsMod.waitRateLimit();
+         probe = await assetsMod.probeStructure(markers[0].id, token);
+         probe.id = markers[0].id;
+       } catch (err) {
+         probe = { ok: false, error: String(err && err.message || err) };
+       }
+     }
+
+     return {
+       ok: true,
+       result: {
+         character: target.characterName,
+         canReadStructures,
+         scopes: scopeList,
+         markers,
+         probe,
+         queueRunning: queue.isRunning()
+       }
+     };
+   }
    default: {
      return { ok: false, error: `Unknown test command: ${command}` };
    }

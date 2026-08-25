@@ -155,6 +155,7 @@ window.eveApi.testEnabled().then((enabled) => {
        } catch {
          // Still hide the panel even if the write fails.
        }
+       if (window.ESP && ESP.state) ESP.state.testEnabled = false;
        panel.hidden = true;
        fab.hidden = true;
      }
