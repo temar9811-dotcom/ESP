@@ -77,9 +77,30 @@ ESP.render = function (accounts) {
     }
   }
 
-  // Keep one character selected at all times so the content pane has context.
+  // Keep one character selected at all times so the content pane has
+  // context. Default to the primary of the first group rather than the
+  // first character in the account list.
   if (ESP.state.openCharacterId == null) {
-    ESP.state.openCharacterId = Number(ESP.state.lastAccounts[0].characterId);
+    let fallback = null;
+
+    for (const [groupName, group] of Object.entries(groupsData)) {
+      if (groupName === '__ungrouped__') continue;
+
+      const members = (group.members || []).map(Number);
+      const candidates = [Number(group.primaryCharacterId), ...members];
+
+      for (const id of candidates) {
+        if (id && byId.has(id)) {
+          fallback = id;
+          break;
+        }
+      }
+
+      if (fallback != null) break;
+    }
+
+    ESP.state.openCharacterId =
+      fallback != null ? fallback : Number(ESP.state.lastAccounts[0].characterId);
   }
 
   const selectedId = Number(ESP.state.openCharacterId);
