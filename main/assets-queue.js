@@ -253,9 +253,14 @@ async function refreshCharacterAssets(characterId) {
   };
 }
 
+function isRunning() {
+  return running;
+}
+
 module.exports = {
   start,
   stop,
   getState,
+  isRunning,
   refreshCharacterAssets
 };
