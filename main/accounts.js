@@ -28,13 +28,50 @@ function init(newCallbacks) {
   };
 }
 
+// Decode the granted scopes (scp claim) from an EVE SSO access token JWT.
+// Works even for expired tokens — the grant is readable without verification.
+function scopesFromAccessToken(accessToken) {
+  try {
+    const parts = String(accessToken || '').split('.');
+    if (parts.length < 2) return null;
+
+    const padded = parts[1].padEnd(
+      parts[1].length + ((4 - (parts[1].length % 4)) % 4),
+      '='
+    );
+    const payload = JSON.parse(
+      Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+    );
+
+    if (Array.isArray(payload.scp)) return payload.scp;
+    if (typeof payload.scp === 'string') return [payload.scp];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function loadAccounts() {
   accounts = storage.loadAccounts();
+
+  let backfilled = false;
 
   for (const account of accounts) {
     account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
     account.notes = notesStore.getNote(account.characterId);
+
+    // Backfill scopes for accounts created before scope storage existed
+    if (account.scopes == null) {
+      const token = storage.decryptSecret(account.accessTokenEnc);
+      const scopes = scopesFromAccessToken(token);
+      if (scopes) {
+        account.scopes = scopes;
+        backfilled = true;
+      }
+    }
   }
+
+  if (backfilled) saveAccounts();
 }
 
 function getAccounts() {
@@ -154,7 +191,7 @@ function checkSkillCompletion(account, dashboard) {
 
       if (lastKey !== currentKey) {
         skillHistory.recordCompletion(account.characterId, {
-          skillId: lastSkill.skill_id,
+          skillId: lastSkill.skillId,
           skillName: lastSkill.skillName || 'Unknown skill',
           level: lastSkill.finished_level || 0,
           finishedAt: lastSkill.finish_date
@@ -304,7 +341,10 @@ async function addAccount(scopeChoice) {
     account.refreshTokenEnc = storage.encryptSecret(login.refreshToken);
     account.accessTokenEnc = storage.encryptSecret(login.accessToken);
     account.accessTokenExpiresAt = login.expiresAt;
-    account.scopes = login.scopes;
+    account.scopes =
+      login.scopes ||
+      scopesFromAccessToken(login.accessToken) ||
+      null;
     account.lastError = null;
 
     await refreshCharacter(account);
@@ -337,11 +377,11 @@ module.exports = {
   getAccounts,
   getPublicAccounts,
   getRefreshState,
+  enterRateLimit,
+  waitRateLimit,
   saveAccounts,
   broadcastAccounts,
   getValidAccessToken,
-  enterRateLimit,
-  waitRateLimit,
   refreshCharacter,
   refreshAll,
   addAccount,
