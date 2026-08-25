@@ -186,7 +186,7 @@ async function persistLookup(key, section, id, fetcher, makeFallback) {
 // --- Shared persistent structure cache ---
 
 const STRUCTURE_TTL_MS = 7 * 24 * 3600 * 1000;
-const STRUCTURE_FAIL_TTL_MS = 5 * 60 * 1000; // retry failed structure lookups after 5 min
+
 const STRUCTURE_403_FAIL_MS = 24 * 3600 * 1000;
 const STRUCTURE_TRANSIENT_FAIL_MS = 10 * 60 * 1000;
 const STRUCTURE_LOOKUP_CONCURRENCY = 3;

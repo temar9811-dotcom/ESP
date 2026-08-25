@@ -321,6 +321,9 @@ ESP.bindTopbarEvents = function () {
   if (window.eveApi && window.eveApi.onAccountsUpdated) {
     const unsubscribe = window.eveApi.onAccountsUpdated((accounts) => {
       ESP.state.skillSearch.index = null;
+      if (typeof ESP.invalidateStaleAssetCaches === 'function') {
+        ESP.invalidateStaleAssetCaches(accounts);
+      }
       ESP.render(accounts);
     });
 

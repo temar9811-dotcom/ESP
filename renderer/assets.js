@@ -24,6 +24,30 @@ function cacheSlot(id, kind) {
 
 // --- Data loading ---
 
+// Background sweeps write fresh trees to disk and broadcast accounts, but an
+// already-open pane keeps its in-memory slot. Reset slots whose fetch
+// timestamp changed so the next render re-reads the disk cache.
+ESP.invalidateStaleAssetCaches = function (accounts) {
+  const st = assetsState();
+  st.assetsFetchSeen = st.assetsFetchSeen || {};
+  for (const account of accounts || []) {
+    const id = Number(account.characterId);
+    const slots = st.assetsCacheByCharacter[id];
+    const seen = st.assetsFetchSeen[id] ||
+      (st.assetsFetchSeen[id] = { personal: undefined, corp: undefined });
+    if (slots && slots.personal && seen.personal !== undefined &&
+        seen.personal !== account.assetLastFetch) {
+      slots.personal.status = 'idle';
+    }
+    if (slots && slots.corp && seen.corp !== undefined &&
+        seen.corp !== account.corpAssetLastFetch) {
+      slots.corp.status = 'idle';
+    }
+    seen.personal = account.assetLastFetch;
+    seen.corp = account.corpAssetLastFetch;
+  }
+};
+
 // Lazy-load the disk cache for one character + kind ('personal' | 'corp')
 ESP.loadAssets = async function (id, kind, force) {
   const slot = cacheSlot(id, kind);
