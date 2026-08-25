@@ -261,14 +261,51 @@ function setStructureDiskCacheEntry(structureId, entry) {
 }
 
 // Classified failures: 403 = long backoff, anything else = short transient.
-function markStructureFailed(structureId, status) {
+let fallbackStructureSystems = new Map();
+
+// Some ACL-blocked structures are still resolvable to their solar system
+// through corp-scoped endpoints that do not apply per-structure ACLs.
+async function getCorpStructureSystems(corpId, accessToken) {
+  const out = new Map();
+  if (!corpId) return out;
+  try {
+    const rows = await fetchAllPages(`/corporations/${corpId}/structures/`, accessToken);
+    for (const row of rows || []) {
+      if (row.structure_id != null && row.system_id != null) {
+        out.set(Number(row.structure_id), Number(row.system_id));
+      }
+    }
+  } catch {
+    // Corp scope missing or not a member.
+  }
+  try {
+    const rows = await fetchAllPages(`/corporations/${corpId}/starbases/`, accessToken);
+    for (const row of rows || []) {
+      if (row.starbase_id != null && row.system_id != null) {
+        out.set(Number(row.starbase_id), Number(row.system_id));
+      }
+    }
+  } catch {
+    // Corp scope missing or not a member.
+  }
+  return out;
+}
+
+function fallbackStructureSystem(structureId) {
+  const id = Number(structureId);
+  return fallbackStructureSystems.has(id) ? fallbackStructureSystems.get(id) : null;
+}
+
+function markStructureFailed(structureId, status, systemId) {
   const cache = getStructureDiskCache();
   const key = String(structureId);
   const prev = cache[key] || {};
   const is403 = Number(status) === 403;
   cache[key] = {
     name: prev.name || null,
-    systemId: prev.systemId != null ? prev.systemId : null,
+    systemId:
+      systemId != null ? Number(systemId)
+      : prev.systemId != null ? prev.systemId : null,
     savedAt: prev.savedAt || 0,
     status: status != null ? status : 'transient',
     failedAt: Date.now(),
@@ -394,7 +431,11 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
           accounts.enterRateLimit(Number(err.resetSeconds) || 60);
           throw err;
         }
-        markStructureFailed(structureId, err && err.status);
+        markStructureFailed(
+          structureId,
+          err && err.status,
+          fallbackStructureSystem(structureId)
+        );
       }
     }
 
@@ -424,8 +465,11 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
       };
     }
 
+    const knownSystem =
+      (hit && hit.systemId != null && Number(hit.systemId)) ||
+      fallbackStructureSystem(structureId);
     diagRecord('fallback', structureId);
-    return { name: `Structure ${structureId}`, systemId: null };
+    return { name: `Structure ${structureId}`, systemId: knownSystem };
   })();
 
   const fallbackId = structureFallbackId(value, structureId);
@@ -780,9 +824,11 @@ async function resolveAssetLocation(
   };
 }
 
-async function buildAssetTree(assets, accessToken, canReadStructures) {
+async function buildAssetTree(assets, accessToken, canReadStructures, opts) {
   diagReset();
+  fallbackStructureSystems = new Map();
   const list = Array.isArray(assets) ? assets : [];
+  const corpId = opts && opts.corpId != null ? Number(opts.corpId) : null;
 
   const assetsByItemId = new Map();
   for (const asset of list) {
@@ -805,6 +851,12 @@ async function buildAssetTree(assets, accessToken, canReadStructures) {
   }
   if (nameIds.size) {
     await batchResolveNames([...nameIds]);
+  }
+
+  try {
+    fallbackStructureSystems = await getCorpStructureSystems(corpId, accessToken);
+  } catch {
+    // Fallback map optional; lookups land in Unknown Region instead.
   }
 
   let activeShipContext = null;

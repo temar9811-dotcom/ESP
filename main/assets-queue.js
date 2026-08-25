@@ -89,7 +89,8 @@ async function processCharacter(account, force) {
         const tree = await assets.buildAssetTree(
           raw,
           token,
-          canReadStructures
+          canReadStructures,
+          { corpId: account.corporationId }
         );
         const fetchedAt = new Date().toISOString();
         const diag = tree._diag || null;
@@ -148,7 +149,8 @@ async function processCharacter(account, force) {
         const corpTree = await assets.buildAssetTree(
           corpRaw,
           token,
-          canReadStructures
+          canReadStructures,
+          { corpId: account.corporationId }
         );
         const corpFetchedAt = new Date().toISOString();
 

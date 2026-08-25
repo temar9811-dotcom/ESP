@@ -543,6 +543,7 @@ switch (command) {
          id: Number(id),
          name: entry.name || null,
          status: entry.status || null,
+         systemId: entry.systemId != null ? Number(entry.systemId) : null,
          savedAt: entry.savedAt || null,
          failedAt: entry.failedAt || null,
          failedUntil: entry.failedUntil || null
