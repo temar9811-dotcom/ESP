@@ -134,10 +134,12 @@ window.eveApi.testEnabled().then((enabled) => {
    panel.addEventListener('click', async (event) => {
      const cmdBtn = event.target.closest('[data-cmd]');
      if (cmdBtn) {
-       const cmd = cmdBtn.dataset.cmd;
+       const probeAll = cmdBtn.dataset.cmd === 'assets.structureAuditAll';
+       const cmd = probeAll ? 'assets.structureAudit' : cmdBtn.dataset.cmd;
+       const payload = probeAll ? { probeAll: true } : {};
        setResult(true, `running ${cmd}…`);
        window.eveApi
-         .testRun(cmd, cmd === 'assets.structureAuditAll' ? { probeAll: true } : {})
+         .testRun(cmd, payload)
          .then((res) => {
            console.log('test:', cmd, res);
            setResult(Boolean(res && res.ok), `${cmd}: ${summarize(res)}`);
