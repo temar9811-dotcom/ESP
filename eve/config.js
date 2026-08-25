@@ -51,5 +51,14 @@ module.exports = {
     intervalMs: 15 * 60 * 1000,
     batchSize: 10,
     batchDelayMs: 1500
+  },
+
+  // Sequenced wallet pull: second section (after skills), then every
+  // 10 minutes. Journal + transactions for each character, batched the
+  // same way skills are.
+  WALLET_SYNC: {
+    intervalMs: 10 * 60 * 1000,
+    batchSize: 10,
+    batchDelayMs: 1500
   }
 };

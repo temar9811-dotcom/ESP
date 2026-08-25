@@ -14,6 +14,7 @@ const eve = require('./eve');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
 const skillsSync = require('./main/skills-sync');
+const walletSync = require('./main/wallet-sync');
 const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
 const legacyGuard = require('./main/legacy-guard');
@@ -55,6 +56,7 @@ function onWalletActivity(payload) {
 function onAccountRemoved(characterId) {
   walletMonitor.removeBaseline(characterId);
   skillsSync.removeCharacter(characterId);
+  walletSync.removeCharacter(characterId);
 }
 
 async function bootstrap() {
@@ -118,8 +120,10 @@ async function bootstrap() {
   toastWindow.createToastWindow();
 
   // Skills pull is the first sequenced ESI section; it runs on its own
-  // timer from here (startup pull + every 15 minutes).
+  // timer from here (startup pull + every 15 minutes). The wallet pull
+  // queues behind it (startup pull + every 10 minutes).
   skillsSync.start();
+  walletSync.start();
 
   await accounts.refreshAll();
 
@@ -152,6 +156,8 @@ if (!gotTheLock) {
 app.on('before-quit', () => {
   windowTray.setQuitting(true);
   walletMonitor.stop();
+  skillsSync.stop();
+  walletSync.stop();
 });
 
 app.on('window-all-closed', () => {

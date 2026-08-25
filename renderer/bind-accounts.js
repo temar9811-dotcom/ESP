@@ -113,7 +113,7 @@ ESP.bindAccountEvents = function () {
 
       ESP.state.skillGroupsCollapse = ESP.state.skillGroupsCollapse || {};
       const current = ESP.state.skillGroupsCollapse[id] || {
-        all: false,
+        all: true,
         overrides: {}
       };
 
@@ -131,7 +131,7 @@ ESP.bindAccountEvents = function () {
 
       ESP.state.skillGroupsCollapse = ESP.state.skillGroupsCollapse || {};
       const current = ESP.state.skillGroupsCollapse[id] || {
-        all: false,
+        all: true,
         overrides: {}
       };
 
@@ -387,6 +387,17 @@ ESP.bindTopbarEvents = function () {
           if (slot && slot.status === 'ready') {
             delete ESP.state.allSkillsByCharacter[id];
           }
+        }
+      }
+      // Same for a wallet pull — re-read the wallet cache for the open
+      // character.
+      if (ESP.getActiveTab() === 'wallet' && ESP.state.openCharacterId != null) {
+        const id = Number(ESP.state.openCharacterId);
+        const state = ESP.state.walletState[id];
+        if (state && (state.status === 'loading' || state.status === 'loaded')) {
+          delete ESP.state.walletState[id];
+          ESP.loadWalletDetails(id);
+          return;
         }
       }
       ESP.render(accounts);

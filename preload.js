@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   getCharacterSkills: (characterId) => ipcRenderer.invoke('skills:getCharacter', characterId),
 
   // --- Wallet ---
-  getWalletDetails: (characterId) => ipcRenderer.invoke('accounts:getWalletDetails', characterId),
+  getCharacterWallet: (characterId) => ipcRenderer.invoke('wallet:getCharacter', characterId),
 
   // --- Clones ---
   getCloneDetails: (characterId) => ipcRenderer.invoke('accounts:getCloneDetails', characterId),

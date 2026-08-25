@@ -2,8 +2,12 @@
 
 window.ESP = window.ESP || {};
 
+// Wallet tab data comes from the main-process wallet cache (sequenced
+// ESI pull, re-pulled every 10 minutes) — no direct ESI calls from the
+// renderer. `force` (the Retry button) re-reads the cache after asking
+// the main process for an on-demand pull.
 ESP.loadWalletDetails = async function (characterId, force = false) {
-  if (!window.eveApi || !window.eveApi.getWalletDetails) {
+  if (!window.eveApi || !window.eveApi.getCharacterWallet) {
     ESP.state.walletState[characterId] = {
       status: 'error',
       error: 'Wallet details are not available.'
@@ -29,12 +33,21 @@ ESP.loadWalletDetails = async function (characterId, force = false) {
   ESP.render(ESP.state.lastAccounts);
 
   try {
-    const data = await window.eveApi.getWalletDetails(characterId);
+    const result = await window.eveApi.getCharacterWallet(characterId);
 
-    ESP.state.walletState[characterId] = {
-      status: 'loaded',
-      data
-    };
+    if (!result || !result.data) {
+      // No cache yet — a pull was queued; wait for the accounts broadcast.
+      ESP.state.walletState[characterId] = {
+        status: 'loading',
+        pulling: Boolean(result && result.pulling)
+      };
+    } else {
+      ESP.state.walletState[characterId] = {
+        status: 'loaded',
+        data: result.data,
+        fetchedAt: result.fetchedAt || null
+      };
+    }
   } catch (err) {
     ESP.state.walletState[characterId] = {
       status: 'error',

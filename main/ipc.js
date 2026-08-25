@@ -12,6 +12,7 @@ const corpInfo = require('./corp-info');
 const groups = require('./groups');
 const skillMeta = require('./skill-meta');
 const skillsSync = require('./skills-sync');
+const walletSync = require('./wallet-sync');
 const notes = require('./notes');
 const clonesHistory = require('./clones-history');
 const cloneNicknames = require('./clones-nicknames');
@@ -258,27 +259,25 @@ function registerIpcHandlers() {
     return corpInfo.getCorpAlliance(characterId);
   });
 
-  ipcMain.handle('accounts:getWalletDetails', async (_event, characterId) => {
+  // Wallet details come from the wallet-sync cache (sequenced ESI pull,
+  // re-pulled every 10 minutes). A cache miss returns a placeholder and
+  // queues a pull so the tab fills in on the next accounts broadcast.
+  ipcMain.handle('wallet:getCharacter', async (_event, characterId) => {
     const account = accounts.getAccounts().find(
       (a) => Number(a.characterId) === Number(characterId)
     );
     if (!account) {
       throw new Error('Character not found.');
     }
-    try {
-      let token = await accounts.getValidAccessToken(account, false);
-      try {
-        return await eve.getWalletDetails(account.characterId, token, 7);
-      } catch (err) {
-        if (err && err.status === 401) {
-          token = await accounts.getValidAccessToken(account, true);
-          return await eve.getWalletDetails(account.characterId, token, 7);
-        }
-        throw err;
-      }
-    } catch (err) {
-      throw new Error(err?.message || String(err));
-    }
+
+    const cached = walletSync.getDetails(characterId);
+    if (cached) return cached;
+
+    walletSync.pull().catch((err) =>
+      console.error('[wallet] on-demand pull failed', err?.message || err)
+    );
+
+    return { data: null, fetchedAt: null, pulling: walletSync.isPulling() };
   });
 
   ipcMain.handle('accounts:getCloneDetails', async (_event, characterId) => {

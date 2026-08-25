@@ -212,8 +212,9 @@ ESP.allSkillsHtml = function (account) {
 `;
   }
 
+  // Skill groups are collapsed by default; the user expands them.
   const collapseState = (ESP.state.skillGroupsCollapse || {})[id] || {
-    all: false,
+    all: true,
     overrides: {}
   };
 
@@ -285,6 +286,29 @@ ESP.amountHtml = function (amount) {
   return `<span class="${className}">${sign}${ESP.formatIsk(Math.abs(value))}</span>`;
 };
 
+// Journal entries and transactions render in their own vertically
+// stacked boxes. Each box shows the newest 10 entries; the list scrolls
+// for older ones.
+ESP.walletBoxHtml = function (title, entries, rowHtml) {
+  const visible = entries.slice(0, 500);
+
+  const rows = visible.length
+    ? visible.map(rowHtml).join('')
+    : `<div class="wallet-empty">No entries in the last 7 days.</div>`;
+
+  return `
+<div class="wallet-box">
+  <div class="wallet-box-header">
+    <span>${ESP.escapeHtml(title)}</span>
+    <span class="wallet-box-count">${ESP.formatNumber(entries.length)}</span>
+  </div>
+  <div class="wallet-box-list">
+${rows}
+  </div>
+</div>
+`;
+};
+
 ESP.walletTabHtml = function (account) {
   const id = Number(account.characterId);
   const state = ESP.state.walletState[id];
@@ -308,26 +332,34 @@ ESP.walletTabHtml = function (account) {
 
   const summary = data.summary || {};
 
-  const rows = data.entries
-    .slice(0, 500)
-    .map((entry) => {
-      const detail =
-        entry.kind === 'transaction'
-          ? `${ESP.escapeHtml(entry.description)} @ ${ESP.formatIsk(entry.unitPrice)}`
-          : ESP.escapeHtml(entry.description);
+  const journal = data.entries.filter((entry) => entry.kind === 'journal');
+  const transactions = data.entries.filter((entry) => entry.kind === 'transaction');
 
-      return `
-<tr>
-  <td>${ESP.formatDate(entry.date)}</td>
-  <td>${ESP.escapeHtml(entry.category || '')}</td>
-  <td>${ESP.escapeHtml(entry.party || '')}</td>
-  <td>${detail}</td>
-  <td>${ESP.amountHtml(entry.amount)}</td>
-  <td>${entry.balance == null ? '—' : ESP.formatIsk(entry.balance)}</td>
-</tr>
-`;
-    })
-    .join('');
+  const journalBox = ESP.walletBoxHtml('Journal Entries', journal, (entry) => `
+<div class="wallet-row">
+  <div class="wallet-row-main">
+    <span class="wallet-row-desc">${ESP.escapeHtml(entry.description)}</span>
+    <span class="wallet-row-sub">${ESP.escapeHtml(entry.category || '')}${entry.party ? ` · ${ESP.escapeHtml(entry.party)}` : ''}</span>
+  </div>
+  <div class="wallet-row-side">
+    ${ESP.amountHtml(entry.amount)}
+    <span class="wallet-row-sub">${ESP.formatDate(entry.date)}${entry.balance == null ? '' : ` · ${ESP.formatIsk(entry.balance)}`}</span>
+  </div>
+</div>
+`);
+
+  const transactionsBox = ESP.walletBoxHtml('Transactions', transactions, (entry) => `
+<div class="wallet-row">
+  <div class="wallet-row-main">
+    <span class="wallet-row-desc">${ESP.escapeHtml(entry.description)}</span>
+    <span class="wallet-row-sub">${ESP.escapeHtml(entry.party || '')} @ ${ESP.formatIsk(entry.unitPrice)}</span>
+  </div>
+  <div class="wallet-row-side">
+    ${ESP.amountHtml(entry.amount)}
+    <span class="wallet-row-sub">${ESP.formatDate(entry.date)}</span>
+  </div>
+</div>
+`);
 
   return `
 <div class="stats-grid">
@@ -350,23 +382,8 @@ ESP.walletTabHtml = function (account) {
     </div>
   </div>
 </div>
-<div class="table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Type</th>
-        <th>Party</th>
-        <th>Details</th>
-        <th>Amount</th>
-        <th>Balance</th>
-      </tr>
-    </thead>
-    <tbody>
-${rows}
-    </tbody>
-  </table>
-</div>
+${journalBox}
+${transactionsBox}
 `;
 };
 
