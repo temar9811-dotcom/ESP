@@ -27,6 +27,11 @@ let actions = {
   addAccount: async () => {}
 };
 
+// The layout (2-wide character rail + skill groups sized to their text)
+// needs at least this much room; the window cannot be resized smaller.
+const MIN_WIDTH = 1500;
+const MIN_HEIGHT = 700;
+
 function boundsFile() {
   return path.join(app.getPath('userData'), 'window-bounds.json');
 }
@@ -40,8 +45,8 @@ function loadBounds() {
       typeof b.y === 'number' &&
       typeof b.width === 'number' &&
       typeof b.height === 'number' &&
-      b.width >= 200 &&
-      b.height >= 150
+      b.width >= MIN_WIDTH &&
+      b.height >= MIN_HEIGHT
     ) {
       return b;
     }
@@ -61,8 +66,8 @@ function saveBounds() {
   const clamped = {
     x: Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - 100)),
     y: Math.max(workArea.y, Math.min(bounds.y, workArea.y + workArea.height - 100)),
-    width: Math.max(200, Math.min(bounds.width, workArea.width)),
-    height: Math.max(150, Math.min(bounds.height, workArea.height))
+    width: Math.max(MIN_WIDTH, Math.min(bounds.width, workArea.width)),
+    height: Math.max(MIN_HEIGHT, Math.min(bounds.height, workArea.height))
   };
 
   try {
@@ -195,8 +200,10 @@ function createWindow() {
   const saved = loadBounds();
 
   const windowOpts = {
-    width: 1150,
-    height: 760,
+    width: MIN_WIDTH,
+    height: 900,
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     show: false,
     title: `${eveConfig.APP_NAME} v${VERSION}`,
     autoHideMenuBar: true,

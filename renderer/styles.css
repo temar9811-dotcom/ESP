@@ -149,6 +149,7 @@ body {
   min-width: 0;
   overflow: auto;
   padding: 14px 18px;
+  container-type: inline-size;
 }
 
 /* Wide windows: characters sit two-wide in the rail */
@@ -204,11 +205,38 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Skill groups flow 1-wide up to 4-wide as the pane gets wider. The
+   minmax(min-content, 1fr) tracks mean a group never shrinks narrower
+   than the skill text inside it. */
+.skills-groups {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(min-content, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+@container (min-width: 950px) {
+  .skills-groups {
+    grid-template-columns: repeat(2, minmax(min-content, 1fr));
+  }
+}
+
+@container (min-width: 1420px) {
+  .skills-groups {
+    grid-template-columns: repeat(3, minmax(min-content, 1fr));
+  }
+}
+
+@container (min-width: 1900px) {
+  .skills-groups {
+    grid-template-columns: repeat(4, minmax(min-content, 1fr));
+  }
+}
+
 .skill-group {
   border: 1px solid #2b3948;
   border-radius: 8px;
   background: #16202b;
-  margin-bottom: 8px;
   overflow: hidden;
 }
 
@@ -258,9 +286,6 @@ body {
 
 .skill-row-name {
   flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

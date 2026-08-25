@@ -270,7 +270,9 @@ ESP.allSkillsHtml = function (account) {
     >${collapseState.all ? '▸' : '▾'}</button>
     <span class="skills-toolbar-label">All Skills · ${data.groups.length} groups</span>
   </div>
-  ${groupsHtml}
+  <div class="skills-groups">
+    ${groupsHtml}
+  </div>
 </div>
 `;
 };
