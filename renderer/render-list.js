@@ -25,6 +25,23 @@ ESP.render = function (accounts) {
     }
   }
 
+  for (const stateMap of [
+    ESP.state.allSkillsByCharacter,
+    ESP.state.skillGroupsCollapse
+  ]) {
+    for (const key of Object.keys(stateMap || {})) {
+      const id = Number(key);
+
+      const exists = ESP.state.lastAccounts.some(
+        (account) => Number(account.characterId) === id
+      );
+
+      if (!exists) {
+        delete stateMap[id];
+      }
+    }
+  }
+
   const accountsEl = document.getElementById('accounts');
   if (!accountsEl) return;
 

@@ -71,6 +71,32 @@ ESP.maybeAutoLoadAssets = function () {
   }
 };
 
+// Skills tab data comes from the main-process skills cache — no direct
+// ESI calls from the renderer.
+ESP.loadAllSkills = async function (characterId, force = false) {
+  const id = Number(characterId);
+
+  ESP.state.allSkillsByCharacter = ESP.state.allSkillsByCharacter || {};
+  const slot = ESP.state.allSkillsByCharacter[id];
+
+  if (slot && slot.status === 'loading') return;
+  if (slot && slot.status === 'ready' && !force) return;
+
+  ESP.state.allSkillsByCharacter[id] = { status: 'loading' };
+
+  try {
+    const data = await window.eveApi.getCharacterSkills(id);
+    ESP.state.allSkillsByCharacter[id] = { status: 'ready', data };
+  } catch (err) {
+    ESP.state.allSkillsByCharacter[id] = {
+      status: 'error',
+      error: err?.message || String(err)
+    };
+  }
+
+  ESP.render(ESP.state.lastAccounts);
+};
+
 ESP.loadCloneDetails = async function (characterId, force) {
   const account = ESP.state.lastAccounts.find(
     (a) => Number(a.characterId) === Number(characterId)

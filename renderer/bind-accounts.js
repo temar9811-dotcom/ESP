@@ -98,6 +98,56 @@ ESP.bindAccountEvents = function () {
       return;
     }
 
+    const skillsRetry = event.target.closest('.skills-retry');
+
+    if (skillsRetry) {
+      ESP.loadAllSkills(Number(skillsRetry.dataset.id), true);
+      return;
+    }
+
+    const collapseAllBtn = event.target.closest('.skills-collapse-all');
+
+    if (collapseAllBtn) {
+      const id = Number(collapseAllBtn.dataset.id);
+
+      ESP.state.skillGroupsCollapse = ESP.state.skillGroupsCollapse || {};
+      const current = ESP.state.skillGroupsCollapse[id] || {
+        all: false,
+        overrides: {}
+      };
+
+      ESP.state.skillGroupsCollapse[id] = { all: !current.all, overrides: {} };
+
+      ESP.render(ESP.state.lastAccounts);
+      return;
+    }
+
+    const skillGroupHeader = event.target.closest('.skill-group-header');
+
+    if (skillGroupHeader) {
+      const id = Number(skillGroupHeader.dataset.id);
+      const groupId = skillGroupHeader.dataset.groupId;
+
+      ESP.state.skillGroupsCollapse = ESP.state.skillGroupsCollapse || {};
+      const current = ESP.state.skillGroupsCollapse[id] || {
+        all: false,
+        overrides: {}
+      };
+
+      const collapsed =
+        current.overrides[groupId] != null
+          ? current.overrides[groupId]
+          : current.all;
+
+      ESP.state.skillGroupsCollapse[id] = {
+        all: current.all,
+        overrides: { ...current.overrides, [groupId]: !collapsed }
+      };
+
+      ESP.render(ESP.state.lastAccounts);
+      return;
+    }
+
     const cloneEditIcon = event.target.closest('.clone-edit-icon');
 
     if (cloneEditIcon) {
@@ -326,6 +376,17 @@ ESP.bindTopbarEvents = function () {
       ESP.state.skillSearch.index = null;
       if (typeof ESP.invalidateStaleAssetCaches === 'function') {
         ESP.invalidateStaleAssetCaches(accounts);
+      }
+      // A skills pull may have landed with this broadcast — reload the
+      // Skills tab from the cache.
+      if (ESP.getActiveTab() === 'queue') {
+        for (const [id, slot] of Object.entries(
+          ESP.state.allSkillsByCharacter || {}
+        )) {
+          if (slot && slot.status === 'ready') {
+            delete ESP.state.allSkillsByCharacter[id];
+          }
+        }
       }
       ESP.render(accounts);
     });

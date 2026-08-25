@@ -13,6 +13,7 @@ const eveConfig = require('./eve/config');
 const eve = require('./eve');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
+const skillsSync = require('./main/skills-sync');
 const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
 const legacyGuard = require('./main/legacy-guard');
@@ -53,6 +54,7 @@ function onWalletActivity(payload) {
 
 function onAccountRemoved(characterId) {
   walletMonitor.removeBaseline(characterId);
+  skillsSync.removeCharacter(characterId);
 }
 
 async function bootstrap() {
@@ -114,6 +116,10 @@ async function bootstrap() {
 
   windowTray.createTray();
   toastWindow.createToastWindow();
+
+  // Skills pull is the first sequenced ESI section; it runs on its own
+  // timer from here (startup pull + every 15 minutes).
+  skillsSync.start();
 
   await accounts.refreshAll();
 

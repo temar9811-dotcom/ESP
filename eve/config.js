@@ -42,5 +42,14 @@ module.exports = {
 
   WALLET_MONITOR: {
     intervalMs: 120000
+  },
+
+  // Sequenced skills pull: first section to run at startup, then every
+  // 15 minutes. Calls go out in batches of 10 with a pause between
+  // batches so 40+ character rosters stay well under ESI rate limits.
+  SKILLS: {
+    intervalMs: 15 * 60 * 1000,
+    batchSize: 10,
+    batchDelayMs: 1500
   }
 };

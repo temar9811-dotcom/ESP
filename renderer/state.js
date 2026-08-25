@@ -7,6 +7,8 @@ ESP.state = {
   openCharacterId: null,
   activeTab: 'overview',
   walletState: {},
+  allSkillsByCharacter: {},
+  skillGroupsCollapse: {},
   plans: [],
   addPlanState: null,
   planDetail: null,

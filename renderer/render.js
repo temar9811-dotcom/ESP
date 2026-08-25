@@ -171,6 +171,107 @@ ${banner}
   </div>
 </div>
 ${ESP.queueHtmlFull(account)}
+${ESP.allSkillsHtml(account)}
+`;
+};
+
+ESP.allSkillsHtml = function (account) {
+  const id = Number(account.characterId);
+  const slot = (ESP.state.allSkillsByCharacter || {})[id];
+
+  if (!slot) {
+    ESP.loadAllSkills(id);
+    return `<div class="skills-list-empty">Loading skills…</div>`;
+  }
+
+  if (slot.status === 'loading') {
+    return `<div class="skills-list-empty">Loading skills…</div>`;
+  }
+
+  if (slot.status === 'error') {
+    return `
+<div class="skills-list-empty">
+  Failed to load skills: ${ESP.escapeHtml(slot.error || 'Unknown error')}
+  <button type="button" class="skills-retry" data-id="${id}">Retry</button>
+</div>
+`;
+  }
+
+  const data = slot.data || {};
+
+  if (!data.cached) {
+    return `
+<div class="skills-list-empty">
+  ${
+    data.pulling
+      ? 'Initial skills pull in progress — skills will appear here shortly.'
+      : 'No skills data cached yet.'
+  }
+  <button type="button" class="skills-retry" data-id="${id}">Retry</button>
+</div>
+`;
+  }
+
+  const collapseState = (ESP.state.skillGroupsCollapse || {})[id] || {
+    all: false,
+    overrides: {}
+  };
+
+  const groupsHtml = (data.groups || [])
+    .map((group) => {
+      const isCollapsed =
+        collapseState.overrides[group.id] != null
+          ? collapseState.overrides[group.id]
+          : collapseState.all;
+
+      const rows = isCollapsed
+        ? ''
+        : `
+<div class="skill-group-rows">
+  ${group.skills
+    .map(
+      (skill) => `
+  <div class="skill-row">
+    <span class="skill-row-name">${ESP.escapeHtml(skill.name)}</span>
+    <span class="skill-row-level">Level ${skill.level}</span>
+    <span class="skill-row-sp">${ESP.formatOptionalNumber(skill.sp)} SP</span>
+  </div>`
+    )
+    .join('')}
+</div>`;
+
+      return `
+<div class="skill-group">
+  <div
+    class="skill-group-header"
+    data-id="${id}"
+    data-group-id="${group.id}"
+    role="button"
+    tabindex="0"
+  >
+    <span class="skill-group-chevron">${isCollapsed ? '▸' : '▾'}</span>
+    <span class="skill-group-name">${ESP.escapeHtml(group.name)}</span>
+    <span class="skill-group-count">${group.skills.length}</span>
+  </div>
+  ${rows}
+</div>`;
+    })
+    .join('');
+
+  return `
+<div class="skills-section">
+  <div class="skills-toolbar">
+    <button
+      type="button"
+      class="skills-collapse-all ${collapseState.all ? 'is-collapsed' : ''}"
+      data-id="${id}"
+      title="${collapseState.all ? 'Expand all skill groups' : 'Collapse all skill groups'}"
+      aria-label="${collapseState.all ? 'Expand all skill groups' : 'Collapse all skill groups'}"
+    >${collapseState.all ? '▸' : '▾'}</button>
+    <span class="skills-toolbar-label">All Skills · ${data.groups.length} groups</span>
+  </div>
+  ${groupsHtml}
+</div>
 `;
 };
 
@@ -320,7 +421,7 @@ ESP.skillPlansTabHtml = function (account) {
 
 ESP.PRIMARY_TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'queue', label: 'Skill Queue' },
+  { id: 'queue', label: 'Skills' },
   { id: 'wallet', label: 'Wallet' },
   { id: 'plans', label: 'Skill Plan' },
   { id: 'assets', label: 'Assets' },

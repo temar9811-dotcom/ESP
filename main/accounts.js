@@ -275,14 +275,19 @@ async function refreshCharacter(account) {
   try {
     let token = await getValidAccessToken(account, false);
 
+    // Use the skills cache when available; skills-sync owns that endpoint.
+    // Lazy require: skills-sync depends on this module.
+    const skillsSync = require('./skills-sync');
+    const cachedSkills = skillsSync.getSkills(account.characterId);
+
     let dashboard;
 
     try {
-      dashboard = await eve.getDashboard(account.characterId, token);
+      dashboard = await eve.getDashboard(account.characterId, token, cachedSkills);
     } catch (err) {
       if (err && err.status === 401) {
         token = await getValidAccessToken(account, true);
-        dashboard = await eve.getDashboard(account.characterId, token);
+        dashboard = await eve.getDashboard(account.characterId, token, cachedSkills);
       } else {
         throw err;
       }

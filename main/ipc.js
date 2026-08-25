@@ -11,6 +11,7 @@ const toastWindow = require('./toast-window');
 const corpInfo = require('./corp-info');
 const groups = require('./groups');
 const skillMeta = require('./skill-meta');
+const skillsSync = require('./skills-sync');
 const notes = require('./notes');
 const clonesHistory = require('./clones-history');
 const cloneNicknames = require('./clones-nicknames');
@@ -354,6 +355,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('skills:getMeta', async (_event, ids) => {
     return skillMeta.getMetaForIds(ids);
+  });
+
+  ipcMain.handle('skills:getCharacter', async (_event, characterId) => {
+    return skillsSync.getGroupedSkills(characterId);
   });
 
   ipcMain.handle('skills:resolveNames', async (_event, ids) => {

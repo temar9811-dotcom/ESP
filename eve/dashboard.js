@@ -233,17 +233,21 @@ function getQueueTimes(queue) {
   return { totalDurationMs, remainingMs, lastFinish };
 }
 
-async function getDashboard(characterId, accessToken) {
+// cachedSkills: a previously fetched /characters/{id}/skills/ payload
+// (from the skills cache). When omitted, skills are fetched live.
+async function getDashboard(characterId, accessToken, cachedSkills) {
   const [wallet, rawQueue] = await Promise.all([
     getWallet(characterId, accessToken),
     getSkillQueue(characterId, accessToken)
   ]);
 
-  let skills = null;
+  let skills = cachedSkills || null;
   let location = null;
   let ship = null;
 
-  try { skills = await getCharacterSkills(characterId, accessToken); } catch { skills = null; }
+  if (!skills) {
+    try { skills = await getCharacterSkills(characterId, accessToken); } catch { skills = null; }
+  }
   try { location = await getCharacterLocation(characterId, accessToken); } catch { location = null; }
   try { ship = await getCharacterShip(characterId, accessToken); } catch { ship = null; }
 
@@ -316,6 +320,7 @@ async function getDashboard(characterId, accessToken) {
 
 module.exports = {
   getDashboard,
+  getCharacterSkills,
   getTypeNames,
   getSkillIdsFromNames,
   resolveLocationName

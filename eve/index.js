@@ -5,6 +5,7 @@ const { esiFetch, publicFetch, publicPost } = require('./http');
 const { startLogin, refreshAccessToken } = require('./sso');
 const {
   getDashboard,
+  getCharacterSkills,
   getTypeNames,
   getSkillIdsFromNames,
   resolveLocationName
@@ -34,6 +35,7 @@ module.exports = {
   refreshAccessToken,
 
   getDashboard,
+  getCharacterSkills,
   getTypeNames,
   getSkillIdsFromNames,
   resolveLocationName,

@@ -170,6 +170,133 @@ body {
   }
 }
 
+/* Skills tab: all-skills browser */
+.skills-section {
+  margin-top: 16px;
+}
+
+.skills-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.skills-collapse-all {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: #223140;
+  color: #dfe7ef;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.skills-collapse-all:hover {
+  background: #2c3f52;
+}
+
+.skills-toolbar-label {
+  color: #9fb2c4;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.skill-group {
+  border: 1px solid #2b3948;
+  border-radius: 8px;
+  background: #16202b;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.skill-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.skill-group-header:hover {
+  background: #1c2835;
+}
+
+.skill-group-chevron {
+  color: #9fb2c4;
+  width: 12px;
+}
+
+.skill-group-name {
+  font-weight: 600;
+}
+
+.skill-group-count {
+  margin-left: auto;
+  color: #9fb2c4;
+  font-size: 12px;
+  border: 1px solid #33455a;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.skill-group-rows {
+  border-top: 1px solid #2b3948;
+  padding: 6px 10px;
+}
+
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.skill-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-row-level {
+  color: #9fb2c4;
+  flex: 0 0 auto;
+}
+
+.skill-row-sp {
+  color: #9fb2c4;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.skills-list-empty {
+  padding: 14px;
+  border: 1px dashed #3a4b5d;
+  border-radius: 8px;
+  color: #9fb2c4;
+  margin-top: 16px;
+}
+
+.skills-retry {
+  margin-left: 8px;
+  padding: 4px 10px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: #223140;
+  color: #dfe7ef;
+  cursor: pointer;
+}
+
+.skills-retry:hover {
+  background: #2c3f52;
+}
+
 .empty {
   padding: 30px;
   border: 1px dashed #3a4b5d;

@@ -83,7 +83,7 @@ This repository tracks the latest development (alpha) code. If you want to run t
 **Currently tracked version: v1.2.0A**
 
 ### Changelog
-- **v1.2.0A** — Interface rebuild: Overview, Skill Queue, Wallet, Skill Plan and Assets are now primary tabs across the top; characters are vertical secondary tabs in a side rail (single-column at narrow widths, two-wide at 1080px+).
+- **v1.2.0A** — Interface rebuild: Overview, Skill Queue, Wallet, Skill Plan and Assets are now primary tabs across the top; characters are vertical secondary tabs in a side rail (single-column at narrow widths, two-wide at 1080px+). Skill Queue renamed to Skills: all trained skills listed by group under the queue info, with collapsible groups and a collapse-all toggle. Skills ESI pulls are now sequenced (skills first at startup, one section at a time), batched 10 calls at a time to stay under CCP rate limits for 40+ character rosters, saved to a local cache file, and refreshed every 15 minutes.
 - **v1.1.14-beta** — Local clone nicknames: hover any clone to assign a custom name stored locally per jump_clone_id; nickname persists across refreshes.
 - **v1.1.13-beta** — Assets tab: clone locations & implants; diff-based active clone detection; implant slot numbers via dogma attributes; market price valuations; lazy fetch on tab open. Existing users must re-add characters with Full scopes.
 - **v1.1.12-beta** — Cross-character skill search; window remembers size and position; fixed ESI field names for skill levels and SP (queue costs now accurate); fixed notes not saving.
