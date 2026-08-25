@@ -39,10 +39,16 @@ function onAccountsBroadcast(publicAccounts) {
 
 function onSkillCompleted(payload) {
   notifications.notifySkillCompleted(payload);
+  sendToRenderer('notification:skill-complete', payload || {});
 }
 
 function onQueueWarning(payload) {
   notifications.notifyQueueWarning(payload);
+  sendToRenderer('notification:queue-warning', payload || {});
+}
+
+function onQueueEmpty(payload) {
+  sendToRenderer('notification:queue-empty', payload || {});
 }
 
 function onRefreshState(state) {
@@ -51,6 +57,7 @@ function onRefreshState(state) {
 
 function onWalletActivity(payload) {
   notifications.notifyWalletActivity(payload);
+  sendToRenderer('notification:wallet-activity', payload || {});
 }
 
 function onAccountRemoved(characterId) {
@@ -76,6 +83,7 @@ async function bootstrap() {
     onBroadcast: onAccountsBroadcast,
     onSkillCompleted,
     onQueueWarning,
+    onQueueEmpty,
     onRefreshState,
     onAccountRemoved
   });
@@ -105,7 +113,10 @@ async function bootstrap() {
 
   ipc.registerIpcHandlers();
 
-  assetsQueue.start();
+  // Asset ESI pulls are paused for now — the 2-hourly background sweep is
+  // disabled until the assets tab is rebuilt. Manual asset fetches from
+  // the tab still work off the cached data.
+  // assetsQueue.start();
 
   windowTray.createWindow();
 

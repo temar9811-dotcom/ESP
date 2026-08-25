@@ -226,6 +226,11 @@ ${railHtml}
     ESP.loadCorpInfo(selectedId);
   }
 
+  // Re-home the skill search box into the freshly rendered skills tab.
+  if (ESP.state.skillSearch && ESP.state.skillSearch.open) {
+    ESP.renderSkillSearch();
+  }
+
   ESP.maybeAutoLoadWallet();
   ESP.maybeAutoLoadAssets();
 };

@@ -17,6 +17,7 @@ let callbacks = {
   onBroadcast: () => {},
   onSkillCompleted: () => {},
   onQueueWarning: () => {},
+  onQueueEmpty: () => {},
   onRefreshState: () => {},
   onAccountRemoved: () => {}
 };
@@ -226,10 +227,20 @@ function checkSkillCompletion(account, dashboard) {
         });
 
         callbacks.onSkillCompleted({
+          characterId: account.characterId,
           characterName: account.characterName || 'Unknown',
           skillName: lastSkill.skillName || 'Unknown skill',
           level: lastSkill.finished_level || '?'
         });
+
+        // A skill just finished — if nothing new started training, the
+        // character is now idle.
+        if (!currentActive) {
+          callbacks.onQueueEmpty({
+            characterId: account.characterId,
+            characterName: account.characterName || 'Unknown'
+          });
+        }
       }
     }
   }
@@ -266,6 +277,7 @@ function checkQueueWarning(account, dashboard) {
 
   account.lastQueueWarnKey = key;
   callbacks.onQueueWarning({
+    characterId: account.characterId,
     characterName: account.characterName || 'Unknown',
     remainingMs: remaining
   });

@@ -32,6 +32,13 @@ ESP.initToastListeners = function () {
         'Skill complete',
         `${payload.characterName}: ${payload.skillName} L${payload.level} finished training.`
       );
+
+      // Green glow for the finished skill. If nothing started training
+      // behind it, the main process also fires queue-empty (red).
+      if (payload.characterId != null) {
+        ESP.notifyChar(payload.characterId, 'skillComplete');
+        ESP.render(ESP.state.lastAccounts);
+      }
     });
   }
 
@@ -54,6 +61,29 @@ ESP.initToastListeners = function () {
           'Wallet activity',
           `${payload.characterName}: ${list.length - shown.length} more wallet entries.`
         );
+      }
+
+      if (payload.characterId != null) {
+        ESP.notifyChar(payload.characterId, 'wallet');
+        ESP.render(ESP.state.lastAccounts);
+      }
+    });
+  }
+
+  if (window.eveApi && window.eveApi.onQueueWarning) {
+    window.eveApi.onQueueWarning((payload) => {
+      if (payload.characterId != null) {
+        ESP.notifyChar(payload.characterId, 'queueEmpty');
+        ESP.render(ESP.state.lastAccounts);
+      }
+    });
+  }
+
+  if (window.eveApi && window.eveApi.onQueueEmpty) {
+    window.eveApi.onQueueEmpty((payload) => {
+      if (payload.characterId != null) {
+        ESP.notifyChar(payload.characterId, 'queueEmpty');
+        ESP.render(ESP.state.lastAccounts);
       }
     });
   }

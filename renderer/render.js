@@ -156,6 +156,13 @@ ESP.skillQueueTabHtml = function (account) {
 
   return `
 ${banner}
+<div class="skill-tab-toolbar">
+  <button
+    type="button"
+    id="skillSearchTab"
+    class="skill-search-tab-btn"
+  >Skill Search</button>
+</div>
 <div class="stats-grid">
   <div class="stat-card">
     <div class="stat-label">Total Queue SP Cost</div>
@@ -566,6 +573,7 @@ ESP.characterSheetHtml = function (account, opts = {}) {
 ESP.characterTabHtml = function (account, opts = {}) {
   const isSelected =
     Number(ESP.state.openCharacterId) === Number(account.characterId);
+  const glow = ESP.charGlowClass ? ESP.charGlowClass(account) : '';
   const portrait = `https://images.evetech.net/characters/${account.characterId}/portrait?size=64`;
 
   const location = account.location || 'Unknown location';
@@ -589,7 +597,7 @@ ESP.characterTabHtml = function (account, opts = {}) {
 
   return `
 <section
-  class="character-item ${isSelected ? 'selected' : ''}"
+  class="character-item ${isSelected ? 'selected' : ''} ${glow}"
   data-character-id="${account.characterId}"
   style="position:relative;"
 >

@@ -46,6 +46,78 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+}
+
+/* Tabs-bar sync indicator: a spinner that shows a countdown popup on
+   hover with the time until the next skills / wallet / assets ESI pull. */
+.sync-indicator {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  flex: 0 0 auto;
+}
+
+.sync-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(125, 144, 163, 0.35);
+  border-top-color: #7d90a3;
+  animation: syncSpin 1.4s linear infinite;
+}
+
+.sync-indicator.pulling .sync-spinner {
+  border-top-color: #4da3ff;
+  border-color: rgba(77, 163, 255, 0.25);
+  animation-duration: 0.7s;
+}
+
+@keyframes syncSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sync-popup {
+  position: absolute;
+  right: 0;
+  top: 26px;
+  min-width: 170px;
+  padding: 8px 10px;
+  border: 1px solid #33455a;
+  border-radius: 8px;
+  background: #1b2733;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  color: #cfe0f2;
+  white-space: nowrap;
+  display: none;
+  z-index: 60;
+}
+
+.sync-indicator:hover .sync-popup {
+  display: block;
+}
+
+.sync-popup .sync-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.sync-popup .sync-label {
+  color: #9fb3c8;
+}
+
+.sync-popup .sync-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.sync-popup .sync-value.now {
+  color: #4da3ff;
 }
 
 .actions button {
@@ -334,6 +406,68 @@ body {
   border-color: #4d739c;
   background: #1b2733;
   box-shadow: 0 0 8px rgba(77, 115, 156, 0.35);
+}
+
+/* Character tab pulse-glow notifications. Cleared when the tab is
+   selected. Priority: red > green > yellow > purple (derived). */
+.character-item.glow-yellow {
+  animation: charGlowYellow 1.8s ease-in-out infinite;
+}
+
+.character-item.glow-green {
+  animation: charGlowGreen 1.8s ease-in-out infinite;
+}
+
+.character-item.glow-red {
+  animation: charGlowRed 1.8s ease-in-out infinite;
+}
+
+.character-item.glow-purple {
+  animation: charGlowPurple 1.8s ease-in-out infinite;
+}
+
+@keyframes charGlowYellow {
+  0%, 100% {
+    border-color: #2b3948;
+    box-shadow: 0 0 0 rgba(245, 197, 66, 0);
+  }
+  50% {
+    border-color: #f5c542;
+    box-shadow: 0 0 16px rgba(245, 197, 66, 0.6);
+  }
+}
+
+@keyframes charGlowGreen {
+  0%, 100% {
+    border-color: #2b3948;
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0);
+  }
+  50% {
+    border-color: #4caf50;
+    box-shadow: 0 0 16px rgba(76, 175, 80, 0.6);
+  }
+}
+
+@keyframes charGlowRed {
+  0%, 100% {
+    border-color: #2b3948;
+    box-shadow: 0 0 0 rgba(229, 57, 53, 0);
+  }
+  50% {
+    border-color: #e53935;
+    box-shadow: 0 0 16px rgba(229, 57, 53, 0.65);
+  }
+}
+
+@keyframes charGlowPurple {
+  0%, 100% {
+    border-color: #2b3948;
+    box-shadow: 0 0 0 rgba(171, 71, 188, 0);
+  }
+  50% {
+    border-color: #ab47bc;
+    box-shadow: 0 0 16px rgba(171, 71, 188, 0.6);
+  }
 }
 
 .character-tab {
@@ -944,6 +1078,34 @@ tfoot td {
 .skill-search-input-wrap {
   position: relative;
   margin-right: 10px;
+}
+
+/* Toolbar at the top of each character's skills tab — hosts the Skill
+   Search button and (when open) the search box. */
+.skill-tab-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.skill-search-tab-btn {
+  padding: 8px 12px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: #223140;
+  color: #dfe7ef;
+  cursor: pointer;
+  font: inherit;
+}
+
+.skill-search-tab-btn:hover {
+  background: #2c3f52;
+}
+
+.skill-tab-toolbar .skill-search-input-wrap {
+  margin-right: 0;
 }
 
 .skill-search-input {

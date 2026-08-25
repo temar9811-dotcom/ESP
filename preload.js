@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   // --- App & System ---
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   getRefreshState: () => ipcRenderer.invoke('app:getRefreshState'),
+  getSyncState: () => ipcRenderer.invoke('app:getSyncState'),
 
   // --- Accounts & Characters ---
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
@@ -86,6 +87,20 @@ contextBridge.exposeInMainWorld('eveApi', {
     ipcRenderer.on('notification:wallet-activity', listener);
     return () => {
       ipcRenderer.removeListener('notification:wallet-activity', listener);
+    };
+  },
+  onQueueWarning: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('notification:queue-warning', listener);
+    return () => {
+      ipcRenderer.removeListener('notification:queue-warning', listener);
+    };
+  },
+  onQueueEmpty: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('notification:queue-empty', listener);
+    return () => {
+      ipcRenderer.removeListener('notification:queue-empty', listener);
     };
   },
   onRefreshState: (callback) => {

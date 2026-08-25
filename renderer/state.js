@@ -21,7 +21,11 @@ ESP.state = {
     popup: null,
     minimized: false,
     index: null
-  }
+  },
+  // Per-character tab glow flags: wallet / skillComplete / queueEmpty.
+  // Cleared when the character's tab is selected. The "training but no
+  // next skill" purple glow is derived live from the account data.
+  charNotifications: {}
 };
 
 ESP.setStatus = function (message, isError = false) {
@@ -47,6 +51,48 @@ ESP.tabSubtitle = function (account) {
   const level = active.finished_level ?? '?';
   const timeLeft = ESP.remaining(active.finish_date);
   return `${skillName} L${level} · ${timeLeft}`;
+};
+
+// --- Character tab glow notifications ---
+
+ESP.notifyChar = function (characterId, kind) {
+  const id = Number(characterId);
+  if (!id) return;
+  const map = ESP.state.charNotifications;
+  map[id] = map[id] || {};
+  map[id][kind] = true;
+};
+
+ESP.clearCharNotifications = function (characterId) {
+  delete ESP.state.charNotifications[Number(characterId)];
+};
+
+// True when the character is training a skill but has nothing queued
+// behind it — the "log in and add a skill" purple glow.
+ESP.charTrainingNoQueue = function (account) {
+  if (!account || !account.activeSkill) return false;
+  return !account.nextSkill;
+};
+
+// The glow class for a character tab, in priority order. Event-driven
+// flags (wallet / skill complete / queue empty) outrank the derived
+// training-but-empty purple state.
+ESP.charGlowClass = function (account) {
+  const id = Number(account && account.characterId);
+  if (!id) return '';
+
+  // Selecting the tab clears its notifications, so a selected tab never
+  // glows.
+  if (Number(ESP.state.openCharacterId) === id) return '';
+
+  const flags = ESP.state.charNotifications[id] || {};
+
+  if (flags.queueEmpty) return 'glow-red';
+  if (flags.skillComplete) return 'glow-green';
+  if (flags.wallet) return 'glow-yellow';
+  if (ESP.charTrainingNoQueue(account)) return 'glow-purple';
+
+  return '';
 };
 
 ESP.planAppliesToAccount = function (plan, account) {

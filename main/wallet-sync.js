@@ -20,6 +20,8 @@ let cache = null;
 let pulling = false;
 let started = false;
 let timer = null;
+let lastPullAt = null;
+let nextPullAt = null;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -108,6 +110,7 @@ async function pull() {
   }
 
   pulling = true;
+  lastPullAt = Date.now();
   debug.log(SECTION, 'pull starting — acquiring the ESI sequencer');
   await sequencer.acquire(SECTION);
 
@@ -210,13 +213,24 @@ function start() {
   );
 
   const interval = Math.max(60000, Number(eveConfig.WALLET_SYNC?.intervalMs) || 600000);
+  nextPullAt = Date.now() + interval;
   timer = setInterval(() => {
     debug.log(SECTION, 'scheduled pull timer fired');
+    nextPullAt = Date.now() + interval;
     pull().catch((err) =>
       console.error('[wallet] scheduled pull failed', err?.message || err)
     );
   }, interval);
   if (timer.unref) timer.unref();
+}
+
+function getSyncState() {
+  return {
+    pulling,
+    lastPullAt,
+    nextPullAt,
+    intervalMs: Math.max(60000, Number(eveConfig.WALLET_SYNC?.intervalMs) || 600000)
+  };
 }
 
 function stop() {
@@ -230,6 +244,7 @@ module.exports = {
   stop,
   pull,
   isPulling,
+  getSyncState,
   getDetails,
   removeCharacter
 };

@@ -232,6 +232,16 @@ function registerIpcHandlers() {
     return accounts.getRefreshState();
   });
 
+  // Per-section ESI sync state for the tabs-bar indicator: whether each
+  // section is pulling and when its next scheduled pull fires.
+  ipcMain.handle('app:getSyncState', () => {
+    return {
+      skills: skillsSync.getSyncState(),
+      wallet: walletSync.getSyncState(),
+      assets: { pulling: false, lastPullAt: null, nextPullAt: null, intervalMs: null }
+    };
+  });
+
   ipcMain.handle('accounts:list', () => {
     return accounts.getPublicAccounts();
   });
@@ -250,9 +260,19 @@ function registerIpcHandlers() {
     return accounts.getPublicAccounts();
   });
 
+  // The Refresh button cycles the sequencer: it refreshes the dashboard
+  // data and queues fresh skills + wallet pulls through the ESI
+  // sequencer, then reports the sync state so the button can unlock.
   ipcMain.handle('accounts:refresh', async () => {
     await accounts.refreshAll();
-    return accounts.getPublicAccounts();
+    await Promise.allSettled([skillsSync.pull(), walletSync.pull()]);
+    return {
+      accounts: accounts.getPublicAccounts(),
+      sync: {
+        skills: skillsSync.getSyncState(),
+        wallet: walletSync.getSyncState()
+      }
+    };
   });
 
   ipcMain.handle('accounts:getCorpInfo', async (_event, characterId) => {

@@ -57,6 +57,8 @@ ESP.bindAccountEvents = function () {
       if (ESP.state.openCharacterId !== id) {
         ESP.state.openCharacterId = id;
         ESP.state.openCharacterAutoDefault = false;
+        // Selecting the tab acknowledges and clears its glow notifications.
+        ESP.clearCharNotifications(id);
         ESP.loadCorpInfo(id);
         ESP.render(ESP.state.lastAccounts);
       }
@@ -357,17 +359,20 @@ ESP.bindTopbarEvents = function () {
 
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
+      // Lock while the sequencer cycles. The unlock is driven by the
+      // refresh/sync state events, not here.
       refreshBtn.disabled = true;
-      ESP.setStatus('Refreshing...');
+      ESP.setStatus('Pulling ESI data...');
 
       try {
         await window.eveApi.refreshAll();
         await ESP.load();
+        await ESP.refreshSyncState();
         ESP.setStatus('Refresh complete.');
       } catch (err) {
         ESP.setStatus(err?.message || String(err), true);
       } finally {
-        refreshBtn.disabled = false;
+        ESP.updateRefreshButton();
       }
     });
   }
@@ -458,8 +463,19 @@ ESP.renderSkillSearch = function () {
       />
       <div class="skill-search-dropdown"></div>
     `;
-    const actions = document.querySelector('.actions');
-    if (actions) actions.parentNode.insertBefore(wrap, actions);
+    const toolbar = document.querySelector('.skill-tab-toolbar');
+    if (toolbar) {
+      toolbar.appendChild(wrap);
+    } else {
+      const actions = document.querySelector('.actions');
+      if (actions) actions.parentNode.insertBefore(wrap, actions);
+    }
+  } else {
+    // Re-home into the freshly rendered skills tab after a re-render.
+    const toolbar = document.querySelector('.skill-tab-toolbar');
+    if (toolbar && existing.parentNode !== toolbar) {
+      toolbar.appendChild(existing);
+    }
   }
 
   ESP.renderSearchDropdown();
@@ -552,49 +568,56 @@ ESP.bindSkillSearchListeners = function () {
   });
 };
 
-ESP.bindSkillSearch = function () {
-  const searchBtn = document.getElementById('skillSearch');
-  if (!searchBtn || ESP.skillSearchButtonBound) return;
-  ESP.skillSearchButtonBound = true;
+ESP.toggleSkillSearch = async function () {
+  const ss = ESP.state.skillSearch;
 
-  searchBtn.addEventListener('click', async () => {
-    const ss = ESP.state.skillSearch;
-
-    if (ss.open) {
-      ss.open = false;
-      ss.query = '';
-      ss.suggestions = [];
-      ss.popup = null;
-      ss.minimized = false;
-      ESP.renderSkillSearch();
-      return;
-    }
-
-    ss.open = true;
+  if (ss.open) {
+    ss.open = false;
+    ss.query = '';
+    ss.suggestions = [];
+    ss.popup = null;
+    ss.minimized = false;
     ESP.renderSkillSearch();
+    return;
+  }
 
-    if (!ss.index) {
-      try {
-        const allIds = new Set();
-        for (const account of ESP.state.lastAccounts) {
-          for (const id of Object.keys(account.skillLevels || {})) {
-            allIds.add(Number(id));
-          }
+  ss.open = true;
+  ESP.renderSkillSearch();
+
+  if (!ss.index) {
+    try {
+      const allIds = new Set();
+      for (const account of ESP.state.lastAccounts) {
+        for (const id of Object.keys(account.skillLevels || {})) {
+          allIds.add(Number(id));
         }
-
-        const nameMapRaw = await window.eveApi.resolveNames([...allIds]);
-        const nameMap = new Map(
-          Object.entries(nameMapRaw).map(([k, v]) => [Number(k), v])
-        );
-        ss.index = ESP.buildSkillIndex(ESP.state.lastAccounts, nameMap);
-      } catch {
-        ss.index = new Map();
       }
-    }
 
-    const input = document.querySelector('.skill-search-input');
-    if (input) input.focus();
-  });
+      const nameMapRaw = await window.eveApi.resolveNames([...allIds]);
+      const nameMap = new Map(
+        Object.entries(nameMapRaw).map(([k, v]) => [Number(k), v])
+      );
+      ss.index = ESP.buildSkillIndex(ESP.state.lastAccounts, nameMap);
+    } catch {
+      ss.index = new Map();
+    }
+  }
+
+  const input = document.querySelector('.skill-search-input');
+  if (input) input.focus();
+};
+
+ESP.bindSkillSearch = function () {
+  // The search button lives at the top of each character's skills tab,
+  // and the tab re-renders, so bind via delegation once.
+  if (!ESP.skillSearchDelegatedBound) {
+    ESP.skillSearchDelegatedBound = true;
+
+    document.addEventListener('click', (event) => {
+      const btn = event.target.closest('#skillSearchTab, #skillSearch');
+      if (btn) ESP.toggleSkillSearch();
+    });
+  }
 
   ESP.bindSkillSearchListeners();
 

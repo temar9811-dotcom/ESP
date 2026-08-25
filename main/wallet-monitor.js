@@ -151,6 +151,7 @@ async function checkWalletActivity() {
         });
 
         callbacks.onWalletActivity({
+          characterId: account.characterId,
           characterName: account.characterName || 'Unknown',
           entries: friendly
         });
