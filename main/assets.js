@@ -387,7 +387,7 @@ async function getPlanetInfo(planetId) {
         systemId: planet.system_id != null ? Number(planet.system_id) : null
       };
     },
-    { name: `Planet ${planetId}`, systemId: null }
+    () => ({ name: `Planet ${planetId}`, systemId: null })
   );
 }
 
