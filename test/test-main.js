@@ -555,6 +555,7 @@ switch (command) {
        }));
 
      let probe = null;
+     let probeAll = null;
      if (markers.length) {
        try {
          const token = await accountsMod.getValidAccessToken(target, false);
@@ -563,6 +564,20 @@ switch (command) {
          probe.id = markers[0].id;
        } catch (err) {
          probe = { ok: false, error: String(err && err.message || err) };
+       }
+
+       if (payload && payload.probeAll) {
+         probeAll = [];
+         try {
+           const token = await accountsMod.getValidAccessToken(target, false);
+           for (const marker of markers) {
+             await accountsMod.waitRateLimit();
+             const result = await assetsMod.probeStructure(marker.id, token);
+             probeAll.push({ id: marker.id, ...result });
+           }
+         } catch (err) {
+           probeAll.push({ error: String(err && err.message || err) });
+         }
        }
      }
 
@@ -574,6 +589,7 @@ switch (command) {
          scopes: scopeList,
          markers,
          probe,
+         probeAll,
          queueRunning: queue.isRunning()
        }
      };

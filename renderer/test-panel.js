@@ -103,6 +103,7 @@ window.eveApi.testEnabled().then((enabled) => {
        <button type="button" data-cmd="assets.debug">Assets debug</button>
        <button type="button" data-cmd="assets.debug2">Assets debug 2</button>
        <button type="button" data-cmd="assets.structureAudit">Structure audit</button>
+       <button type="button" data-cmd="assets.structureAuditAll">Structure audit (probe all)</button>
        <button type="button" data-cmd="assets.clearStructureFailures">Clear structure failures</button>
        <button type="button" data-cmd="app.version">Version</button>
        <button type="button" data-cmd="bubble.skill">Skill bubble</button>
@@ -136,7 +137,7 @@ window.eveApi.testEnabled().then((enabled) => {
        const cmd = cmdBtn.dataset.cmd;
        setResult(true, `running ${cmd}…`);
        window.eveApi
-         .testRun(cmd)
+         .testRun(cmd, cmd === 'assets.structureAuditAll' ? { probeAll: true } : {})
          .then((res) => {
            console.log('test:', cmd, res);
            setResult(Boolean(res && res.ok), `${cmd}: ${summarize(res)}`);
