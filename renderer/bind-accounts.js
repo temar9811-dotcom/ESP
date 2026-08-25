@@ -56,6 +56,7 @@ ESP.bindAccountEvents = function () {
 
       if (ESP.state.openCharacterId !== id) {
         ESP.state.openCharacterId = id;
+        ESP.state.openCharacterAutoDefault = false;
         ESP.loadCorpInfo(id);
         ESP.render(ESP.state.lastAccounts);
       }

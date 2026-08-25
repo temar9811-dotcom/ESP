@@ -80,9 +80,7 @@ ESP.render = function (accounts) {
   // Keep one character selected at all times so the content pane has
   // context. Default to the primary of the first group rather than the
   // first character in the account list.
-  if (ESP.state.openCharacterId == null) {
-    let fallback = null;
-
+  const defaultCharacterId = (() => {
     for (const [groupName, group] of Object.entries(groupsData)) {
       if (groupName === '__ungrouped__') continue;
 
@@ -90,17 +88,26 @@ ESP.render = function (accounts) {
       const candidates = [Number(group.primaryCharacterId), ...members];
 
       for (const id of candidates) {
-        if (id && byId.has(id)) {
-          fallback = id;
-          break;
-        }
+        if (id && byId.has(id)) return id;
       }
-
-      if (fallback != null) break;
     }
 
-    ESP.state.openCharacterId =
-      fallback != null ? fallback : Number(ESP.state.lastAccounts[0].characterId);
+    return Number(ESP.state.lastAccounts[0].characterId);
+  })();
+
+  if (ESP.state.openCharacterId == null) {
+    ESP.state.openCharacterId = defaultCharacterId;
+    // Groups can load after the first render (a startup broadcast can beat
+    // loadGroups); the default stays provisional until they have.
+    ESP.state.openCharacterAutoDefault = Object.keys(groupsData).length === 0;
+  } else if (
+    ESP.state.openCharacterAutoDefault &&
+    Object.keys(groupsData).length
+  ) {
+    // The first render happened before groups loaded — settle on the
+    // primary of the first group now.
+    ESP.state.openCharacterId = defaultCharacterId;
+    ESP.state.openCharacterAutoDefault = false;
   }
 
   const selectedId = Number(ESP.state.openCharacterId);
