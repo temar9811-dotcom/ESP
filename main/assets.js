@@ -113,6 +113,7 @@ async function getCorpAssets(corpId, accessToken) {
 
 const UNIVERSE_TTL_MS = 30 * 24 * 3600 * 1000;
 
+const universeCache = new Map();
 let universeDisk = null;
 let universeDiskDirty = false;
 let universeDiskTimer = null;
