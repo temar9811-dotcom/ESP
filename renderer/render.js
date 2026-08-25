@@ -179,22 +179,23 @@ ESP.allSkillsHtml = function (account) {
   const id = Number(account.characterId);
   const slot = (ESP.state.allSkillsByCharacter || {})[id];
 
-  if (!slot) {
-    ESP.loadAllSkills(id);
-    return `<div class="skills-list-empty">Loading skills…</div>`;
-  }
+  // A slot with data renders immediately, whatever its status — the
+  // loading message only appears when the cache has nothing yet.
+  if (!slot || !slot.data) {
+    if (!slot) {
+      ESP.loadAllSkills(id);
+    }
 
-  if (slot.status === 'loading') {
-    return `<div class="skills-list-empty">Loading skills…</div>`;
-  }
-
-  if (slot.status === 'error') {
-    return `
+    if (slot && slot.status === 'error') {
+      return `
 <div class="skills-list-empty">
   Failed to load skills: ${ESP.escapeHtml(slot.error || 'Unknown error')}
   <button type="button" class="skills-retry" data-id="${id}">Retry</button>
 </div>
 `;
+    }
+
+    return `<div class="skills-list-empty">Loading skills…</div>`;
   }
 
   const data = slot.data || {};
@@ -313,20 +314,22 @@ ESP.walletTabHtml = function (account) {
   const id = Number(account.characterId);
   const state = ESP.state.walletState[id];
 
-  if (!state || state.status === 'idle' || state.status === 'loading') {
-    return '<div class="idle">Loading wallet details...</div>';
-  }
-
-  if (state.status === 'error') {
-    return `
+  // A state with data renders immediately, whatever its status — the
+  // loading message only appears when the cache has nothing yet.
+  if (!state || !state.data) {
+    if (state && state.status === 'error') {
+      return `
 <div class="error">${ESP.escapeHtml(state.error || 'Failed to load wallet details.')}</div>
 <button class="wallet-retry" data-id="${id}">Retry</button>
 `;
+    }
+
+    return '<div class="idle">Loading wallet details...</div>';
   }
 
   const data = state.data;
 
-  if (!data || !Array.isArray(data.entries) || !data.entries.length) {
+  if (!Array.isArray(data.entries) || !data.entries.length) {
     return '<div class="idle">No wallet activity in the last 7 days.</div>';
   }
 

@@ -1,7 +1,7 @@
 'use strict';
 
 const config = require('./config');
-const { esiFetch, publicPost } = require('./http');
+const { esiFetch, publicFetch, publicPost } = require('./http');
 
 function formatRefType(ref) {
   return String(ref || '')
@@ -121,6 +121,28 @@ async function resolveNames(ids) {
 
   return map;
 }
+
+// /universe/names/ covers characters, corporations, stations, etc. but
+// not inventory types. Resolve any still-unresolved ids (type ids from
+// transactions) via the public type endpoint so items show real names.
+async function resolveTypeNames(ids, names) {
+  const missing = [...new Set(ids.filter((id) => id && !names.has(id)))];
+
+  await Promise.all(
+    missing.map(async (id) => {
+      try {
+        const data = await publicFetch(`/universe/types/${id}/`);
+        if (data && data.name) {
+          names.set(id, data.name);
+        }
+      } catch {
+        // Leave unresolved; the caller falls back to "Type <id>".
+      }
+    })
+  );
+
+  return names;
+}
 async function getWalletDetails(characterId, accessToken, days) {
   const safeDays =
     Number.isFinite(days) && days > 0
@@ -149,6 +171,10 @@ async function getWalletDetails(characterId, accessToken, days) {
   }
 
   const names = await resolveNames([...ids]);
+  await resolveTypeNames(
+    transactions.map((t) => t.type_id),
+    names
+  );
 
   const journalEntries = journal.map((j) => {
     const amount = Number(j.amount || 0);
@@ -236,5 +262,6 @@ module.exports = {
   getWalletDetails,
   getRecentWalletEntries,
   resolveNames,
+  resolveTypeNames,
   formatRefType
 };

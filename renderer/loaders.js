@@ -26,21 +26,28 @@ ESP.loadWalletDetails = async function (characterId, force = false) {
     return;
   }
 
-  ESP.state.walletState[characterId] = {
-    status: 'loading'
-  };
+  // Keep showing whatever data we already have while refreshing — the
+  // loading message only appears when there is nothing cached at all.
+  const hadData = Boolean(existing && existing.data);
 
-  ESP.render(ESP.state.lastAccounts);
+  if (!hadData) {
+    ESP.state.walletState[characterId] = {
+      status: 'loading'
+    };
+    ESP.render(ESP.state.lastAccounts);
+  }
 
   try {
     const result = await window.eveApi.getCharacterWallet(characterId);
 
     if (!result || !result.data) {
       // No cache yet — a pull was queued; wait for the accounts broadcast.
-      ESP.state.walletState[characterId] = {
-        status: 'loading',
-        pulling: Boolean(result && result.pulling)
-      };
+      if (!hadData) {
+        ESP.state.walletState[characterId] = {
+          status: 'loading',
+          pulling: Boolean(result && result.pulling)
+        };
+      }
     } else {
       ESP.state.walletState[characterId] = {
         status: 'loaded',
@@ -49,10 +56,12 @@ ESP.loadWalletDetails = async function (characterId, force = false) {
       };
     }
   } catch (err) {
-    ESP.state.walletState[characterId] = {
-      status: 'error',
-      error: err?.message || String(err)
-    };
+    if (!hadData) {
+      ESP.state.walletState[characterId] = {
+        status: 'error',
+        error: err?.message || String(err)
+      };
+    }
   }
 
   ESP.render(ESP.state.lastAccounts);
@@ -95,16 +104,25 @@ ESP.loadAllSkills = async function (characterId, force = false) {
   if (slot && slot.status === 'loading') return;
   if (slot && slot.status === 'ready' && !force) return;
 
-  ESP.state.allSkillsByCharacter[id] = { status: 'loading' };
+  // Keep showing the skills we already have while refreshing — the
+  // loading message only appears when there is nothing cached at all.
+  const hadData = Boolean(slot && slot.data);
+
+  if (!hadData) {
+    ESP.state.allSkillsByCharacter[id] = { status: 'loading' };
+    ESP.render(ESP.state.lastAccounts);
+  }
 
   try {
     const data = await window.eveApi.getCharacterSkills(id);
     ESP.state.allSkillsByCharacter[id] = { status: 'ready', data };
   } catch (err) {
-    ESP.state.allSkillsByCharacter[id] = {
-      status: 'error',
-      error: err?.message || String(err)
-    };
+    if (!hadData) {
+      ESP.state.allSkillsByCharacter[id] = {
+        status: 'error',
+        error: err?.message || String(err)
+      };
+    }
   }
 
   ESP.render(ESP.state.lastAccounts);
