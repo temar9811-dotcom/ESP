@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS = {
   notifyWallet: true,
   notifyQueueEmpty: true,
   queueWarnHours: 24,
+  failTTL: 300
   walletNotifyThreshold: 0
 };
 
