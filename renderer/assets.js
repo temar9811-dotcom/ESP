@@ -141,9 +141,12 @@ ESP.assetPaneHtml = function (account, kind) {
     : account.corpAssetLastFetch;
 
   const diag = slot.data && slot.data.tree && slot.data.tree._diag ? slot.data.tree._diag : null;
+  const parts = [];
+  if (diag && diag.fallbackCount > 0) parts.push(`${diag.fallbackCount} unresolved`);
+  if (diag && diag.containerHits > 0) parts.push(`${diag.containerHits} in containers/ships`);
   const diagBadge =
-    ESP.state.testEnabled && diag && diag.fallbackCount > 0
-      ? ` <span style="opacity:0.6">${diag.fallbackCount} unresolved</span>`
+    ESP.state.testEnabled && parts.length
+      ? ` <span style="opacity:0.6">${parts.join(', ')}</span>`
       : '';
 
   const header = `

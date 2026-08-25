@@ -22,18 +22,20 @@ let diag = {
   stationHits: 0,
   structureHits: 0,
   namesHits: 0,
+  containerHits: 0,
   fallbackCount: 0,
   failedStructures: []
 };
 
 function diagReset() {
-  diag = { stationHits: 0, structureHits: 0, namesHits: 0, fallbackCount: 0, failedStructures: [] };
+  diag = { stationHits: 0, structureHits: 0, namesHits: 0, containerHits: 0, fallbackCount: 0, failedStructures: [] };
 }
 
 function diagRecord(kind, id = null) {
   if (kind === 'station') diag.stationHits += 1;
   else if (kind === 'structure') diag.structureHits += 1;
   else if (kind === 'names') diag.namesHits += 1;
+  else if (kind === 'container') diag.containerHits += 1;
   else diag.fallbackCount += 1;
   if (kind === 'fallback' && id != null) diag.failedStructures.push(Number(id));
 }
@@ -471,6 +473,10 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
     if (knownSystem != null && hit && hit.systemId == null) {
       hit.systemId = knownSystem;
       scheduleStructureDiskWrite();
+    }
+    if (knownSystem == null) {
+      diagRecord('container');
+      return { name: `Container/ship ${structureId}`, systemId: null, isContainer: true };
     }
     diagRecord('fallback', structureId);
     return { name: `Structure ${structureId}`, systemId: knownSystem };
@@ -929,6 +935,7 @@ async function buildAssetTree(assets, accessToken, canReadStructures, opts) {
     stationHits: diag.stationHits,
     structureHits: diag.structureHits,
     namesHits: diag.namesHits,
+    containerHits: diag.containerHits,
     fallbackCount: diag.fallbackCount,
     failedStructures: diag.failedStructures.slice()
   };
