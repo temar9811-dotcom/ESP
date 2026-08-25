@@ -12,3 +12,7 @@ test/test-main.js
 renderer/test-panel.js
 /test
 test/test-mode.json
+1.1/test/test-mode.json
+1.1/test/test-main.js
+1.1/test/ESP.code-workspace
+1.1/renderer/test-panel.js
