@@ -208,6 +208,18 @@ function getStructureDiskCache() {
   } catch {
     structureDiskCache = {};
   }
+  // Drop legacy permanent-failure markers from before failedUntil existed.
+  const now = Date.now();
+  let pruned = false;
+  for (const [id, hit] of Object.entries(structureDiskCache)) {
+    if (hit && hit.failedUntil == null && hit.failedAt && !hit.name) {
+      if (now - hit.failedAt > 24 * 3600 * 1000) {
+        delete structureDiskCache[id];
+        pruned = true;
+      }
+    }
+  }
+  if (pruned) scheduleStructureDiskWrite();
   return structureDiskCache;
 }
 
