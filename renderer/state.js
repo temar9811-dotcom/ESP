@@ -5,7 +5,7 @@ window.ESP = window.ESP || {};
 ESP.state = {
   lastAccounts: [],
   openCharacterId: null,
-  activeTabByCharacter: {},
+  activeTab: 'overview',
   walletState: {},
   plans: [],
   addPlanState: null,
@@ -29,8 +29,8 @@ ESP.setStatus = function (message, isError = false) {
   statusEl.className = isError ? 'status error' : 'status';
 };
 
-ESP.getActiveTab = function (characterId) {
-  return ESP.state.activeTabByCharacter[characterId] || 'overview';
+ESP.getActiveTab = function () {
+  return ESP.state.activeTab || 'overview';
 };
 
 ESP.tabSubtitle = function (account) {

@@ -54,32 +54,36 @@ ESP.bindAccountEvents = function () {
     if (characterTab) {
       const id = Number(characterTab.dataset.id);
 
-      ESP.state.openCharacterId =
-        ESP.state.openCharacterId === id ? null : id;
-
-      ESP.render(ESP.state.lastAccounts);
-
-      if (ESP.state.openCharacterId === id) {
+      if (ESP.state.openCharacterId !== id) {
+        ESP.state.openCharacterId = id;
         ESP.loadCorpInfo(id);
+        ESP.render(ESP.state.lastAccounts);
       }
 
       return;
     }
 
-    const sheetTab = event.target.closest('.sheet-tab');
+    const primaryTab = event.target.closest('.primary-tab');
 
-    if (sheetTab) {
-      const id = Number(sheetTab.dataset.id);
-      const tab = sheetTab.dataset.tab;
+    if (primaryTab) {
+      const tab = primaryTab.dataset.tab;
 
-      ESP.state.activeTabByCharacter[id] = tab;
-
-      if (tab === 'wallet') {
-        ESP.loadWalletDetails(id);
+      if (ESP.state.activeTab === tab) {
+        return;
       }
 
-      if (tab === 'assets') {
-        ESP.loadCloneDetails(id);
+      ESP.state.activeTab = tab;
+
+      const id = Number(ESP.state.openCharacterId);
+
+      if (id) {
+        if (tab === 'wallet') {
+          ESP.loadWalletDetails(id);
+        }
+
+        if (tab === 'assets') {
+          ESP.loadCloneDetails(id);
+        }
       }
 
       ESP.render(ESP.state.lastAccounts);
@@ -190,7 +194,6 @@ ESP.bindAccountEvents = function () {
         }
 
         delete ESP.state.walletState[id];
-        delete ESP.state.activeTabByCharacter[id];
 
         await ESP.load();
         ESP.setStatus('Character removed.');

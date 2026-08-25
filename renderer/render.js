@@ -318,6 +318,38 @@ ESP.skillPlansTabHtml = function (account) {
 `;
 };
 
+ESP.PRIMARY_TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'queue', label: 'Skill Queue' },
+  { id: 'wallet', label: 'Wallet' },
+  { id: 'plans', label: 'Skill Plan' },
+  { id: 'assets', label: 'Assets' },
+  { id: 'notes', label: 'Notes' }
+];
+
+ESP.primaryTabsHtml = function () {
+  const activeTab = ESP.getActiveTab();
+
+  const buttons = ESP.PRIMARY_TABS.map(
+    (tab) => `
+  <button
+    type="button"
+    role="tab"
+    aria-selected="${activeTab === tab.id}"
+    class="primary-tab ${activeTab === tab.id ? 'active' : ''}"
+    data-tab="${tab.id}"
+  >
+    ${tab.label}
+  </button>`
+  ).join('');
+
+  return `
+<nav class="primary-tabs" role="tablist">
+${buttons}
+</nav>
+`;
+};
+
 ESP.tabContentHtml = function (account, activeTab) {
   if (activeTab === 'queue') {
     return ESP.skillQueueTabHtml(account);
@@ -360,8 +392,7 @@ ESP.groupHeaderHtml = function (name, count, collapsed) {
 };
 
 ESP.characterSheetHtml = function (account, opts = {}) {
-  const id = Number(account.characterId);
-  const activeTab = ESP.getActiveTab(id);
+  const activeTab = ESP.getActiveTab();
 
   const corpInfo =
     (ESP.state.corpInfoByCharacter || {})[account.characterId] || {};
@@ -403,56 +434,6 @@ ESP.characterSheetHtml = function (account, opts = {}) {
   </button>
   <button class="remove" data-id="${account.characterId}">Remove</button>
 </div>
-<nav class="sheet-tabs">
-  <button
-    type="button"
-    class="sheet-tab ${activeTab === 'overview' ? 'active' : ''}"
-    data-id="${id}"
-    data-tab="overview"
-  >
-    Overview
-  </button>
-  <button
-    type="button"
-    class="sheet-tab ${activeTab === 'queue' ? 'active' : ''}"
-    data-id="${id}"
-    data-tab="queue"
-  >
-    Skill Queue
-  </button>
-  <button
-    type="button"
-    class="sheet-tab ${activeTab === 'wallet' ? 'active' : ''}"
-    data-id="${id}"
-    data-tab="wallet"
-  >
-    Wallet
-  </button>
-  <button
-    type="button"
-    class="sheet-tab ${activeTab === 'plans' ? 'active' : ''}"
-    data-id="${id}"
-    data-tab="plans"
-  >
-    Skill Plans
-  </button>
-  <button
-    type="button"
-    class="sheet-tab ${activeTab === 'assets' ? 'active' : ''}"
-    data-id="${id}"
-    data-tab="assets"
-  >
-    Assets
-  </button>
-  <button
-    type="button"
-    class="sheet-tab ${activeTab === 'notes' ? 'active' : ''}"
-    data-id="${id}"
-    data-tab="notes"
-  >
-    Notes
-  </button>
-</nav>
 <div class="sheet-panel">
   ${ESP.tabContentHtml(account, activeTab)}
 </div>
@@ -460,7 +441,8 @@ ESP.characterSheetHtml = function (account, opts = {}) {
 };
 
 ESP.characterTabHtml = function (account, opts = {}) {
-  const isOpen = ESP.state.openCharacterId === Number(account.characterId);
+  const isSelected =
+    Number(ESP.state.openCharacterId) === Number(account.characterId);
   const portrait = `https://images.evetech.net/characters/${account.characterId}/portrait?size=64`;
 
   const location = account.location || 'Unknown location';
@@ -475,7 +457,7 @@ ESP.characterTabHtml = function (account, opts = {}) {
   class="group-star"
   data-id="${account.characterId}"
   title="${opts.primary ? 'Primary character' : 'Make primary character'}"
-  style="position:absolute; right:30px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:14px; color:${opts.primary ? '#f5c542' : '#5b708a'}; z-index:2;"
+  style="position:absolute; right:8px; top:8px; background:none; border:none; cursor:pointer; font-size:14px; color:${opts.primary ? '#f5c542' : '#5b708a'}; z-index:2;"
 >
   ${opts.primary ? '★' : '☆'}
 </button>
@@ -484,16 +466,16 @@ ESP.characterTabHtml = function (account, opts = {}) {
 
   return `
 <section
-  class="character-item ${isOpen ? 'open' : ''}"
+  class="character-item ${isSelected ? 'selected' : ''}"
   data-character-id="${account.characterId}"
   style="position:relative;"
 >
   ${starHtml}
   <button
     type="button"
-    class="character-tab"
+    class="character-tab ${opts.grouped ? 'has-star' : ''}"
     data-id="${account.characterId}"
-    aria-expanded="${isOpen}"
+    aria-pressed="${isSelected}"
   >
     <img class="character-thumb" src="${portrait}" alt="" />
     <span class="character-tab-text">
@@ -503,25 +485,16 @@ ESP.characterTabHtml = function (account, opts = {}) {
       <span class="character-sub">
         ${ESP.escapeHtml(ESP.tabSubtitle(account))}
       </span>
-    </span>
-    <span
-      class="character-loc"
-      style="margin-left:auto; text-align:right; max-width:45%; font-size:12px; line-height:1.3; color:#9fb3c8; overflow:hidden; padding-right:${opts.grouped ? '24px' : '0'};"
-    >
-      <span style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-        ${ESP.escapeHtml(location)}
+      <span class="character-loc">
+        <span class="character-loc-line">
+          ${ESP.escapeHtml(location)}
+        </span>
+        <span class="character-ship-line">
+          ${ESP.escapeHtml(shipDisplay)}
+        </span>
       </span>
-      <span style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#7d94ad;">
-        ${ESP.escapeHtml(shipDisplay)}
-      </span>
-    </span>
-    <span class="character-chevron">
-      ${isOpen ? '▴' : '▾'}
     </span>
   </button>
-  <div class="character-dropdown">
-    ${ESP.characterSheetHtml(account, opts)}
-  </div>
 </section>
 `;
 };

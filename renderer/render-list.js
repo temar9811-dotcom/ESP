@@ -22,7 +22,6 @@ ESP.render = function (accounts) {
 
     if (!exists) {
       delete ESP.state.walletState[id];
-      delete ESP.state.activeTabByCharacter[id];
     }
   }
 
@@ -61,7 +60,14 @@ ESP.render = function (accounts) {
     }
   }
 
-  let html = '';
+  // Keep one character selected at all times so the content pane has context.
+  if (ESP.state.openCharacterId == null) {
+    ESP.state.openCharacterId = Number(ESP.state.lastAccounts[0].characterId);
+  }
+
+  const selectedId = Number(ESP.state.openCharacterId);
+
+  let railHtml = '';
 
   for (const [groupName, group] of Object.entries(groupsData)) {
     if (groupName === '__ungrouped__') continue;
@@ -88,19 +94,23 @@ ESP.render = function (accounts) {
         : [primary]
       : orderedMembers;
 
-    html += ESP.groupHeaderHtml(
+    railHtml += ESP.groupHeaderHtml(
       groupName,
       members.length,
       Boolean(group.collapsed)
     );
 
-    for (const account of shown) {
-      html += ESP.characterTabHtml(account, {
-        grouped: true,
-        primary:
-          Number(account.characterId) === Number(primary.characterId),
-        groupName
-      });
+    if (shown.length) {
+      railHtml += `<div class="char-grid">${shown
+        .map((account) =>
+          ESP.characterTabHtml(account, {
+            grouped: true,
+            primary:
+              Number(account.characterId) === Number(primary.characterId),
+            groupName
+          })
+        )
+        .join('')}</div>`;
     }
   }
 
@@ -113,7 +123,7 @@ ESP.render = function (accounts) {
       (groupsData.__ungrouped__ || {}).collapsed
     );
 
-    html += `
+    railHtml += `
 <div
   class="group-header"
   data-group="__ungrouped__"
@@ -127,13 +137,50 @@ ESP.render = function (accounts) {
 `;
 
     if (!ungroupedCollapsed) {
-      for (const account of ungrouped) {
-        html += ESP.characterTabHtml(account, { grouped: false });
+      railHtml += `<div class="char-grid">${ungrouped
+        .map((account) => ESP.characterTabHtml(account, { grouped: false }))
+        .join('')}</div>`;
+    }
+  }
+
+  const selected = byId.get(selectedId) || null;
+
+  let selectedGroupName = null;
+
+  if (selected) {
+    for (const [groupName, group] of Object.entries(groupsData)) {
+      if (groupName === '__ungrouped__') continue;
+
+      if ((group.members || []).map(Number).includes(selectedId)) {
+        selectedGroupName = groupName;
+        break;
       }
     }
   }
 
-  accountsEl.innerHTML = html;
+  accountsEl.innerHTML = `
+${ESP.primaryTabsHtml()}
+<div class="layout-body">
+  <aside class="char-rail">
+${railHtml}
+  </aside>
+  <section class="content-pane">
+    ${
+      selected
+        ? ESP.characterSheetHtml(selected, {
+            grouped: selectedGroupName != null,
+            groupName: selectedGroupName
+          })
+        : '<div class="idle">Select a character on the left.</div>'
+    }
+  </section>
+</div>
+`;
+
+  if (selected) {
+    ESP.loadCorpInfo(selectedId);
+  }
 
   ESP.maybeAutoLoadWallet();
+  ESP.maybeAutoLoadAssets();
 };

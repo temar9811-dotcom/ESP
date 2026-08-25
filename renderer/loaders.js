@@ -46,15 +46,28 @@ ESP.loadWalletDetails = async function (characterId, force = false) {
 };
 
 ESP.maybeAutoLoadWallet = function () {
+  if (ESP.getActiveTab() !== 'wallet') return;
   if (ESP.state.openCharacterId == null) return;
 
-  const activeTab = ESP.getActiveTab(ESP.state.openCharacterId);
-  if (activeTab !== 'wallet') return;
-
-  const state = ESP.state.walletState[ESP.state.openCharacterId];
+  const id = Number(ESP.state.openCharacterId);
+  const state = ESP.state.walletState[id];
 
   if (!state || state.status === 'idle') {
-    ESP.loadWalletDetails(ESP.state.openCharacterId);
+    ESP.loadWalletDetails(id);
+  }
+};
+
+ESP.maybeAutoLoadAssets = function () {
+  if (ESP.getActiveTab() !== 'assets') return;
+  if (ESP.state.openCharacterId == null) return;
+
+  const id = Number(ESP.state.openCharacterId);
+  const account = ESP.state.lastAccounts.find(
+    (a) => Number(a.characterId) === id
+  );
+
+  if (account && account.clones === undefined) {
+    ESP.loadCloneDetails(id);
   }
 };
 
