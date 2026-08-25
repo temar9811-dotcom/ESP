@@ -3,7 +3,7 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { esiFetch, publicFetch, publicPost } = require('../eve/http');
+const { esiFetch, publicFetch, publicPost, getErrorLimitState } = require('../eve/http');
 const accounts = require('./accounts');
 
 let lastStructureCallAt = 0;
@@ -14,6 +14,16 @@ async function throttledEsiFetch(url, token) {
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastStructureCallAt = Date.now();
   return esiFetch(url, token);
+}
+
+// If ESI's error budget is nearly exhausted, wait for the reset window
+// instead of burning more requests into the 420 wall.
+async function waitErrorBudget() {
+  const { remain, resetAt } = getErrorLimitState();
+  if (remain != null && remain <= 10 && resetAt && resetAt > Date.now()) {
+    const waitMs = Math.min(resetAt - Date.now(), 60000);
+    if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+  }
 }
 
 // --- Resolution diagnostics (counters for the active buildAssetTree sweep) ---
@@ -431,6 +441,7 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
 
     if (canReadStructures && !recentlyFailed) {
       try {
+        await waitErrorBudget();
         const structure = await structureLimit(() =>
           esiFetch(`/universe/structures/${structureId}/`, accessToken)
         );
@@ -516,6 +527,7 @@ async function batchResolveNames(ids) {
   const chunkSize = 1000;
   for (let i = 0; i < missing.length; i += chunkSize) {
     const chunk = missing.slice(i, i + chunkSize);
+    await waitErrorBudget();
     try {
       const arr = await publicPost('/universe/names/', chunk);
 
