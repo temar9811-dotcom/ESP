@@ -47,6 +47,12 @@ ESP.initApp = function () {
     })();
 
     ESP.loadVersion();
+
+    if (window.eveApi && window.eveApi.testEnabled) {
+      window.eveApi.testEnabled()
+        .then((enabled) => { ESP.state.testEnabled = Boolean(enabled); })
+        .catch(() => {});
+    }
   } else {
     ESP.setStatus('Preload failed. Restart the app.', true);
   }

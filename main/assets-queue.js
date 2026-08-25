@@ -28,6 +28,11 @@ function scopesOf(account) {
   return Array.isArray(account.scopes) ? account.scopes : null;
 }
 
+// Unknown scopes (null) → optimistic; only gate when we know and scope is absent.
+function scopeOk(scopes, scopeName) {
+  return scopes == null || scopes.includes(scopeName);
+}
+
 function isFresh(iso) {
   if (!iso) return false;
   const t = Date.parse(iso);
@@ -40,15 +45,15 @@ async function processCharacter(account, force) {
   // Restart-friendly: skip recently fetched characters unless forced
   if (!force && isFresh(account.assetLastFetch)) return;
 
+  accounts.ensureScopes(account);
   const scopes = scopesOf(account);
 
-  const personalSkipped =
-    scopes !== null && !scopes.includes('esi-assets.read_assets.v1');
+  const personalSkipped = !scopeOk(scopes, 'esi-assets.read_assets.v1');
   const corpSkipped =
     account.corpAssetsDenied === true ||
-    (scopes !== null && !scopes.includes('esi-assets.read_corporation_assets.v1'));
+    !scopeOk(scopes, 'esi-assets.read_corporation_assets.v1');
   const canReadStructures =
-    scopes !== null && scopes.includes('esi-universe.read_structures.v1');
+    scopeOk(scopes, 'esi-universe.read_structures.v1');
 
   if (personalSkipped) account.hasAssetAccess = false;
   if (corpSkipped) account.hasCorpAccess = false;
@@ -71,8 +76,8 @@ async function processCharacter(account, force) {
           token = await accounts.getValidAccessToken(account, true);
           raw = await assets.getCharacterAssets(account.characterId, token);
         } else if (err && err.status === 403) {
-          // No asset scope on this token — mark and never retry until re-add
-          account.scopes = '';
+          // No asset scope on this token — in-memory flag only, don't clobber
+          // account.scopes here.
           account.hasAssetAccess = false;
           raw = null;
         } else {
@@ -87,6 +92,17 @@ async function processCharacter(account, force) {
           canReadStructures
         );
         const fetchedAt = new Date().toISOString();
+        const diag = tree._diag || null;
+        if (diag) {
+          console.log(
+            `[esp/assets] ${account.characterName} personal — ` +
+              `structures ${diag.structureHits} stations ${diag.stationHits} names ${diag.namesHits} ` +
+              `fallbacks ${diag.fallbackCount}` +
+              (diag.failedStructures && diag.failedStructures.length
+                ? ` (failed ids: ${diag.failedStructures.slice(0, 5).join(', ')})`
+                : '')
+          );
+        }
 
         assets.savePersonalCache(account.characterId, { fetchedAt, tree });
         account.assetLastFetch = fetchedAt;

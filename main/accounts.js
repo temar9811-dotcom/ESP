@@ -51,6 +51,23 @@ function scopesFromAccessToken(accessToken) {
   }
 }
 
+// Re-derive scopes from the current access token when missing (imported or
+// backfill-failed accounts) and persist the result.
+function ensureScopes(account) {
+  if (!account) return [];
+  if (account.scopes != null) return account.scopes;
+
+  const token = storage.decryptSecret(account.accessTokenEnc);
+  const scopes = scopesFromAccessToken(token);
+
+  if (scopes) {
+    account.scopes = scopes;
+    saveAccounts();
+  }
+
+  return account.scopes;
+}
+
 function loadAccounts() {
   accounts = storage.loadAccounts();
 
@@ -388,5 +405,7 @@ module.exports = {
   refreshAll,
   addAccount,
   cancelLogin,
-  removeAccount
+  removeAccount,
+  ensureScopes,
+  scopesFromAccessToken
 };
