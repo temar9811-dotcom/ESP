@@ -7,6 +7,7 @@ const path = require('path');
 const accounts = require('./accounts');
 const skillMeta = require('./skill-meta');
 const sequencer = require('./esi-sequencer');
+const debug = require('./debug');
 const eve = require('../eve');
 const eveConfig = require('../eve/config');
 
@@ -108,9 +109,13 @@ async function fetchOne(account, token) {
 }
 
 async function pull() {
-  if (pulling) return { skipped: true };
+  if (pulling) {
+    debug.log(SECTION, 'pull requested while one is already running — skipped');
+    return { skipped: true };
+  }
 
   pulling = true;
+  debug.log(SECTION, 'pull starting — acquiring the ESI sequencer');
   await sequencer.acquire(SECTION);
 
   const errors = {};
@@ -118,6 +123,7 @@ async function pull() {
 
   try {
     const list = accounts.getAccounts();
+    debug.log(SECTION, `pulling skills for ${list.length} character(s)`);
 
     // Resolve tokens up front; SSO refreshes are not ESI calls.
     const tasks = [];
@@ -127,54 +133,76 @@ async function pull() {
         tasks.push({ account, token });
       } catch (err) {
         errors[account.characterId] = err?.message || String(err);
+        debug.log(
+          SECTION,
+          `token refresh failed for ${account.characterName || account.characterId}: ${err?.message || err}`
+        );
       }
     }
 
     const batchSize = Math.max(1, Number(eveConfig.SKILLS?.batchSize) || 10);
     const batchDelay = Math.max(0, Number(eveConfig.SKILLS?.batchDelayMs) || 0);
+    const batchCount = Math.ceil(tasks.length / batchSize);
 
     for (let i = 0; i < tasks.length; i += batchSize) {
+      const batchNumber = i / batchSize + 1;
+
       await accounts.waitRateLimit();
       await accounts.waitErrorBudget();
 
       const batch = tasks.slice(i, i + batchSize);
+      debug.log(
+        SECTION,
+        `ESI GET /characters/*/skills batch ${batchNumber}/${batchCount} (${batch.length} call(s))`
+      );
+
       const results = await Promise.allSettled(
         batch.map(({ account, token }) => fetchOne(account, token))
       );
 
       results.forEach((result, index) => {
         const { account } = batch[index];
+        const name = account.characterName || account.characterId;
 
         if (result.status === 'fulfilled') {
           store(account.characterId, result.value);
           pulled += 1;
+          debug.log(
+            SECTION,
+            `${name}: ${result.value?.skills?.length ?? 0} skills, ${result.value?.total_sp ?? 0} SP`
+          );
         } else {
           const err = result.reason;
           errors[account.characterId] = err?.message || String(err);
-          console.error(
-            '[skills]',
-            account.characterName || account.characterId,
-            err?.status ?? '',
-            err?.message || String(err)
+          debug.log(
+            SECTION,
+            `${name}: pull failed (status ${err?.status ?? 'n/a'}) — ${err?.message || err}`
           );
           if (err && err.status === 420) {
             accounts.enterRateLimit(Number(err.resetSeconds) || 60);
+            debug.log(
+              SECTION,
+              `ESI 420 — entering rate-limit cooldown for ${Number(err.resetSeconds) || 60}s`
+            );
           }
         }
       });
 
       if (i + batchSize < tasks.length) {
+        debug.log(SECTION, `pausing ${batchDelay}ms before the next batch`);
         await sleep(batchDelay);
       }
     }
 
     saveCache();
+    debug.log(SECTION, `cache saved (${pulled} pulled, ${Object.keys(errors).length} failed)`);
     accounts.broadcastAccounts();
   } finally {
     sequencer.release(SECTION);
     pulling = false;
   }
 
+  debug.log(SECTION, `pull finished — ${pulled} pulled, ${Object.keys(errors).length} failed`);
   return { pulled, errors };
 }
 
@@ -182,12 +210,15 @@ function start() {
   if (started) return;
   started = true;
 
+  debug.log(SECTION, 'startup skills pull scheduled');
+
   pull().catch((err) =>
     console.error('[skills] startup pull failed', err?.message || err)
   );
 
   const interval = Math.max(60000, Number(eveConfig.SKILLS?.intervalMs) || 900000);
   timer = setInterval(() => {
+    debug.log(SECTION, 'scheduled pull timer fired');
     pull().catch((err) =>
       console.error('[skills] scheduled pull failed', err?.message || err)
     );
@@ -213,6 +244,8 @@ async function ensureCatalog() {
   const groups = {};
   const skillGroup = {};
 
+  debug.log(SECTION, 'building skill catalog from the public ESI routes');
+
   const category = await eve.publicFetch('/universe/categories/16/');
   const groupIds = Array.isArray(category?.groups) ? category.groups : [];
 
@@ -232,6 +265,10 @@ async function ensureCatalog() {
 
   c.catalog = { groups, skillGroup };
   saveCache();
+  debug.log(
+    SECTION,
+    `skill catalog built: ${Object.keys(groups).length} groups, ${Object.keys(skillGroup).length} skills mapped`
+  );
 
   return c.catalog;
 }

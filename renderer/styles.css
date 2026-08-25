@@ -149,25 +149,17 @@ body {
   min-width: 0;
   overflow: auto;
   padding: 14px 18px;
-  container-type: inline-size;
 }
 
-/* Wide windows: characters sit two-wide in the rail */
-@media (min-width: 1080px) {
+/* Characters sit 1-wide by default; the rail goes 2-wide as the window
+   is expanded, before the skill groups start adding columns. */
+@media (min-width: 1500px) {
   .char-rail {
     width: 560px;
   }
 
   .char-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* Very narrow windows: slim the rail so the content pane keeps room */
-@media (max-width: 640px) {
-  .char-rail {
-    width: 210px;
-    padding: 8px;
   }
 }
 
@@ -205,9 +197,10 @@ body {
   letter-spacing: 0.02em;
 }
 
-/* Skill groups flow 1-wide up to 4-wide as the pane gets wider. The
-   minmax(min-content, 1fr) tracks mean a group never shrinks narrower
-   than the skill text inside it. */
+/* Skill groups flow 1-wide up to 4-wide as the window widens. The
+   breakpoints sit above the rail's 2-wide breakpoint so characters
+   always go 2-wide first. The minmax(min-content, 1fr) tracks mean a
+   group never shrinks narrower than the skill text inside it. */
 .skills-groups {
   display: grid;
   grid-template-columns: repeat(1, minmax(min-content, 1fr));
@@ -215,19 +208,19 @@ body {
   align-items: start;
 }
 
-@container (min-width: 950px) {
+@media (min-width: 1560px) {
   .skills-groups {
     grid-template-columns: repeat(2, minmax(min-content, 1fr));
   }
 }
 
-@container (min-width: 1420px) {
+@media (min-width: 2030px) {
   .skills-groups {
     grid-template-columns: repeat(3, minmax(min-content, 1fr));
   }
 }
 
-@container (min-width: 1900px) {
+@media (min-width: 2500px) {
   .skills-groups {
     grid-template-columns: repeat(4, minmax(min-content, 1fr));
   }

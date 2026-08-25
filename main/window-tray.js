@@ -27,9 +27,9 @@ let actions = {
   addAccount: async () => {}
 };
 
-// The layout (2-wide character rail + skill groups sized to their text)
-// needs at least this much room; the window cannot be resized smaller.
-const MIN_WIDTH = 1500;
+// The layout (character rail + skill groups sized to their text) needs
+// at least this much room; the window cannot be resized smaller.
+const MIN_WIDTH = 1240;
 const MIN_HEIGHT = 700;
 
 function boundsFile() {
