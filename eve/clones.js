@@ -86,7 +86,6 @@ function inferActiveClone(current, previous) {
   if (!current) return { status: 'unknown' };
   if (!previous) return { status: 'first_run', current };
 
-  const prevIds = new Set(previous.jump_clones.map((jc) => jc.jump_clone_id));
   const currIds = new Set(current.jump_clones.map((jc) => jc.jump_clone_id));
 
   const vanished = previous.jump_clones.filter((jc) => !currIds.has(jc.jump_clone_id));

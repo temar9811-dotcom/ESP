@@ -37,7 +37,7 @@ async function getSkillIdsFromNames(names) {
 
   if (!unique.length) return map;
 
-  const data = await publicPost('/universe/ids/', names);
+  const data = await publicPost('/universe/ids/', unique);
   const inventoryTypes = Array.isArray(data.inventory_types)
     ? data.inventory_types
     : [];

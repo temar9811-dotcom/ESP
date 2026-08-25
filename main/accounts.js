@@ -191,7 +191,7 @@ function checkSkillCompletion(account, dashboard) {
 
       if (lastKey !== currentKey) {
         skillHistory.recordCompletion(account.characterId, {
-          skillId: lastSkill.skillId,
+          skillId: lastSkill.skill_id,
           skillName: lastSkill.skillName || 'Unknown skill',
           level: lastSkill.finished_level || 0,
           finishedAt: lastSkill.finish_date
@@ -236,6 +236,7 @@ function checkQueueWarning(account, dashboard) {
 
   if (account.lastQueueWarnKey === key) return;
 
+  account.lastQueueWarnKey = key;
   callbacks.onQueueWarning({
     characterName: account.characterName || 'Unknown',
     remainingMs: remaining
@@ -296,6 +297,7 @@ async function refreshAll() {
       while (queue.length) {
         await waitRateLimit();
         const account = queue.shift();
+        if (!account) break;
         await refreshCharacter(account);
       }
     });
