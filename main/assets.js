@@ -957,6 +957,19 @@ async function probeStructure(structureId, accessToken) {
   }
 }
 
+function clearStructureFailures() {
+  const cache = getStructureDiskCache();
+  let removed = 0;
+  for (const [id, entry] of Object.entries(cache)) {
+    if (entry && entry.failedAt != null && !entry.name) {
+      delete cache[id];
+      removed++;
+    }
+  }
+  if (removed) writeStructureDiskCache();
+  return removed;
+}
+
 module.exports = {
   getCharacterAssets,
   getCorpAssets,
@@ -966,5 +979,6 @@ module.exports = {
   savePersonalCache,
   saveCorpCache,
   getStructureDiskCache,
+  clearStructureFailures,
   probeStructure
 };

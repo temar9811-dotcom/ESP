@@ -512,6 +512,11 @@ switch (command) {
        }
      };
    }
+   case 'assets.clearStructureFailures': {
+     const assetsMod = require('../main/assets');
+     const removed = assetsMod.clearStructureFailures();
+     return { ok: true, result: { removed } };
+   }
    case 'assets.structureAudit': {
      const queue = require('../main/assets-queue');
      const accountsMod = require('../main/accounts');

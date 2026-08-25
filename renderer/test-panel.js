@@ -103,6 +103,7 @@ window.eveApi.testEnabled().then((enabled) => {
        <button type="button" data-cmd="assets.debug">Assets debug</button>
        <button type="button" data-cmd="assets.debug2">Assets debug 2</button>
        <button type="button" data-cmd="assets.structureAudit">Structure audit</button>
+       <button type="button" data-cmd="assets.clearStructureFailures">Clear structure failures</button>
        <button type="button" data-cmd="app.version">Version</button>
        <button type="button" data-cmd="bubble.skill">Skill bubble</button>
        <button type="button" data-cmd="bubble.queue">Queue bubble</button>
