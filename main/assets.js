@@ -450,7 +450,7 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
       if (!hit || !hit.name) {
         setStructureDiskCacheEntry(structureId, {
           name: namesHit.name,
-          systemId: null
+          systemId: fallbackStructureSystem(structureId)
         });
       }
       diagRecord('names');
@@ -468,6 +468,10 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
     const knownSystem =
       (hit && hit.systemId != null && Number(hit.systemId)) ||
       fallbackStructureSystem(structureId);
+    if (knownSystem != null && hit && hit.systemId == null) {
+      hit.systemId = knownSystem;
+      scheduleStructureDiskWrite();
+    }
     diagRecord('fallback', structureId);
     return { name: `Structure ${structureId}`, systemId: knownSystem };
   })();
