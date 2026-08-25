@@ -28,8 +28,10 @@ let actions = {
 };
 
 // The layout (character rail + skill groups sized to their text) needs
-// at least this much room; the window cannot be resized smaller.
-const MIN_WIDTH = 1240;
+// at least this much room; the window cannot be resized smaller. At this
+// width the queue stat cards wrap to two lines and the topbar actions
+// wrap below the title.
+const MIN_WIDTH = 700;
 const MIN_HEIGHT = 700;
 
 function boundsFile() {
