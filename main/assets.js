@@ -121,6 +121,33 @@ async function getCorpAssets(corpId, accessToken) {
   return fetchAllPages(`/corporations/${corpId}/assets/`, accessToken);
 }
 
+// Corp asset access requires more than the scope: the character needs the
+// Director role or a hangar take role. Checking /characters/{id}/roles/
+// upfront avoids burning 403s on scope-only characters. Cached per session.
+const roleAccessCache = new Map();
+const CORPS_ASSET_ROLES = new Set([
+  'Director',
+  'Hangar_Take_1', 'Hangar_Take_2', 'Hangar_Take_3', 'Hangar_Take_4',
+  'Hangar_Take_5', 'Hangar_Take_6', 'Hangar_Take_7',
+  'Hangar_Query_1', 'Hangar_Query_2', 'Hangar_Query_3', 'Hangar_Query_4',
+  'Hangar_Query_5', 'Hangar_Query_6', 'Hangar_Query_7'
+]);
+
+async function canAccessCorpAssets(characterId, accessToken) {
+  const key = Number(characterId);
+  if (roleAccessCache.has(key)) return roleAccessCache.get(key);
+  let allowed = false;
+  try {
+    const roles = await esiFetch(`/characters/${key}/roles/`, accessToken);
+    const list = roles && Array.isArray(roles.roles) ? roles.roles : [];
+    allowed = list.some((role) => CORPS_ASSET_ROLES.has(role));
+  } catch {
+    allowed = false;
+  }
+  roleAccessCache.set(key, allowed);
+  return allowed;
+}
+
 // Public character sheet — used to discover the corp id for the raw pull.
 async function getCharacterInfoPublic(characterId) {
   return publicFetch(`/characters/${characterId}/`);
@@ -1098,6 +1125,7 @@ function clearStructureFailures() {
 module.exports = {
   getCharacterAssets,
   getCorpAssets,
+  canAccessCorpAssets,
   getCharacterInfoPublic,
   buildCorpMap,
   buildAssetTree,

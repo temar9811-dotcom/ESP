@@ -236,7 +236,8 @@ async function pull(onlyCharacterId) {
     // of rows to parents that are corp-owned (shared across members, which
     // is why the same missing id appears for several characters). The corp
     // map lets walkToTop continue through those parents to the real
-    // station/structure the corp asset sits in.
+    // station/structure the corp asset sits in. Characters without the
+    // Director/hangar role are skipped gracefully (ESI 403s them anyway).
     const corpTasks = [];
     const seenCorps = new Set();
     for (const { account, token } of tasks) {
@@ -255,6 +256,15 @@ async function pull(onlyCharacterId) {
       if (!corpId) continue;
       const key = String(corpId);
       if (seenCorps.has(key)) continue;
+      // Gate by corp role so scope-only characters don't burn 403s.
+      const allowed = await assets.canAccessCorpAssets(account.characterId, token);
+      if (!allowed) {
+        debug.log(
+          SECTION,
+          `${account.characterName || account.characterId}: no corp asset access (missing Director/hangar role) — skipping corp pull`
+        );
+        continue;
+      }
       seenCorps.add(key);
       corpTasks.push({ corpId: Number(corpId), token, account });
     }
