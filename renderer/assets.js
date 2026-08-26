@@ -65,14 +65,43 @@ ESP.invalidateStaleAssetCaches = function (accounts) {
 };
 
 // Group raw asset rows into the region/system/station tree the renderer
-// expects. When a resolved-names map is available (from the 24h
-// resolution pass), locations are labelled with their real names; else
-// they fall back to raw ids/flags.
+// expects. Locations are looked up in the resolved-names map by their
+// TOP-LEVEL location id (walkToTop) — the resolver keys its map that way,
+// and an item's raw location_id may just be its parent container. Falls
+// back to raw ids/flags when no name has been resolved yet.
 function buildTreeFromRaw(rows, namesMap) {
   const tree = { regions: {} };
   const loc = namesMap || {};
-  for (const asset of rows || []) {
-    const id = asset.location_id != null ? Number(asset.location_id) : null;
+  const list = Array.isArray(rows) ? rows : [];
+  const byItemId = new Map(list.map((a) => [a.item_id, a]));
+
+  // Mirror of main/assets.js walkToTop: climb location_type 'item' parents
+  // to the top-level location.
+  function walkToTop(asset) {
+    let cur = asset;
+    let missingParentId = null;
+    const seen = new Set();
+    while (cur && cur.location_type === 'item') {
+      if (seen.has(cur.item_id)) { missingParentId = cur.location_id; break; }
+      seen.add(cur.item_id);
+      const parent = byItemId.get(cur.location_id);
+      if (!parent) { missingParentId = cur.location_id; cur = null; break; }
+      cur = parent;
+    }
+    return { top: cur, missingParentId };
+  }
+
+  for (const asset of list) {
+    const { top, missingParentId } = walkToTop(asset);
+
+    let id;
+    if (top) {
+      id = top.location_id != null ? Number(top.location_id) : null;
+    } else {
+      id = missingParentId != null
+        ? Number(missingParentId)
+        : (asset.location_id != null ? Number(asset.location_id) : null);
+    }
     const info = id != null ? loc[id] : null;
 
     const region = info && info.regionName ? info.regionName : 'Assets';
