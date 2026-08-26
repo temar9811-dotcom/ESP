@@ -125,9 +125,22 @@ function buildTreeFromRaw(rows, namesMap, corpRows) {
     const system = info && info.systemName
       ? info.systemName
       : 'Location ' + (id != null ? id : '?');
-    const name = info && info.name
-      ? info.name
-      : (asset.location_flag ? String(asset.location_flag) : 'Items');
+    // Ships and containers bucket under the place they sit in (station /
+    // structure / space) so they appear as rows inside that node with their
+    // contents nested beneath, instead of as sibling nodes of their own.
+    let name;
+    if (
+      info &&
+      (info.kind === 'ship' || info.kind === 'container') &&
+      info.locationName &&
+      info.locationName !== 'Unknown location'
+    ) {
+      name = info.locationName;
+    } else {
+      name = info && info.name
+        ? info.name
+        : (asset.location_flag ? String(asset.location_flag) : 'Items');
+    }
 
     if (!tree.regions[region]) tree.regions[region] = { name: region, systems: {} };
     if (!tree.regions[region].systems[system]) {
@@ -142,7 +155,9 @@ function buildTreeFromRaw(rows, namesMap, corpRows) {
       typeId: asset.type_id,
       quantity: asset.quantity,
       isSingleton: asset.is_singleton,
-      itemId: asset.item_id
+      itemId: asset.item_id,
+      parentId: asset.location_type === 'item' ? Number(asset.location_id) : null,
+      flag: asset.location_flag || null
     });
     st.count++;
   }
@@ -320,26 +335,16 @@ ESP.assetTreeHtmlFor = function (id, expand, kind, tree) {
         const tKey = prefix + 't:' + regionName + '|' + systemName + '|' + stationName;
         const tOpen = Boolean(expand[tKey]);
 
-        const items = groupItems(station.items || []);
-        items.sort((a, b) => nameOf(a.typeId).localeCompare(nameOf(b.typeId)));
-
-        const itemsHtml = tOpen ? `
-<table class="asset-items">
-  <thead><tr><th>Item</th><th>Qty</th></tr></thead>
-  <tbody>${items.map((it) => `
-    <tr>
-      <td>${ESP.escapeHtml(nameOf(it.typeId))}</td>
-      <td>${ESP.formatNumber(it.quantity)}</td>
-    </tr>`).join('')}
-  </tbody>
-</table>` : '';
+        const itemsHtml = tOpen
+          ? `<div class="asset-item-list">${stationItemsHtml(station.items || [], nameOf, id, prefix, expand)}</div>`
+          : '';
 
         return `
 <div class="asset-node station">
   <div class="asset-node-row" data-assets-toggle="${tKey}" data-id="${id}">
     <span class="expand-icon">${tOpen ? '▾' : '▸'}</span>
     <span class="node-name">${ESP.escapeHtml(stationName)}</span>
-    <span class="node-count">${items.length}</span>
+    <span class="node-count">${station.count || (station.items || []).length}</span>
   </div>
   ${tOpen ? `<div class="asset-children">${itemsHtml}</div>` : ''}
 </div>`;
@@ -368,14 +373,87 @@ ESP.assetTreeHtmlFor = function (id, expand, kind, tree) {
   }).join('')}</div>`;
 };
 
-function groupItems(items) {
-  const byType = new Map();
-  for (const item of items) {
-    const cur = byType.get(item.typeId) || { typeId: item.typeId, quantity: 0 };
-    cur.quantity += Number(item.quantity) || 1;
-    byType.set(item.typeId, cur);
+// Fit-slot ordering so a ship's contents read like a fitting: high / mid /
+// low / rigs / cargo / drone bay, then everything else alphabetically.
+const FLAG_ORDER = (() => {
+  const order = ['HiSlot', 'MedSlot', 'LoSlot', 'RigSlot', 'SubSystem', 'Cargo', 'DroneBay', 'FighterBay', 'Hangar', 'Deliveries'];
+  const map = new Map();
+  for (const f of order) map.set(f, map.size);
+  return map;
+})();
+
+function flagRank(flag) {
+  if (!flag) return 100;
+  for (const [prefix, rank] of FLAG_ORDER) {
+    if (flag.startsWith(prefix)) return rank;
   }
-  return [...byType.values()];
+  return 50;
+}
+
+// Build the item rows for one station bucket: loose items at the root,
+// ships/containers as rows whose contents nest in a collapsed dropdown.
+// parentId links each row to its containing item; rows whose parent is not
+// in the bucket (station hangar roots, missing structure parents) are roots.
+function stationItemsHtml(items, nameOf, charId, prefix, expand) {
+  // Merge duplicate stacks (same type + same parent) so non-singleton goods
+  // stay stacked without flattening the hierarchy.
+  const merged = new Map();
+  for (const item of items) {
+    const key = item.isSingleton
+      ? 's:' + item.itemId
+      : 't:' + item.typeId + '|p:' + (item.parentId != null ? item.parentId : 'root');
+    const cur = merged.get(key);
+    if (cur) {
+      cur.quantity += Number(item.quantity) || 1;
+    } else {
+      merged.set(key, {
+        typeId: item.typeId,
+        quantity: Number(item.quantity) || 1,
+        itemId: item.itemId,
+        parentId: item.parentId != null ? Number(item.parentId) : null,
+        flag: item.flag || null
+      });
+    }
+  }
+  const rows = [...merged.values()];
+
+  const present = new Set(rows.map((r) => Number(r.itemId)));
+  const childrenOf = new Map();
+  const roots = [];
+  for (const row of rows) {
+    if (row.parentId != null && present.has(row.parentId)) {
+      if (!childrenOf.has(row.parentId)) childrenOf.set(row.parentId, []);
+      childrenOf.get(row.parentId).push(row);
+    } else {
+      roots.push(row);
+    }
+  }
+
+  const byName = (a, b) => nameOf(a.typeId).localeCompare(nameOf(b.typeId));
+  roots.sort(byName);
+  for (const kids of childrenOf.values()) {
+    kids.sort((a, b) => flagRank(a.flag) - flagRank(b.flag) || byName(a, b));
+  }
+
+  function renderRows(list) {
+    return list.map((it) => {
+      const kids = childrenOf.get(Number(it.itemId)) || [];
+      const key = prefix + 'i:' + it.itemId;
+      const open = Boolean(expand[key]);
+      const hasKids = kids.length > 0;
+      const kidsHtml = hasKids && open
+        ? `<div class="asset-children">${renderRows(kids)}</div>`
+        : '';
+      return `
+<div class="asset-item-row${hasKids ? ' has-children' : ''}"${hasKids ? ` data-assets-toggle="${key}" data-id="${charId}"` : ''}>
+  <span class="expand-icon">${hasKids ? (open ? '▾' : '▸') : ''}</span>
+  <span class="item-name">${ESP.escapeHtml(nameOf(it.typeId))}</span>
+  <span class="item-qty">${ESP.formatNumber(it.quantity)}</span>
+</div>${kidsHtml}`;
+    }).join('');
+  }
+
+  return renderRows(roots);
 }
 
 // --- Event bindings (delegated, bound once) ---

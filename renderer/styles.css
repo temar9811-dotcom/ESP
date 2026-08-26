@@ -1521,3 +1521,37 @@ tfoot td {
   padding: 2px 6px;
   color: #c8d6e5;
 }
+
+.asset-item-list {
+  margin: 2px 0 6px;
+  font-size: 12px;
+}
+
+.asset-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #c8d6e5;
+}
+
+.asset-item-row.has-children {
+  cursor: pointer;
+}
+
+.asset-item-row.has-children:hover {
+  background: rgba(90, 140, 190, 0.1);
+}
+
+.asset-item-row .item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-item-row .item-qty {
+  color: #667788;
+  font-size: 11px;
+}
