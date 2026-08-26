@@ -73,18 +73,20 @@ function buildTreeFromRaw(rows, namesMap) {
   const tree = { regions: {} };
   const loc = namesMap || {};
   const list = Array.isArray(rows) ? rows : [];
-  const byItemId = new Map(list.map((a) => [a.item_id, a]));
+  const byItemId = new Map(list.map((a) => [Number(a.item_id), a]));
 
   // Mirror of main/assets.js walkToTop: climb location_type 'item' parents
-  // to the top-level location.
+  // to the top-level location. Ids are normalised to Number so a string/
+  // number mismatch between item_id and location_id can't orphan a chain.
   function walkToTop(asset) {
     let cur = asset;
     let missingParentId = null;
     const seen = new Set();
     while (cur && cur.location_type === 'item') {
-      if (seen.has(cur.item_id)) { missingParentId = cur.location_id; break; }
-      seen.add(cur.item_id);
-      const parent = byItemId.get(cur.location_id);
+      const curId = Number(cur.item_id);
+      if (seen.has(curId)) { missingParentId = cur.location_id; break; }
+      seen.add(curId);
+      const parent = byItemId.get(Number(cur.location_id));
       if (!parent) { missingParentId = cur.location_id; cur = null; break; }
       cur = parent;
     }

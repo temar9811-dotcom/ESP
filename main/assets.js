@@ -590,14 +590,18 @@ function walkToTop(asset, assetsByItemId) {
   const seen = new Set();
 
   while (cur && cur.location_type === 'item') {
-    if (seen.has(cur.item_id)) {
+    const curId = Number(cur.item_id);
+    if (seen.has(curId)) {
       missingParentId = cur.location_id;
       break;
     }
 
-    seen.add(cur.item_id);
+    seen.add(curId);
 
-    const parent = assetsByItemId.get(cur.location_id);
+    // Normalise to Number: item_id / location_id can desynchronise between
+    // string and number across JSON round-trips, which would make the Map
+    // lookup miss and orphan the whole chain.
+    const parent = assetsByItemId.get(Number(cur.location_id));
     if (!parent) {
       missingParentId = cur.location_id;
       cur = null;

@@ -567,21 +567,34 @@ switch (command) {
        let lastPageSize = null;
        if (raw && Array.isArray(raw.assets)) {
          rawCount = raw.assets.length;
-         const byItemId = new Map(raw.assets.map((a) => [a.item_id, a]));
+         const byItemId = new Map(raw.assets.map((a) => [Number(a.item_id), a]));
          for (const a of raw.assets) {
            if (typeof a.item_id === 'number' && a.item_id > maxItemId) maxItemId = a.item_id;
            if (typeof a.location_id === 'number' && a.location_id > maxLocationId) maxLocationId = a.location_id;
          }
          const seenTops = new Set();
+         const missingParents = new Set();
          for (const asset of raw.assets) {
-           const { top } = assetsMod.walkToTop(asset, byItemId);
-           if (!top) { orphanCount++; continue; }
+           const { top, missingParentId } = assetsMod.walkToTop(asset, byItemId);
+           if (!top) {
+             orphanCount++;
+             if (missingParentId != null) missingParents.add(Number(missingParentId));
+             continue;
+           }
            if (seenTops.has(top.item_id)) continue;
            seenTops.add(top.item_id);
            const t = top.location_type || 'unknown';
            topLocTypes[t] = (topLocTypes[t] || 0) + 1;
            if (t === 'item') itemTopCount++;
          }
+         // Are the "missing" parents actually present as item_ids? If yes,
+         // the walk lookup is broken; if no, the raw pull genuinely lacks them.
+         let missingButPresent = 0;
+         for (const pid of missingParents) {
+           if (byItemId.has(pid)) missingButPresent++;
+         }
+         var diagMissingParentCount = missingParents.size;
+         var diagMissingButPresent = missingButPresent;
        }
        out.push({
          character: target.characterName,
@@ -598,7 +611,9 @@ switch (command) {
          maxItemId,
          maxItemIdSafe: Number.isSafeInteger(maxItemId),
          maxLocationId,
-         maxLocationIdSafe: Number.isSafeInteger(maxLocationId)
+         maxLocationIdSafe: Number.isSafeInteger(maxLocationId),
+         missingParentCount: typeof diagMissingParentCount === 'number' ? diagMissingParentCount : 0,
+         missingButPresent: typeof diagMissingButPresent === 'number' ? diagMissingButPresent : 0
        });
      }
      return { ok: true, result: out };

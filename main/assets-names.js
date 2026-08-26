@@ -143,7 +143,7 @@ async function resolveCharacter(account, token) {
   if (!raw || !Array.isArray(raw.assets)) return null;
 
   const list = raw.assets;
-  const byItemId = new Map(list.map((a) => [a.item_id, a]));
+  const byItemId = new Map(list.map((a) => [Number(a.item_id), a]));
   accounts.ensureScopes(account);
   const scopes =
     typeof account.scopes === 'string'
