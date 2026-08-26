@@ -319,14 +319,30 @@ async function resolveCharacter(account, token) {
           }
         } catch (err) {
           if (err && (err.status === 420 || err.status === 429)) throw err;
-          // Other failures fall through to the container/ship labeling.
+          // Graceful degradation: label 403/404 honestly instead of falling
+          // through to the generic container/ship guess. Matches
+          // jEveAssets' approach — accept the "unknown" category
+          // rather than mislabeling actual structures as inaccessible
+          // containers.
+          const label = err.status === 403
+            ? `Structure ${id} (no access)`
+            : err.status === 404
+              ? `Structure ${id} (destroyed/unreachable)`
+              : `Unknown location ${id}`;
+          locations[id] = {
+            kind: err.status === 403 ? 'inaccessible-structure' : 'unknown',
+            name: label,
+            systemName: 'In transit',
+            regionName: 'Carried / in transit'
+          };
+          continue;
         }
 
-        const parentRow = byItemId.get(id);
-        const givenName = orphanNames.get(id);
-        // Hardcoded flags (implants, clones, market orders, contracts,
-        // industry) are generated assets — classify them directly instead
-        // of the generic container/ship guess.
+        // Legacy path — try the raw parent's type_id for ship/container
+        // labeling. givenName is looked up from the primary names map
+        // (all item ids, not just orphans). classifyFlag only applies
+        // when we have no player-given name for this id.
+        const givenName = itemNames.get(id);
         const flagHit = classifyFlag(asset.location_flag);
         if (flagHit && !givenName) {
           locations[id] = {
@@ -337,6 +353,7 @@ async function resolveCharacter(account, token) {
           };
           continue;
         }
+        const parentRow = byItemId.get(id);
         let kind = 'inaccessible';
         let label = 'Container / ship contents';
         if (parentRow && parentRow.type_id != null) {
