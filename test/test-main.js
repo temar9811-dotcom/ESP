@@ -517,6 +517,77 @@ switch (command) {
      const removed = assetsMod.clearStructureFailures();
      return { ok: true, result: { removed } };
    }
+   case 'assets.locationClassify': {
+     // Runs the pure location classifier over every top-level asset
+     // location for a real character: station / planet / solar system /
+     // item, and the item range split into ship / container / structure.
+     const accountsMod = require('../main/accounts');
+     const assetsMod = require('../main/assets');
+     const { publicFetch } = require('../eve/http');
+     const {
+       classifyLocationId,
+       classifyTypeCategory
+     } = require('../main/location-classifier');
+
+     const list = accountsMod.getAccounts();
+     const target =
+       (payload && payload.id && list.find((a) => Number(a.characterId) === Number(payload.id))) ||
+       list[0] ||
+       null;
+     if (!target) return { ok: false, error: 'No characters added.' };
+     const token = await accountsMod.getValidAccessToken(target, false);
+     const raw = await assetsMod.getCharacterAssets(target.characterId, token);
+
+     const byItemId = new Map(raw.map((a) => [a.item_id, a]));
+     const seen = new Set();
+     const counts = {};
+     const examples = {};
+     const catCache = new Map(); // type_id -> category_id (one fetch per type)
+
+     const categoryOf = async (typeId) => {
+       if (catCache.has(typeId)) return catCache.get(typeId);
+       let cat = null;
+       try {
+         const t = await publicFetch(`/universe/types/${typeId}/`);
+         cat = t && t.category_id != null ? Number(t.category_id) : null;
+       } catch {
+         cat = null;
+       }
+       catCache.set(typeId, cat);
+       return cat;
+     };
+
+     const bump = (kind, id) => {
+       counts[kind] = (counts[kind] || 0) + 1;
+       if (!examples[kind]) examples[kind] = id;
+     };
+
+     for (const asset of raw) {
+       if (seen.has(asset.location_id)) continue;
+       seen.add(asset.location_id);
+
+       const piContext = (asset.location_flag || '').toLowerCase() === 'autofit';
+       const broad = classifyLocationId(asset.location_id, asset.location_type, {
+         piContext
+       });
+
+       if (broad !== 'item') {
+         bump(broad, asset.location_id);
+         continue;
+       }
+
+       // Split the item range via the containing item's type category.
+       const container = byItemId.get(asset.location_id);
+       if (container && container.type_id != null) {
+         const cat = await categoryOf(container.type_id);
+         bump(cat != null ? classifyTypeCategory(cat) : 'item', asset.location_id);
+       } else {
+         bump('item (unresolved)', asset.location_id);
+       }
+     }
+
+     return { ok: true, result: { characterId: target.characterId, total: raw.length, uniqueLocations: seen.size, counts, examples } };
+   }
    case 'assets.structureAudit': {
      const queue = require('../main/assets-queue');
      const accountsMod = require('../main/accounts');
