@@ -17,6 +17,30 @@ function getErrorLimitState() {
   return { remain, resetAt: errorLimitResetAt };
 }
 
+// Variant of esiFetch that also returns response headers, used by paginated
+// endpoints (X-Pages tells us exactly how many pages exist).
+async function esiFetchWithHeaders(path, accessToken) {
+  const safePath = normalizePath(path);
+
+  const res = await fetch(`${config.ESI_BASE}${safePath}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      'User-Agent': config.USER_AGENT,
+      'X-User-Agent': config.USER_AGENT
+    }
+  });
+
+  const xPages = res.headers.get('x-pages');
+  const data = await handleResponse(res, `ESI ${safePath}`);
+  return {
+    data,
+    headers: {
+      xPages: xPages != null ? Number(xPages) : null
+    }
+  };
+}
+
 async function handleResponse(res, label) {
   // Track ESI's error budget (X-ESI-Error-Limit-Remain/Reset).
   const remainHeader = res.headers.get('x-esi-error-limit-remain');
@@ -119,6 +143,7 @@ async function esiPost(path, body, accessToken) {
 
 module.exports = {
   esiFetch,
+  esiFetchWithHeaders,
   esiPost,
   publicFetch,
   publicPost,

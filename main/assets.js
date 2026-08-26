@@ -3,8 +3,9 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { esiFetch, publicFetch, publicPost, getErrorLimitState } = require('../eve/http');
+const { esiFetch, esiFetchWithHeaders, publicFetch, publicPost, getErrorLimitState } = require('../eve/http');
 const accounts = require('./accounts');
+const debug = require('./debug');
 
 let lastStructureCallAt = 0;
 const STRUCTURE_CALL_GAP_MS = 150;
@@ -91,23 +92,42 @@ function saveCorpCache(corpId, tree) {
   saveCache(corpAssetCacheFile(corpId), tree);
 }
 
+// Paginate ESI asset endpoints. For authed pulls the X-Pages header on the
+// first response tells us exactly how many pages exist, so a full page
+// (1000 items) never ends the loop early. Public endpoints lack the header,
+// so they fall back to the short-page heuristic. Each page is logged so a
+// lost page is visible in diagnostics.
 async function fetchAllPages(baseUrl, accessToken) {
   const all = [];
-  let page = 1;
   const maxPages = 100;
+  let totalPages = null; // known only after the first authed response
 
-  while (page <= maxPages) {
+  for (let page = 1; page <= maxPages; page++) {
     const url = `${baseUrl}?page=${page}`;
-    const data = accessToken
-      ? await esiFetch(url, accessToken)
-      : await publicFetch(url);
+    let data;
+    if (accessToken) {
+      const res = await esiFetchWithHeaders(url, accessToken);
+      data = res.data;
+      if (page === 1 && res.headers.xPages != null) {
+        totalPages = res.headers.xPages;
+      }
+    } else {
+      data = await publicFetch(url);
+    }
+
+    debug.log(
+      'assets',
+      `page ${page}/${totalPages || '?'} ${baseUrl}: ${Array.isArray(data) ? data.length : 'non-array'} item(s)`
+    );
 
     if (!Array.isArray(data) || data.length === 0) break;
-
     all.push(...data);
 
-    if (data.length < 1000) break;
-    page++;
+    if (totalPages != null) {
+      if (page >= totalPages) break;
+    } else if (data.length < 1000) {
+      break;
+    }
   }
 
   return all;
