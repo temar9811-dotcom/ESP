@@ -13,6 +13,22 @@ function assetsState() {
   return st;
 }
 
+// The ESI sequencer's live lock state, polled so the per-char refresh
+// button can flip to "Queue refresh" while another section holds the lock.
+function sequencerLocked() {
+  return Boolean(ESP.state.sequencer && ESP.state.sequencer.locked);
+}
+
+ESP.refreshSequencerState = function () {
+  if (!window.eveApi || !window.eveApi.getSequencerState) return Promise.resolve();
+  return window.eveApi
+    .getSequencerState()
+    .then((seq) => {
+      ESP.state.sequencer = seq || { locked: false };
+    })
+    .catch(() => {});
+};
+
 function cacheSlot(id, kind) {
   const st = assetsState();
   st.assetsCacheByCharacter[id] = st.assetsCacheByCharacter[id] || {};
@@ -149,10 +165,11 @@ ESP.assetPaneHtml = function (account, kind) {
       ? ` <span style="opacity:0.6">${parts.join(', ')}</span>`
       : '';
 
+  const refreshLabel = sequencerLocked() ? 'Queue refresh' : 'Refresh now';
   const header = `
 <div class="assets-pane-header">
   <span class="assets-last-fetch">Last live fetch: ${lastFetch ? ESP.formatDate(lastFetch) : 'never'}</span>
-  <button type="button" class="assets-refresh" data-assets-refresh="${kind}" data-id="${id}">Refresh now</button>${diagBadge}
+  <button type="button" class="assets-refresh" data-assets-refresh="${kind}" data-id="${id}">${refreshLabel}</button>${diagBadge}
 </div>`;
 
   if (slot.status === 'idle') {
@@ -286,7 +303,15 @@ ESP.bindAssetsListeners = function () {
       const kind = refreshBtn.dataset.assetsRefresh;
       refreshBtn.disabled = true;
       try {
-        await window.eveApi.refreshAssetsNow(id);
+        // Re-check the sequencer at click time — the label may be a render
+        // behind. When locked, queue through the sequencer; otherwise take
+        // the direct refresh.
+        await ESP.refreshSequencerState();
+        if (sequencerLocked() && window.eveApi.queueAssetsRefresh) {
+          await window.eveApi.queueAssetsRefresh(id);
+        } else {
+          await window.eveApi.refreshAssetsNow(id);
+        }
         await ESP.loadAssets(id, kind, true);
       } catch (err) {
         ESP.setStatus(err?.message || String(err), true);

@@ -13,6 +13,7 @@ const groups = require('./groups');
 const skillMeta = require('./skill-meta');
 const skillsSync = require('./skills-sync');
 const walletSync = require('./wallet-sync');
+const assetsSync = require('./assets-sync');
 const notes = require('./notes');
 const clonesHistory = require('./clones-history');
 const cloneNicknames = require('./clones-nicknames');
@@ -238,8 +239,15 @@ function registerIpcHandlers() {
     return {
       skills: skillsSync.getSyncState(),
       wallet: walletSync.getSyncState(),
-      assets: { pulling: false, lastPullAt: null, nextPullAt: null, intervalMs: null }
+      assets: assetsSync.getSyncState()
     };
+  });
+
+  // The ESI sequencer's live lock state — used to flip the per-char asset
+  // refresh button to "Queue refresh" while another section holds it.
+  ipcMain.handle('app:getSequencerState', () => {
+    const seq = require('./esi-sequencer').getState();
+    return { ...seq, locked: Boolean(seq.holder) };
   });
 
   ipcMain.handle('accounts:list', () => {
@@ -352,6 +360,18 @@ function registerIpcHandlers() {
     return assetsQueue.refreshCharacterAssets(characterId);
   });
 
+  // Raw asset cache from the sequenced 45-minute pull (no name resolution).
+  ipcMain.handle('assets:getRaw', (_event, characterId) => {
+    return assetsSync.getRaw(characterId);
+  });
+
+  // Queue a single-character asset pull through the sequencer. When the
+  // sequencer is already locked this waits its turn; the renderer uses it
+  // for the "Queue refresh" state of the per-char button.
+  ipcMain.handle('assets:queueRefresh', async (_event, characterId) => {
+    return assetsSync.pull(characterId);
+  });
+
   ipcMain.handle('assets:getQueueState', () => {
     return assetsQueue.getState();
   });
@@ -455,6 +475,67 @@ function registerIpcHandlers() {
 
   ipcMain.handle('test:enabled', () => {
     return testHarness ? testHarness.testEnabled() : false;
+  });
+
+  // --- Cache clearing (test panel) ---
+  // The named section caches plus every per-character / per-corp asset file.
+  function clearCacheFile(name) {
+    const fs = require('fs');
+    const path = require('path');
+    const dir = app.getPath('userData');
+    try {
+      fs.unlinkSync(path.join(dir, name));
+      return true;
+    } catch {
+      return false; // absent is fine
+    }
+  }
+
+  function listAssetCacheFiles() {
+    const fs = require('fs');
+    const path = require('path');
+    const dir = app.getPath('userData');
+    try {
+      return fs
+        .readdirSync(dir)
+        .filter(
+          (f) =>
+            /^assets-\d+\.json$/.test(f) || /^corp-assets-\d+\.json$/.test(f)
+        );
+    } catch {
+      return [];
+    }
+  }
+
+  const CACHE_FILES = {
+    skills: 'skills-cache.json',
+    wallet: 'wallet-cache.json',
+    assets: 'assets-raw-cache.json'
+  };
+
+  ipcMain.handle('cache:clear', (_event, which) => {
+    if (which === 'all') {
+      const files = [...Object.values(CACHE_FILES), ...listAssetCacheFiles()];
+      const cleared = files.filter((f) => clearCacheFile(f));
+      // Reset in-memory caches so the modules re-read empty state.
+      if (skillsSync.resetCache) skillsSync.resetCache();
+      if (walletSync.resetCache) walletSync.resetCache();
+      if (assetsSync.resetCache) assetsSync.resetCache();
+      return { cleared };
+    }
+
+    if (which === 'assetsFiles') {
+      const cleared = listAssetCacheFiles().filter((f) => clearCacheFile(f));
+      return { cleared };
+    }
+
+    const file = CACHE_FILES[which];
+    if (!file) return { cleared: [], error: `Unknown cache: ${which}` };
+    const cleared = clearCacheFile(file) ? [file] : [];
+    if (which === 'skills' && skillsSync.resetCache) skillsSync.resetCache();
+    if (which === 'wallet' && walletSync.resetCache) walletSync.resetCache();
+    if (which === 'assets' && assetsSync.resetCache) assetsSync.resetCache();
+    return { cleared };
   });
 }
 

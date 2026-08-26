@@ -148,6 +148,7 @@ ESP.bindRefreshState = function () {
   // the pulls run on the main process's own timers.
   setInterval(() => {
     ESP.refreshSyncState();
+    if (ESP.refreshSequencerState) ESP.refreshSequencerState();
   }, 5000);
 };
 

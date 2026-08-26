@@ -60,5 +60,14 @@ module.exports = {
     intervalMs: 10 * 60 * 1000,
     batchSize: 10,
     batchDelayMs: 1500
+  },
+
+  // Sequenced assets pull: third section, then every 45 minutes. Raw
+  // personal asset rows per character — no name/structure resolution
+  // here, just the ESI pull and a cache write.
+  ASSETS_SYNC: {
+    intervalMs: 45 * 60 * 1000,
+    batchSize: 10,
+    batchDelayMs: 1500
   }
 };

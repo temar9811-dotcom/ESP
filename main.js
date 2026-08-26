@@ -8,13 +8,13 @@ app.disableHardwareAcceleration();
 // Allow notification chimes to play without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
-const assetsQueue = require('./main/assets-queue');
 const eveConfig = require('./eve/config');
 const eve = require('./eve');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
 const skillsSync = require('./main/skills-sync');
 const walletSync = require('./main/wallet-sync');
+const assetsSync = require('./main/assets-sync');
 const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
 const legacyGuard = require('./main/legacy-guard');
@@ -113,9 +113,7 @@ async function bootstrap() {
 
   ipc.registerIpcHandlers();
 
-  // Asset ESI pulls are paused for now — the 2-hourly background sweep is
-  // disabled until the assets tab is rebuilt. Manual asset fetches from
-  // the tab still work off the cached data.
+  // Old 2-hourly sweep superseded by the sequenced assetsSync below.
   // assetsQueue.start();
 
   windowTray.createWindow();
@@ -135,6 +133,7 @@ async function bootstrap() {
   // queues behind it (startup pull + every 10 minutes).
   skillsSync.start();
   walletSync.start();
+  assetsSync.start();
 
   await accounts.refreshAll();
 

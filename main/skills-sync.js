@@ -240,6 +240,10 @@ function getSyncState() {
   };
 }
 
+function resetCache() {
+  cache = null;
+}
+
 function stop() {
   if (timer) clearInterval(timer);
   timer = null;
@@ -356,6 +360,7 @@ module.exports = {
   pull,
   isPulling,
   getSyncState,
+  resetCache,
   getSkills,
   getFetchedAt,
   getGroupedSkills,

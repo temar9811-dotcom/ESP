@@ -107,6 +107,10 @@ window.eveApi.testEnabled().then((enabled) => {
        <button type="button" data-cmd="assets.clearStructureFailures">Clear structure failures</button>
        <button type="button" data-cmd="assets.locationClassify">Location classify</button>
        <button type="button" data-cmd="app.version">Version</button>
+       <button type="button" data-cache-clear="all">Clear ALL caches</button>
+       <button type="button" data-cache-clear="skills">Clear skills cache</button>
+       <button type="button" data-cache-clear="wallet">Clear wallet cache</button>
+       <button type="button" data-cache-clear="assets">Clear assets cache</button>
        <button type="button" data-cmd="bubble.skill">Skill bubble</button>
        <button type="button" data-cmd="bubble.queue">Queue bubble</button>
        <button type="button" data-cmd="bubble.wallet">Wallet bubble</button>
@@ -133,6 +137,21 @@ window.eveApi.testEnabled().then((enabled) => {
    document.body.appendChild(panel);
    document.body.appendChild(fab);
    panel.addEventListener('click', async (event) => {
+     const clearBtn = event.target.closest('[data-cache-clear]');
+     if (clearBtn) {
+       const which = clearBtn.dataset.cacheClear;
+       setResult(true, `clearing ${which} cache…`);
+       window.eveApi
+         .clearCache(which)
+         .then((res) => {
+           const n = res && res.cleared ? res.cleared.length : 0;
+           setResult(true, `cleared ${n} cache file(s): ${(res.cleared || []).join(', ') || 'none present'}`);
+         })
+         .catch((err) => {
+           setResult(false, `clearCache: ${err?.message || String(err)}`);
+         });
+       return;
+     }
      const cmdBtn = event.target.closest('[data-cmd]');
      if (cmdBtn) {
        const probeAll = cmdBtn.dataset.cmd === 'assets.structureAuditAll';

@@ -7,14 +7,14 @@ const path = require('path');
 const accounts = require('./accounts');
 const sequencer = require('./esi-sequencer');
 const debug = require('./debug');
-const eve = require('../eve');
+const assets = require('./assets');
 const eveConfig = require('../eve/config');
 
-// The wallet section is the second sequenced ESI section — it runs after
-// skills and re-pulls every 10 minutes. Journal entries and transactions
-// for every character are cached here; the renderer reads the cache.
-const SECTION = 'wallet';
-const DETAIL_DAYS = 7;
+// The assets section is the third sequenced ESI section — it runs after
+// skills and wallet and re-pulls every 45 minutes. Raw personal asset
+// rows for every character are cached here; name/structure resolution is
+// NOT part of this pull (the assets tab resolves lazily).
+const SECTION = 'assets';
 
 let cache = null;
 let pulling = false;
@@ -28,7 +28,7 @@ function sleep(ms) {
 }
 
 function cacheFile() {
-  return path.join(app.getPath('userData'), 'wallet-cache.json');
+  return path.join(app.getPath('userData'), 'assets-raw-cache.json');
 }
 
 function loadCache() {
@@ -65,21 +65,21 @@ function isPulling() {
   return pulling;
 }
 
-// Cached wallet details for the renderer, or null when absent.
-function getDetails(characterId) {
+// Cached raw assets for the renderer, or null when absent.
+function getRaw(characterId) {
   const entry = loadCache().characters[String(characterId)];
-  if (!entry || !entry.data) return null;
+  if (!entry || !entry.assets) return null;
 
   return {
-    data: entry.data,
+    assets: entry.assets,
     fetchedAt: entry.fetchedAt || null,
     pulling: isPulling()
   };
 }
 
-function store(characterId, data) {
+function store(characterId, rows) {
   loadCache().characters[String(characterId)] = {
-    data,
+    assets: rows,
     fetchedAt: new Date().toISOString()
   };
 }
@@ -93,17 +93,17 @@ function removeCharacter(characterId) {
 
 async function fetchOne(account, token) {
   try {
-    return await eve.getWalletDetails(account.characterId, token, DETAIL_DAYS);
+    return await assets.getCharacterAssets(account.characterId, token);
   } catch (err) {
     if (err && err.status === 401) {
       const fresh = await accounts.getValidAccessToken(account, true);
-      return eve.getWalletDetails(account.characterId, fresh, DETAIL_DAYS);
+      return assets.getCharacterAssets(account.characterId, fresh);
     }
     throw err;
   }
 }
 
-async function pull() {
+async function pull(onlyCharacterId) {
   if (pulling) {
     debug.log(SECTION, 'pull requested while one is already running — skipped');
     return { skipped: true };
@@ -118,8 +118,11 @@ async function pull() {
   let pulled = 0;
 
   try {
-    const list = accounts.getAccounts();
-    debug.log(SECTION, `pulling journal + transactions for ${list.length} character(s)`);
+    let list = accounts.getAccounts();
+    if (onlyCharacterId != null) {
+      list = list.filter((a) => Number(a.characterId) === Number(onlyCharacterId));
+    }
+    debug.log(SECTION, `pulling assets for ${list.length} character(s)`);
 
     // Resolve tokens up front; SSO refreshes are not ESI calls.
     const tasks = [];
@@ -136,8 +139,8 @@ async function pull() {
       }
     }
 
-    const batchSize = Math.max(1, Number(eveConfig.WALLET_SYNC?.batchSize) || 10);
-    const batchDelay = Math.max(0, Number(eveConfig.WALLET_SYNC?.batchDelayMs) || 0);
+    const batchSize = Math.max(1, Number(eveConfig.ASSETS_SYNC?.batchSize) || 10);
+    const batchDelay = Math.max(0, Number(eveConfig.ASSETS_SYNC?.batchDelayMs) || 0);
     const batchCount = Math.ceil(tasks.length / batchSize);
 
     for (let i = 0; i < tasks.length; i += batchSize) {
@@ -149,7 +152,7 @@ async function pull() {
       const batch = tasks.slice(i, i + batchSize);
       debug.log(
         SECTION,
-        `ESI GET /characters/*/wallet/(journal+transactions) batch ${batchNumber}/${batchCount} (${batch.length} call(s))`
+        `ESI GET /characters/*/assets batch ${batchNumber}/${batchCount} (${batch.length} call(s))`
       );
 
       const results = await Promise.allSettled(
@@ -162,10 +165,12 @@ async function pull() {
 
         if (result.status === 'fulfilled') {
           store(account.characterId, result.value);
+          account.assetLastFetch = new Date().toISOString();
+          account.assetCount = Array.isArray(result.value) ? result.value.length : 0;
           pulled += 1;
           debug.log(
             SECTION,
-            `${name}: ${result.value?.summary?.count ?? 0} entries in the last ${DETAIL_DAYS} days`
+            `${name}: ${account.assetCount} asset rows`
           );
         } else {
           const err = result.reason;
@@ -206,19 +211,19 @@ function start() {
   if (started) return;
   started = true;
 
-  debug.log(SECTION, 'startup wallet pull scheduled');
+  debug.log(SECTION, 'startup asset pull scheduled');
 
   pull().catch((err) =>
-    console.error('[wallet] startup pull failed', err?.message || err)
+    console.error('[assets] startup pull failed', err?.message || err)
   );
 
-  const interval = Math.max(60000, Number(eveConfig.WALLET_SYNC?.intervalMs) || 600000);
+  const interval = Math.max(60000, Number(eveConfig.ASSETS_SYNC?.intervalMs) || 45 * 60 * 1000);
   nextPullAt = Date.now() + interval;
   timer = setInterval(() => {
     debug.log(SECTION, 'scheduled pull timer fired');
     nextPullAt = Date.now() + interval;
     pull().catch((err) =>
-      console.error('[wallet] scheduled pull failed', err?.message || err)
+      console.error('[assets] scheduled pull failed', err?.message || err)
     );
   }, interval);
   if (timer.unref) timer.unref();
@@ -229,7 +234,7 @@ function getSyncState() {
     pulling,
     lastPullAt,
     nextPullAt,
-    intervalMs: Math.max(60000, Number(eveConfig.WALLET_SYNC?.intervalMs) || 600000)
+    intervalMs: Math.max(60000, Number(eveConfig.ASSETS_SYNC?.intervalMs) || 45 * 60 * 1000)
   };
 }
 
@@ -250,6 +255,6 @@ module.exports = {
   isPulling,
   getSyncState,
   resetCache,
-  getDetails,
+  getRaw,
   removeCharacter
 };

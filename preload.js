@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   getRefreshState: () => ipcRenderer.invoke('app:getRefreshState'),
   getSyncState: () => ipcRenderer.invoke('app:getSyncState'),
+  getSequencerState: () => ipcRenderer.invoke('app:getSequencerState'),
 
   // --- Accounts & Characters ---
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
@@ -43,6 +44,11 @@ contextBridge.exposeInMainWorld('eveApi', {
   getCorpAssets: (characterId) => ipcRenderer.invoke('assets:getCorp', characterId),
   refreshAssetsNow: (characterId) => ipcRenderer.invoke('assets:refreshNow', characterId),
   getAssetsQueueState: () => ipcRenderer.invoke('assets:getQueueState'),
+  getRawAssets: (characterId) => ipcRenderer.invoke('assets:getRaw', characterId),
+  queueAssetsRefresh: (characterId) => ipcRenderer.invoke('assets:queueRefresh', characterId),
+
+  // --- Cache management (test panel) ---
+  clearCache: (which) => ipcRenderer.invoke('cache:clear', which),
 
   // --- Skill Plans ---
   readClipboardPlan: () => ipcRenderer.invoke('plans:readClipboard'),
