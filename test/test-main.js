@@ -595,6 +595,31 @@ switch (command) {
          }
          var diagMissingParentCount = missingParents.size;
          var diagMissingButPresent = missingButPresent;
+
+         // Sample up to 8 orphan rows with their flags + missing parent, so
+         // we can see what these parents actually are (hangar root / office /
+         // corp SAG / active ship) from the location_flag pattern.
+         var orphanSamples = [];
+         {
+           const seenParents = new Set();
+           for (const asset of raw.assets) {
+             if (orphanSamples.length >= 8) break;
+             const { top, missingParentId } = assetsMod.walkToTop(asset, byItemId);
+             if (top || missingParentId == null) continue;
+             const pid = Number(missingParentId);
+             if (seenParents.has(pid)) continue;
+             seenParents.add(pid);
+             orphanSamples.push({
+               item_id: asset.item_id,
+               type_id: asset.type_id,
+               location_id: asset.location_id,
+               location_type: asset.location_type,
+               location_flag: asset.location_flag,
+               is_singleton: asset.is_singleton,
+               missingParentId: pid
+             });
+           }
+         }
        }
        out.push({
          character: target.characterName,
@@ -613,7 +638,8 @@ switch (command) {
          maxLocationId,
          maxLocationIdSafe: Number.isSafeInteger(maxLocationId),
          missingParentCount: typeof diagMissingParentCount === 'number' ? diagMissingParentCount : 0,
-         missingButPresent: typeof diagMissingButPresent === 'number' ? diagMissingButPresent : 0
+         missingButPresent: typeof diagMissingButPresent === 'number' ? diagMissingButPresent : 0,
+         orphanSamples: typeof orphanSamples !== 'undefined' ? orphanSamples : []
        });
      }
      return { ok: true, result: out };
