@@ -1058,5 +1058,6 @@ module.exports = {
   getPlanetInfo,
   getStructureInfo,
   systemAndRegion,
-  batchResolveNames
+  batchResolveNames,
+  getActiveShipContext
 };

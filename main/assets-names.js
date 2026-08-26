@@ -208,16 +208,40 @@ async function resolveCharacter(account, token) {
   // player renamed return a name; the rest stay generic.
   const orphanNames = await fetchItemNames(account.characterId, [...orphanParentIds], token);
 
+  // The active ship is excluded from /assets/, so its cargo orphans to the
+  // ship's item_id. Resolve it via /characters/{id}/ship/ so those contents
+  // group under the actual ship (and its current system) instead of
+  // 'in transit'.
+  let activeShip = null;
+  try {
+    activeShip = await assets.getActiveShipContext(token, canReadStructures);
+  } catch {
+    activeShip = null;
+  }
+
   for (const asset of list) {
     const { top, missingParentId } = assets.walkToTop(asset, byItemId);
 
     // walkToTop returns null only when the parent chain is genuinely absent
-    // from the asset list (a nested container/ship ESI doesn't return, or
-    // the active ship). Name it from the player-given name when available.
+    // from the asset list (a nested container/ship ESI doesn't return, the
+    // active ship, or a corp-structure hangar). Name it from the active
+    // ship, then the player-given name, then a type-based label.
     if (!top) {
       const id = missingParentId != null ? Number(missingParentId) : Number(asset.location_id);
       if (!resolved.has(id)) {
         resolved.add(id);
+
+        // Active ship contents: group under the real ship and its location.
+        if (activeShip && Number(activeShip.shipItemId) === id) {
+          locations[id] = {
+            kind: 'ship',
+            name: `${activeShip.shipName} (active ship)`,
+            systemName: activeShip.systemName || 'Unknown System',
+            regionName: activeShip.regionName || 'Unknown Region'
+          };
+          continue;
+        }
+
         const parentRow = byItemId.get(id);
         const givenName = orphanNames.get(id);
         let kind = 'inaccessible';
