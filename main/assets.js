@@ -323,6 +323,33 @@ function fallbackStructureSystem(structureId) {
   return fallbackStructureSystems.has(id) ? fallbackStructureSystems.get(id) : null;
 }
 
+// Corp ids whose structure systems have already been merged this run.
+const primedCorpSystemCorps = new Set();
+
+// Merge a corp's structure/starbase system map into the shared fallback map
+// so getStructureInfo can place ACL-blocked corp structures without a
+// per-structure /universe/structures/ call.
+async function primeCorpStructureSystems(corpId, accessToken) {
+  const id = Number(corpId);
+  if (!Number.isFinite(id) || id <= 0) return;
+  if (primedCorpSystemCorps.has(id)) return;
+  primedCorpSystemCorps.add(id);
+  try {
+    const map = await getCorpStructureSystems(id, accessToken);
+    for (const [sid, sys] of map) {
+      fallbackStructureSystems.set(Number(sid), Number(sys));
+    }
+  } catch {
+    // Optional; lookups fall back to Unknown System.
+  }
+}
+
+// Read a batched /universe/names/ result cached by batchResolveNames
+// (null = looked up but not a named entity, undefined = never looked up).
+function getCachedName(id) {
+  return universeCache.get(`names:${Number(id)}`) || null;
+}
+
 function markStructureFailed(structureId, status, systemId) {
   const cache = getStructureDiskCache();
   const key = String(structureId);
@@ -484,8 +511,12 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
     }
 
     if (fresh && hit.systemId == null) {
+      const known = fallbackStructureSystem(structureId);
       diagRecord('structure');
-      return { name: hit.name, systemId: null };
+      return {
+        name: hit.name,
+        systemId: known != null ? Number(known) : null
+      };
     }
 
     // Batched names result (no live call here — pre-pass filled the cache)
@@ -1085,5 +1116,7 @@ module.exports = {
   getStructureInfo,
   systemAndRegion,
   batchResolveNames,
-  getActiveShipContext
+  getActiveShipContext,
+  primeCorpStructureSystems,
+  getCachedName
 };

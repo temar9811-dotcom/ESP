@@ -215,10 +215,20 @@ async function resolveCharacter(account, token) {
     }
     if (!top && missingParentId != null) {
       orphanParentIds.add(Number(missingParentId));
+      // Structures are items in the location graph but are never returned by
+      // any assets endpoint, so they always orphan — seed their names via
+      // the public batched endpoint too (misses are harmless for ships).
+      nameIds.add(Number(missingParentId));
     }
   }
   if (nameIds.size) {
     await assets.batchResolveNames([...nameIds]);
+  }
+
+  // Corp structures/starbase systems: lets getStructureInfo place corp
+  // structures even when the per-structure endpoint ACL-blocks us (403).
+  if (account.corporationId) {
+    await assets.primeCorpStructureSystems(account.corporationId, token);
   }
 
   // Resolve the player-given names of the missing parent items (nested
@@ -258,6 +268,29 @@ async function resolveCharacter(account, token) {
             regionName: activeShip.regionName || 'Unknown Region'
           };
           continue;
+        }
+
+        // A missing parent that is a player structure: structures are items
+        // in the location graph but are not returned by any assets endpoint,
+        // so every item inside one orphans to the structure's id. Resolve it
+        // via /universe/structures/ (auth) or the seeded batched name plus
+        // the corp structures list for the system.
+        try {
+          const structure = await assets.getStructureInfo(id, token, canReadStructures);
+          if (!structure.isContainer) {
+            const generic = structure.name === `Structure ${id}`;
+            const { systemName, regionName } = await assets.systemAndRegion(structure.systemId);
+            locations[id] = {
+              kind: generic ? 'inaccessible-structure' : 'structure',
+              name: generic ? `Structure ${id} (no access)` : structure.name,
+              systemName,
+              regionName
+            };
+            continue;
+          }
+        } catch (err) {
+          if (err && (err.status === 420 || err.status === 429)) throw err;
+          // Other failures fall through to the container/ship labeling.
         }
 
         const parentRow = byItemId.get(id);
@@ -316,22 +349,10 @@ async function resolveCharacter(account, token) {
       continue;
     }
 
-    if (top.location_type === 'solar_system') {
-      const locId = Number(top.location_id);
-      const flag0 = (top.location_flag || '').toLowerCase();
-      if (flag0 === 'autofit' || flag0 === 'deliveries') {
-        const planet = await assets.getPlanetInfo(locId);
-        const { systemName, regionName } = await assets.systemAndRegion(planet.systemId || locId);
-        locations[key] = { kind: 'planet', name: planet.name, systemName, regionName };
-      } else {
-        const { systemName, regionName } = await assets.systemAndRegion(locId);
-        locations[key] = { kind: 'solar_system', name: `${systemName} (space)`, systemName, regionName };
-      }
-      continue;
-    }
-
     // A ship or container (wherever it is parked): resolve the place it sits
-    // in for context.
+    // in for context. This must run before the solar_system branch below so
+    // a ship floating in space (location_type solar_system, flag AutoFit)
+    // isn't mistaken for a planet.
     if (topKind === 'ship' || topKind === 'container') {
       const tname = topType && topType.name ? topType.name : String(top.type_id);
       const label = topKind === 'ship' ? 'Ship' : 'Container';
@@ -348,6 +369,9 @@ async function resolveCharacter(account, token) {
             const sr = await assets.systemAndRegion(s.systemId);
             place = { name: s.name, systemName: sr.systemName, regionName: sr.regionName };
           }
+        } else if (top.location_type === 'solar_system') {
+          const sr = await assets.systemAndRegion(parentLocId);
+          place = { name: `${sr.systemName} (space)`, systemName: sr.systemName, regionName: sr.regionName };
         }
       } catch { /* leave place as unknown */ }
       locations[key] = {
@@ -357,6 +381,20 @@ async function resolveCharacter(account, token) {
         regionName: place.regionName,
         locationName: place.name
       };
+      continue;
+    }
+
+    if (top.location_type === 'solar_system') {
+      const locId = Number(top.location_id);
+      const flag0 = (top.location_flag || '').toLowerCase();
+      if (flag0 === 'autofit' || flag0 === 'deliveries') {
+        const planet = await assets.getPlanetInfo(locId);
+        const { systemName, regionName } = await assets.systemAndRegion(planet.systemId || locId);
+        locations[key] = { kind: 'planet', name: planet.name, systemName, regionName };
+      } else {
+        const { systemName, regionName } = await assets.systemAndRegion(locId);
+        locations[key] = { kind: 'solar_system', name: `${systemName} (space)`, systemName, regionName };
+      }
       continue;
     }
 

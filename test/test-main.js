@@ -630,6 +630,24 @@ switch (command) {
           var diagCorpCoveredParents = corpCoveredParents;
           var diagCorpOrphanCount = corpByItemId ? corpOrphanCount : null;
 
+          // Classify the missing parents via the public batched names
+          // endpoint: 'structure' = a player structure (never in any asset
+          // pull); a miss = ship / container / contract wrap / active ship.
+          var missingParentInfo = [];
+          if (missingParents.size) {
+            try {
+              await assetsMod.batchResolveNames([...missingParents]);
+            } catch { /* best effort */ }
+            for (const pid of missingParents) {
+              const hit = assetsMod.getCachedName ? assetsMod.getCachedName(pid) : null;
+              missingParentInfo.push({
+                id: pid,
+                category: hit && hit.category ? hit.category : null,
+                name: hit && hit.name ? hit.name : null
+              });
+            }
+          }
+
           // Sample up to 8 orphan rows with their flags + missing parent, so
           // we can see what these parents actually are (hangar root / office /
           // corp SAG / active ship) from the location_flag pattern.
@@ -685,6 +703,7 @@ switch (command) {
           corpRawCount,
           corpCoveredParents: typeof diagCorpCoveredParents === 'number' ? diagCorpCoveredParents : 0,
           corpOrphanCount: typeof diagCorpOrphanCount !== 'undefined' ? diagCorpOrphanCount : null,
+          missingParentInfo: typeof missingParentInfo !== 'undefined' ? missingParentInfo : [],
           orphanSamples: typeof orphanSamples !== 'undefined' ? orphanSamples : []
         });
       }
