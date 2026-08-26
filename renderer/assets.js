@@ -94,9 +94,12 @@ function buildTreeFromRaw(rows, namesMap) {
   for (const asset of list) {
     const { top, missingParentId } = walkToTop(asset);
 
+    // Key by the same id the resolver uses: the top asset's own item_id when
+    // a top exists (the resolver keys every resolved location by top.item_id),
+    // else the missing parent id.
     let id;
     if (top) {
-      id = top.location_id != null ? Number(top.location_id) : null;
+      id = top.item_id != null ? Number(top.item_id) : null;
     } else {
       id = missingParentId != null
         ? Number(missingParentId)

@@ -554,9 +554,16 @@ switch (command) {
        let orphanCount = 0;
        let itemTopCount = 0;
        const topLocTypes = {};
+       let maxItemId = 0;
+       let maxLocationId = 0;
+       let lastPageSize = null;
        if (raw && Array.isArray(raw.assets)) {
          rawCount = raw.assets.length;
          const byItemId = new Map(raw.assets.map((a) => [a.item_id, a]));
+         for (const a of raw.assets) {
+           if (typeof a.item_id === 'number' && a.item_id > maxItemId) maxItemId = a.item_id;
+           if (typeof a.location_id === 'number' && a.location_id > maxLocationId) maxLocationId = a.location_id;
+         }
          const seenTops = new Set();
          for (const asset of raw.assets) {
            const { top } = assetsMod.walkToTop(asset, byItemId);
@@ -579,7 +586,11 @@ switch (command) {
          rawCount,
          orphanCount,
          itemTopCount,
-         topLocTypes
+         topLocTypes,
+         maxItemId,
+         maxItemIdSafe: Number.isSafeInteger(maxItemId),
+         maxLocationId,
+         maxLocationIdSafe: Number.isSafeInteger(maxLocationId)
        });
      }
      return { ok: true, result: out };

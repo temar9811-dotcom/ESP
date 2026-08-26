@@ -176,18 +176,26 @@ async function resolveCharacter(account, token) {
   for (const asset of list) {
     const { top, missingParentId } = assets.walkToTop(asset, byItemId);
 
-    // A container/ship whose parent is not itself in the asset list:
-    // the containing item is gone (consumed / moved), goods in transit.
+    // walkToTop returns null only when the parent chain is genuinely absent
+    // from the asset list (consumed/moved container, or the active ship,
+    // which ESI excludes from /assets/). Classify that missing parent by its
+    // own type_id when we have it; otherwise it is in-transit contents.
     if (!top) {
       const id = missingParentId != null ? Number(missingParentId) : Number(asset.location_id);
       if (!resolved.has(id)) {
         resolved.add(id);
-        // Classify the missing containing item by its own type category when
-        // it is present in the asset list (it usually is not — it is gone),
-        // else fall back to a generic in-transit label.
+        const parentRow = byItemId.get(id);
+        let kind = 'inaccessible';
+        let label = 'Container / ship contents';
+        if (parentRow && parentRow.type_id != null) {
+          const ti = await typeOf(parentRow.type_id);
+          const k = classifyContainerItem(ti);
+          if (k === 'ship') { kind = 'ship'; label = `Ship ${ti && ti.name ? ti.name : parentRow.type_id}`; }
+          else if (k === 'container') { kind = 'container'; label = `Container ${ti && ti.name ? ti.name : parentRow.type_id}`; }
+        }
         locations[id] = {
-          kind: 'inaccessible',
-          name: 'Container / ship contents',
+          kind,
+          name: label,
           systemName: 'In transit',
           regionName: 'Carried / in transit'
         };
@@ -195,17 +203,30 @@ async function resolveCharacter(account, token) {
       continue;
     }
 
-    const locId = Number(top.location_id);
-    if (resolved.has(locId)) continue;
-    resolved.add(locId);
+    // The top of the chain is an asset row. Its type_id tells us what it
+    // physically is (ship / container / structure / a plain item sitting in
+    // a hangar). Its location_type + location_id tell us WHERE it sits.
+    //
+    // A container or ship parked in a station reports location_type
+    // 'station' (its location_id is the station) — so we must classify by
+    // the top asset's OWN type_id first, not by location_type, or every
+    // container in a station would be mistaken for the station itself.
+    //
+    // Every resolved location is keyed by the top asset's OWN item_id, which
+    // is what the renderer uses to look entries up (renderer/assets.js).
+    const topType = await typeOf(top.type_id);
+    const topKind = classifyContainerItem(topType); // ship|container|structure|station|unknown
+    const key = Number(top.item_id);
+    if (resolved.has(key)) continue;
+    resolved.add(key);
 
-    const locType = top.location_type;
-    const flag = (top.location_flag || '').toLowerCase();
-
-    if (locType === 'station') {
+    // A genuine NPC station top: the top asset is not a ship/container, and
+    // its location_type is station (a loose hangar item or an office).
+    if (top.location_type === 'station' && topKind !== 'ship' && topKind !== 'container') {
+      const locId = Number(top.location_id);
       const station = await assets.getStationInfo(locId);
       const { systemName, regionName } = await assets.systemAndRegion(station.systemId);
-      locations[locId] = {
+      locations[key] = {
         kind: 'station',
         name: station.name,
         systemName,
@@ -214,39 +235,59 @@ async function resolveCharacter(account, token) {
       continue;
     }
 
-    if (locType === 'structure' || locType === 'other' || locType === 'item') {
-      // The containing location is an item id (>= 1e12): a player structure,
-      // a ship, or a container. Classify it by the containing item's OWN
-      // type category (SDE): category 6 = ship, celestial-container groups =
-      // container, structure/starbase = structure. `top` is the containing
-      // item itself, so its type_id tells us what it physically is.
-      const containerItem = byItemId.get(locId) || top;
-      const typeInfo = await typeOf(containerItem.type_id);
-      const kind = classifyContainerItem(typeInfo); // ship|container|structure|station|unknown
-
-      if (kind === 'ship' || kind === 'container') {
-        const typeName = typeInfo && typeInfo.name
-          ? typeInfo.name
-          : (containerItem.type_id != null ? String(containerItem.type_id) : String(locId));
-        const label = kind === 'ship' ? 'Ship' : 'Container';
-        locations[locId] = {
-          kind,
-          name: `${label} ${typeName}`,
-          systemName: 'See asset details',
-          regionName: 'Carried / in transit'
-        };
-        continue;
+    if (top.location_type === 'solar_system') {
+      const locId = Number(top.location_id);
+      const flag0 = (top.location_flag || '').toLowerCase();
+      if (flag0 === 'autofit' || flag0 === 'deliveries') {
+        const planet = await assets.getPlanetInfo(locId);
+        const { systemName, regionName } = await assets.systemAndRegion(planet.systemId || locId);
+        locations[key] = { kind: 'planet', name: planet.name, systemName, regionName };
+      } else {
+        const { systemName, regionName } = await assets.systemAndRegion(locId);
+        locations[key] = { kind: 'solar_system', name: `${systemName} (space)`, systemName, regionName };
       }
+      continue;
+    }
 
-      // Structure-category item: resolve the real name via the structures
-      // endpoint + the seeded /universe/names/ result. (station-category
-      // items in the >= 1e12 range are outposts; getStructureInfo handles
-      // them via its caches, and unknown falls back to a container label.)
+    // A ship or container (wherever it is parked): resolve the place it sits
+    // in for context.
+    if (topKind === 'ship' || topKind === 'container') {
+      const tname = topType && topType.name ? topType.name : String(top.type_id);
+      const label = topKind === 'ship' ? 'Ship' : 'Container';
+      let place = { name: 'Unknown location', systemName: 'Unknown System', regionName: 'Unknown Region' };
+      const parentLocId = Number(top.location_id);
+      try {
+        if (top.location_type === 'station') {
+          const st = await assets.getStationInfo(parentLocId);
+          const sr = await assets.systemAndRegion(st.systemId);
+          place = { name: st.name, systemName: sr.systemName, regionName: sr.regionName };
+        } else if (top.location_type === 'structure' || top.location_type === 'other') {
+          const s = await assets.getStructureInfo(parentLocId, token, canReadStructures);
+          if (!s.isContainer) {
+            const sr = await assets.systemAndRegion(s.systemId);
+            place = { name: s.name, systemName: sr.systemName, regionName: sr.regionName };
+          }
+        }
+      } catch { /* leave place as unknown */ }
+      locations[key] = {
+        kind: topKind,
+        name: `${label} ${tname}`,
+        systemName: place.systemName,
+        regionName: place.regionName,
+        locationName: place.name
+      };
+      continue;
+    }
+
+    // structure / other / item: the containing location is an item id (>=1e12)
+    // that is a player structure (or outpost/unknown). Resolve its real name.
+    {
+      const locId = Number(top.location_id);
       const structure = await assets.getStructureInfo(locId, token, canReadStructures);
       if (structure.isContainer) {
-        locations[locId] = {
-          kind: kind === 'structure' ? 'structure' : 'container',
-          name: kind === 'structure' ? `Structure ${locId} (no access)` : `Container ${locId}`,
+        locations[key] = {
+          kind: topKind === 'structure' ? 'structure' : 'container',
+          name: topKind === 'structure' ? `Structure ${locId} (no access)` : `Container ${locId}`,
           systemName: 'See asset details',
           regionName: 'Carried / in transit'
         };
@@ -254,7 +295,7 @@ async function resolveCharacter(account, token) {
       }
       const generic = structure.name === `Structure ${locId}`;
       const { systemName, regionName } = await assets.systemAndRegion(structure.systemId);
-      locations[locId] = {
+      locations[key] = {
         kind: generic ? 'inaccessible-structure' : 'structure',
         name: generic ? `Structure ${locId} (no access)` : structure.name,
         systemName,
@@ -262,39 +303,6 @@ async function resolveCharacter(account, token) {
       };
       continue;
     }
-
-    if (locType === 'solar_system') {
-      // PI assets: flag AutoFit + location_id is the planet, not the system.
-      if (flag === 'autofit' || flag === 'deliveries') {
-        const planet = await assets.getPlanetInfo(locId);
-        const { systemName, regionName } = await assets.systemAndRegion(
-          planet.systemId || locId
-        );
-        locations[locId] = {
-          kind: 'planet',
-          name: planet.name,
-          systemName,
-          regionName
-        };
-      } else {
-        const { systemName, regionName } = await assets.systemAndRegion(locId);
-        locations[locId] = {
-          kind: 'solar_system',
-          name: `${systemName} (space)`,
-          systemName,
-          regionName
-        };
-      }
-      continue;
-    }
-
-    // item / fallback
-    locations[locId] = {
-      kind: 'item',
-      name: `Location ${locId}`,
-      systemName: 'Unknown System',
-      regionName: 'Unknown Region'
-    };
   }
 
   return {
