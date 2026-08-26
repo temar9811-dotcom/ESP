@@ -524,6 +524,14 @@ switch (command) {
      const result = await assetsNamesMod.pull();
      return { ok: true, result };
    }
+   case 'assets.pullRaw': {
+     // Force a raw asset pull for all characters now (bypasses the 45min
+     // timer). The name resolver reads this raw cache, so run this first
+     // after clearing the raw cache.
+     const assetsSyncMod = require('../main/assets-sync');
+     const result = await assetsSyncMod.pull();
+     return { ok: true, result };
+   }
    case 'assets.namesDiag': {
      // Diagnose name resolution: per character, the granted scopes, whether
      // structures can be read, and a breakdown of resolved location kinds.
