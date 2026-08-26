@@ -64,6 +64,39 @@ ESP.invalidateStaleAssetCaches = function (accounts) {
   }
 };
 
+// Group raw asset rows into the region/system/station tree the renderer
+// expects, using only the raw location_id (no ESI name resolution — that
+// stays out of the refresh path). Locations are labelled by id until a
+// future name-resolution pass runs.
+function buildTreeFromRaw(rows) {
+  const tree = { regions: {} };
+  for (const asset of rows || []) {
+    const region = 'Assets';
+    const system = 'Location ' + (asset.location_id != null ? asset.location_id : '?');
+    const station = asset.location_flag
+      ? String(asset.location_flag)
+      : 'Items';
+
+    if (!tree.regions[region]) tree.regions[region] = { name: region, systems: {} };
+    if (!tree.regions[region].systems[system]) {
+      tree.regions[region].systems[system] = { name: system, stations: {} };
+    }
+    if (!tree.regions[region].systems[system].stations[station]) {
+      tree.regions[region].systems[system].stations[station] = { name: station, items: [], count: 0 };
+    }
+
+    const st = tree.regions[region].systems[system].stations[station];
+    st.items.push({
+      typeId: asset.type_id,
+      quantity: asset.quantity,
+      isSingleton: asset.is_singleton,
+      itemId: asset.item_id
+    });
+    st.count++;
+  }
+  return tree;
+}
+
 // Lazy-load the disk cache for one character + kind ('personal' | 'corp')
 ESP.loadAssets = async function (id, kind, force) {
   const slot = cacheSlot(id, kind);
@@ -74,15 +107,25 @@ ESP.loadAssets = async function (id, kind, force) {
   ESP.render(ESP.state.lastAccounts);
 
   try {
-    const data = kind === 'personal'
-      ? await window.eveApi.getPersonalAssets(id)
-      : await window.eveApi.getCorpAssets(id);
+    if (kind === 'personal') {
+      // Prefer the sequenced raw cache (single sequenced ESI pull); fall
+      // back to the legacy tree cache when no raw pull has landed yet.
+      const raw = window.eveApi.getRawAssets
+        ? await window.eveApi.getRawAssets(id)
+        : null;
+      if (raw && Array.isArray(raw.assets)) {
+        slot.data = { fetchedAt: raw.fetchedAt, tree: buildTreeFromRaw(raw.assets) };
+      } else {
+        slot.data = await window.eveApi.getPersonalAssets(id);
+      }
+    } else {
+      slot.data = await window.eveApi.getCorpAssets(id);
+    }
 
-    slot.data = data || null;
     slot.status = 'done';
 
-    if (data && data.tree) {
-      await ESP.ensureAssetTypeNames(data.tree);
+    if (slot.data && slot.data.tree) {
+      await ESP.ensureAssetTypeNames(slot.data.tree);
     }
   } catch (err) {
     slot.status = 'error';

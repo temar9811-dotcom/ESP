@@ -356,8 +356,12 @@ function registerIpcHandlers() {
     return assets.getCorpCache(account.corporationId);
   });
 
+  // Direct per-char refresh uses the sequenced raw pull (single character),
+  // NOT the old assetsQueue tree builder — the tree builder fires dozens of
+  // structure/station/name resolutions outside the sequencer and trips the
+  // ESI rate limit. Name resolution stays out of the refresh path for now.
   ipcMain.handle('assets:refreshNow', async (_event, characterId) => {
-    return assetsQueue.refreshCharacterAssets(characterId);
+    return assetsSync.pull(characterId);
   });
 
   // Raw asset cache from the sequenced 45-minute pull (no name resolution).
