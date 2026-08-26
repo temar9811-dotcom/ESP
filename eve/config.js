@@ -69,5 +69,15 @@ module.exports = {
     intervalMs: 45 * 60 * 1000,
     batchSize: 10,
     batchDelayMs: 1500
+  },
+
+  // Sequenced asset name resolution: runs after the raw asset pull, then
+  // every 24 hours. Resolves station / structure / planet / ship /
+  // container names for the locations in the raw asset cache, batched and
+  // rate-limited like the other sections.
+  ASSETS_NAMES: {
+    intervalMs: 24 * 60 * 60 * 1000,
+    batchSize: 5,
+    batchDelayMs: 2000
   }
 };

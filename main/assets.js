@@ -1035,5 +1035,12 @@ module.exports = {
   saveCorpCache,
   getStructureDiskCache,
   clearStructureFailures,
-  probeStructure
+  probeStructure,
+  // Reused by the sequenced name resolver (assets-names.js) so both share
+  // the persistent universe/structure caches instead of refetching.
+  walkToTop,
+  getStationInfo,
+  getPlanetInfo,
+  getStructureInfo,
+  systemAndRegion
 };

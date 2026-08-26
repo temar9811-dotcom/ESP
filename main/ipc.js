@@ -14,6 +14,7 @@ const skillMeta = require('./skill-meta');
 const skillsSync = require('./skills-sync');
 const walletSync = require('./wallet-sync');
 const assetsSync = require('./assets-sync');
+const assetsNames = require('./assets-names');
 const notes = require('./notes');
 const clonesHistory = require('./clones-history');
 const cloneNicknames = require('./clones-nicknames');
@@ -369,6 +370,11 @@ function registerIpcHandlers() {
     return assetsSync.getRaw(characterId);
   });
 
+  // Resolved location names from the sequenced 24-hour resolution pass.
+  ipcMain.handle('assets:getNames', (_event, characterId) => {
+    return assetsNames.getNames(characterId);
+  });
+
   // Queue a single-character asset pull through the sequencer. When the
   // sequencer is already locked this waits its turn; the renderer uses it
   // for the "Queue refresh" state of the per-char button.
@@ -514,7 +520,8 @@ function registerIpcHandlers() {
   const CACHE_FILES = {
     skills: 'skills-cache.json',
     wallet: 'wallet-cache.json',
-    assets: 'assets-raw-cache.json'
+    assets: 'assets-raw-cache.json',
+    assetsNames: 'assets-names-cache.json'
   };
 
   ipcMain.handle('cache:clear', (_event, which) => {
@@ -525,6 +532,7 @@ function registerIpcHandlers() {
       if (skillsSync.resetCache) skillsSync.resetCache();
       if (walletSync.resetCache) walletSync.resetCache();
       if (assetsSync.resetCache) assetsSync.resetCache();
+      if (assetsNames.resetCache) assetsNames.resetCache();
       return { cleared };
     }
 
@@ -539,6 +547,7 @@ function registerIpcHandlers() {
     if (which === 'skills' && skillsSync.resetCache) skillsSync.resetCache();
     if (which === 'wallet' && walletSync.resetCache) walletSync.resetCache();
     if (which === 'assets' && assetsSync.resetCache) assetsSync.resetCache();
+    if (which === 'assetsNames' && assetsNames.resetCache) assetsNames.resetCache();
     return { cleared };
   });
 }

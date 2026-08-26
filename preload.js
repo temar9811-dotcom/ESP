@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   getAssetsQueueState: () => ipcRenderer.invoke('assets:getQueueState'),
   getRawAssets: (characterId) => ipcRenderer.invoke('assets:getRaw', characterId),
   queueAssetsRefresh: (characterId) => ipcRenderer.invoke('assets:queueRefresh', characterId),
+  getAssetNames: (characterId) => ipcRenderer.invoke('assets:getNames', characterId),
 
   // --- Cache management (test panel) ---
   clearCache: (which) => ipcRenderer.invoke('cache:clear', which),

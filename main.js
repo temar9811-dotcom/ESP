@@ -15,6 +15,7 @@ const accounts = require('./main/accounts');
 const skillsSync = require('./main/skills-sync');
 const walletSync = require('./main/wallet-sync');
 const assetsSync = require('./main/assets-sync');
+const assetsNames = require('./main/assets-names');
 const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
 const legacyGuard = require('./main/legacy-guard');
@@ -134,6 +135,7 @@ async function bootstrap() {
   skillsSync.start();
   walletSync.start();
   assetsSync.start();
+  assetsNames.start();
 
   await accounts.refreshAll();
 

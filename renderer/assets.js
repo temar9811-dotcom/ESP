@@ -65,27 +65,33 @@ ESP.invalidateStaleAssetCaches = function (accounts) {
 };
 
 // Group raw asset rows into the region/system/station tree the renderer
-// expects, using only the raw location_id (no ESI name resolution — that
-// stays out of the refresh path). Locations are labelled by id until a
-// future name-resolution pass runs.
-function buildTreeFromRaw(rows) {
+// expects. When a resolved-names map is available (from the 24h
+// resolution pass), locations are labelled with their real names; else
+// they fall back to raw ids/flags.
+function buildTreeFromRaw(rows, namesMap) {
   const tree = { regions: {} };
+  const loc = namesMap || {};
   for (const asset of rows || []) {
-    const region = 'Assets';
-    const system = 'Location ' + (asset.location_id != null ? asset.location_id : '?');
-    const station = asset.location_flag
-      ? String(asset.location_flag)
-      : 'Items';
+    const id = asset.location_id != null ? Number(asset.location_id) : null;
+    const info = id != null ? loc[id] : null;
+
+    const region = info && info.regionName ? info.regionName : 'Assets';
+    const system = info && info.systemName
+      ? info.systemName
+      : 'Location ' + (id != null ? id : '?');
+    const name = info && info.name
+      ? info.name
+      : (asset.location_flag ? String(asset.location_flag) : 'Items');
 
     if (!tree.regions[region]) tree.regions[region] = { name: region, systems: {} };
     if (!tree.regions[region].systems[system]) {
       tree.regions[region].systems[system] = { name: system, stations: {} };
     }
-    if (!tree.regions[region].systems[system].stations[station]) {
-      tree.regions[region].systems[system].stations[station] = { name: station, items: [], count: 0 };
+    if (!tree.regions[region].systems[system].stations[name]) {
+      tree.regions[region].systems[system].stations[name] = { name, items: [], count: 0 };
     }
 
-    const st = tree.regions[region].systems[system].stations[station];
+    const st = tree.regions[region].systems[system].stations[name];
     st.items.push({
       typeId: asset.type_id,
       quantity: asset.quantity,
@@ -108,13 +114,21 @@ ESP.loadAssets = async function (id, kind, force) {
 
   try {
     if (kind === 'personal') {
-      // Prefer the sequenced raw cache (single sequenced ESI pull); fall
-      // back to the legacy tree cache when no raw pull has landed yet.
+      // Prefer the sequenced raw cache (single sequenced ESI pull) merged
+      // with the 24h resolved-names map; fall back to the legacy tree cache
+      // when no raw pull has landed yet.
       const raw = window.eveApi.getRawAssets
         ? await window.eveApi.getRawAssets(id)
         : null;
       if (raw && Array.isArray(raw.assets)) {
-        slot.data = { fetchedAt: raw.fetchedAt, tree: buildTreeFromRaw(raw.assets) };
+        const names = window.eveApi.getAssetNames
+          ? await window.eveApi.getAssetNames(id)
+          : null;
+        const namesMap = names && names.locations ? names.locations : null;
+        slot.data = {
+          fetchedAt: raw.fetchedAt,
+          tree: buildTreeFromRaw(raw.assets, namesMap)
+        };
       } else {
         slot.data = await window.eveApi.getPersonalAssets(id);
       }
