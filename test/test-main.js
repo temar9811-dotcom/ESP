@@ -517,6 +517,13 @@ switch (command) {
      const removed = assetsMod.clearStructureFailures();
      return { ok: true, result: { removed } };
    }
+   case 'assets.resolveNames': {
+     // Force a full sequenced name-resolution pass now (bypasses the 24h
+     // timer). Queues behind the ESI sequencer like the scheduled run.
+     const assetsNamesMod = require('../main/assets-names');
+     const result = await assetsNamesMod.pull();
+     return { ok: true, result };
+   }
    case 'assets.locationClassify': {
      // Runs the pure location classifier over every top-level asset
      // location for a real character: station / planet / solar system /

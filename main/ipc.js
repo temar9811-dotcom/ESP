@@ -521,7 +521,9 @@ function registerIpcHandlers() {
     skills: 'skills-cache.json',
     wallet: 'wallet-cache.json',
     assets: 'assets-raw-cache.json',
-    assetsNames: 'assets-names-cache.json'
+    assetsNames: 'assets-names-cache.json',
+    structures: 'structure-names.json',
+    universe: 'universe-cache.json'
   };
 
   ipcMain.handle('cache:clear', (_event, which) => {

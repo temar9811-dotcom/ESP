@@ -113,6 +113,21 @@ async function resolveCharacter(account, token) {
   const locations = {}; // location_id -> { kind, name, systemName, regionName }
   const resolved = new Set();
 
+  // Pre-pass: seed names for every structure/other location via the public
+  // batched /universe/names/ endpoint. It returns names for player
+  // structures even when the caller lacks the structures scope, so
+  // inaccessible structures still get a real name (marked inaccessible).
+  const nameIds = new Set();
+  for (const asset of list) {
+    const { top } = assets.walkToTop(asset, byItemId);
+    if (top && (top.location_type === 'structure' || top.location_type === 'other')) {
+      nameIds.add(Number(top.location_id));
+    }
+  }
+  if (nameIds.size) {
+    await assets.batchResolveNames([...nameIds]);
+  }
+
   for (const asset of list) {
     const { top, missingParentId } = assets.walkToTop(asset, byItemId);
 
@@ -168,10 +183,13 @@ async function resolveCharacter(account, token) {
           regionName: 'Carried / in transit'
         };
       } else {
+        const generic = structure.name === `Structure ${locId}`;
         const { systemName, regionName } = await assets.systemAndRegion(structure.systemId);
         locations[locId] = {
-          kind: 'structure',
-          name: structure.name,
+          // A generic "Structure <id>" name means the structure exists but
+          // ESI wouldn't give us its real name (no access) — mark it.
+          kind: generic ? 'inaccessible-structure' : 'structure',
+          name: generic ? `Structure ${locId} (no access)` : structure.name,
           systemName,
           regionName
         };

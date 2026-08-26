@@ -112,6 +112,9 @@ window.eveApi.testEnabled().then((enabled) => {
        <button type="button" data-cache-clear="wallet">Clear wallet cache</button>
        <button type="button" data-cache-clear="assets">Clear assets cache</button>
        <button type="button" data-cache-clear="assetsNames">Clear asset names cache</button>
+       <button type="button" data-cache-clear="structures">Clear structure names cache</button>
+       <button type="button" data-cache-clear="universe">Clear universe cache</button>
+       <button type="button" data-cmd="assets.resolveNames">Resolve asset names now</button>
        <button type="button" data-cmd="bubble.skill">Skill bubble</button>
        <button type="button" data-cmd="bubble.queue">Queue bubble</button>
        <button type="button" data-cmd="bubble.wallet">Wallet bubble</button>

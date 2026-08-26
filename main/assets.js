@@ -501,6 +501,17 @@ async function getStructureInfo(structureId, accessToken, canReadStructures) {
       hit.systemId = knownSystem;
       scheduleStructureDiskWrite();
     }
+    // A batched /universe/names/ result may have seeded a real name even
+    // when the structure is inaccessible — use it rather than labelling
+    // the location a container.
+    const seededName = universeCache.get(`names:${structureId}`);
+    if (seededName && seededName.name) {
+      diagRecord('names');
+      return {
+        name: seededName.name,
+        systemId: knownSystem != null ? Number(knownSystem) : null
+      };
+    }
     if (knownSystem == null) {
       diagRecord('container');
       return { name: `Container/ship ${structureId}`, systemId: null, isContainer: true };
@@ -1042,5 +1053,6 @@ module.exports = {
   getStationInfo,
   getPlanetInfo,
   getStructureInfo,
-  systemAndRegion
+  systemAndRegion,
+  batchResolveNames
 };
