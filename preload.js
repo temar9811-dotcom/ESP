@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   refreshAssetsNow: (characterId) => ipcRenderer.invoke('assets:refreshNow', characterId),
   getAssetsQueueState: () => ipcRenderer.invoke('assets:getQueueState'),
   getRawAssets: (characterId) => ipcRenderer.invoke('assets:getRaw', characterId),
+  getCorpRawAssets: (characterId) => ipcRenderer.invoke('assets:getCorpRaw', characterId),
   queueAssetsRefresh: (characterId) => ipcRenderer.invoke('assets:queueRefresh', characterId),
   getAssetNames: (characterId) => ipcRenderer.invoke('assets:getNames', characterId),
 

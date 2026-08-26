@@ -121,6 +121,21 @@ async function getCorpAssets(corpId, accessToken) {
   return fetchAllPages(`/corporations/${corpId}/assets/`, accessToken);
 }
 
+// Public character sheet — used to discover the corp id for the raw pull.
+async function getCharacterInfoPublic(characterId) {
+  return publicFetch(`/characters/${characterId}/`);
+}
+
+// Build the item_id -> row map walkToTop uses to continue through corp-owned
+// parents. Rows are normalised to Number keys to match the character map.
+function buildCorpMap(rows) {
+  const map = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (row && row.item_id != null) map.set(Number(row.item_id), row);
+  }
+  return map;
+}
+
 // --- Persistent universe cache (survives restarts; successes only) ---
 
 const UNIVERSE_TTL_MS = 30 * 24 * 3600 * 1000;
@@ -584,7 +599,12 @@ async function batchResolveNames(ids) {
 
 // --- Walk helper (shared by pre-pass and resolution) ---
 
-function walkToTop(asset, assetsByItemId) {
+// corpAssetsByItemId is optional: when a character-asset parent chain
+// dead-ends at an id that is not in the character's own pull, it is almost
+// always a corporation asset (shared across members, which is why the same
+// missing id appears for several characters). Supplying the corp map lets
+// the walk continue through the corp asset to its station/structure.
+function walkToTop(asset, assetsByItemId, corpAssetsByItemId) {
   let cur = asset;
   let missingParentId = null;
   const seen = new Set();
@@ -601,7 +621,11 @@ function walkToTop(asset, assetsByItemId) {
     // Normalise to Number: item_id / location_id can desynchronise between
     // string and number across JSON round-trips, which would make the Map
     // lookup miss and orphan the whole chain.
-    const parent = assetsByItemId.get(Number(cur.location_id));
+    const id = Number(cur.location_id);
+    let parent = assetsByItemId.get(id);
+    if (!parent && corpAssetsByItemId) {
+      parent = corpAssetsByItemId.get(id) || null;
+    }
     if (!parent) {
       missingParentId = cur.location_id;
       cur = null;
@@ -1043,6 +1067,8 @@ function clearStructureFailures() {
 module.exports = {
   getCharacterAssets,
   getCorpAssets,
+  getCharacterInfoPublic,
+  buildCorpMap,
   buildAssetTree,
   getPersonalCache,
   getCorpCache,

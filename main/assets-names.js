@@ -170,6 +170,24 @@ async function resolveCharacter(account, token) {
 
   const list = raw.assets;
   const byItemId = new Map(list.map((a) => [Number(a.item_id), a]));
+
+  // Corp-owned parents (hangar divisions, corp ships, containers) are not
+  // returned by the character pull — the same missing id appears across
+  // several members. Build the corp map so walkToTop can continue through
+  // those parents to the real station/structure.
+  let corpByItemId = null;
+  try {
+    const corpId = account.corporationId || null;
+    if (corpId) {
+      const corpRaw = assetsSync.getCorpRaw(corpId);
+      if (corpRaw && Array.isArray(corpRaw.assets) && corpRaw.assets.length) {
+        corpByItemId = assets.buildCorpMap(corpRaw.assets);
+      }
+    }
+  } catch {
+    corpByItemId = null;
+  }
+
   accounts.ensureScopes(account);
   const scopes =
     typeof account.scopes === 'string'
@@ -191,7 +209,7 @@ async function resolveCharacter(account, token) {
   const nameIds = new Set();
   const orphanParentIds = new Set();
   for (const asset of list) {
-    const { top, missingParentId } = assets.walkToTop(asset, byItemId);
+    const { top, missingParentId } = assets.walkToTop(asset, byItemId, corpByItemId);
     if (top && (top.location_type === 'structure' || top.location_type === 'other')) {
       nameIds.add(Number(top.location_id));
     }
@@ -220,7 +238,7 @@ async function resolveCharacter(account, token) {
   }
 
   for (const asset of list) {
-    const { top, missingParentId } = assets.walkToTop(asset, byItemId);
+    const { top, missingParentId } = assets.walkToTop(asset, byItemId, corpByItemId);
 
     // walkToTop returns null only when the parent chain is genuinely absent
     // from the asset list (a nested container/ship ESI doesn't return, the

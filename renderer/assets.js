@@ -69,11 +69,21 @@ ESP.invalidateStaleAssetCaches = function (accounts) {
 // TOP-LEVEL location id (walkToTop) — the resolver keys its map that way,
 // and an item's raw location_id may just be its parent container. Falls
 // back to raw ids/flags when no name has been resolved yet.
-function buildTreeFromRaw(rows, namesMap) {
+//
+// corpRows is the corp's raw asset pull. Character chains that orphan to a
+// corp-owned parent (hangar division / corp ship / container) continue
+// through this map, so they land under the real station/structure instead
+// of 'in transit'. Must mirror the resolver's walk exactly.
+function buildTreeFromRaw(rows, namesMap, corpRows) {
   const tree = { regions: {} };
   const loc = namesMap || {};
   const list = Array.isArray(rows) ? rows : [];
   const byItemId = new Map(list.map((a) => [Number(a.item_id), a]));
+  const corpByItemId = new Map(
+    (Array.isArray(corpRows) ? corpRows : [])
+      .filter((a) => a && a.item_id != null)
+      .map((a) => [Number(a.item_id), a])
+  );
 
   // Mirror of main/assets.js walkToTop: climb location_type 'item' parents
   // to the top-level location. Ids are normalised to Number so a string/
@@ -86,7 +96,9 @@ function buildTreeFromRaw(rows, namesMap) {
       const curId = Number(cur.item_id);
       if (seen.has(curId)) { missingParentId = cur.location_id; break; }
       seen.add(curId);
-      const parent = byItemId.get(Number(cur.location_id));
+      const id = Number(cur.location_id);
+      let parent = byItemId.get(id);
+      if (!parent) parent = corpByItemId.get(id) || null;
       if (!parent) { missingParentId = cur.location_id; cur = null; break; }
       cur = parent;
     }
@@ -158,10 +170,14 @@ ESP.loadAssets = async function (id, kind, force) {
         const names = window.eveApi.getAssetNames
           ? await window.eveApi.getAssetNames(id)
           : null;
+        const corpRaw = window.eveApi.getCorpRawAssets
+          ? await window.eveApi.getCorpRawAssets(id)
+          : null;
         const namesMap = names && names.locations ? names.locations : null;
+        const corpRows = corpRaw && Array.isArray(corpRaw.assets) ? corpRaw.assets : null;
         slot.data = {
           fetchedAt: raw.fetchedAt,
-          tree: buildTreeFromRaw(raw.assets, namesMap)
+          tree: buildTreeFromRaw(raw.assets, namesMap, corpRows)
         };
       } else {
         slot.data = await window.eveApi.getPersonalAssets(id);

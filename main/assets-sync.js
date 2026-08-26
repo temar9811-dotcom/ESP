@@ -48,6 +48,10 @@ function loadCache() {
     cache.characters = {};
   }
 
+  if (!cache.corporations || typeof cache.corporations !== 'object') {
+    cache.corporations = {};
+  }
+
   return cache;
 }
 
@@ -84,6 +88,25 @@ function store(characterId, rows) {
   };
 }
 
+// Cached raw corporation assets (shared across the corp's members), or null.
+function getCorpRaw(corpId) {
+  const entry = loadCache().corporations[String(corpId)];
+  if (!entry || !entry.assets) return null;
+
+  return {
+    assets: entry.assets,
+    fetchedAt: entry.fetchedAt || null,
+    pulling: isPulling()
+  };
+}
+
+function storeCorp(corpId, rows) {
+  loadCache().corporations[String(corpId)] = {
+    assets: rows,
+    fetchedAt: new Date().toISOString()
+  };
+}
+
 function removeCharacter(characterId) {
   if (cache && cache.characters) {
     delete cache.characters[String(characterId)];
@@ -98,6 +121,18 @@ async function fetchOne(account, token) {
     if (err && err.status === 401) {
       const fresh = await accounts.getValidAccessToken(account, true);
       return assets.getCharacterAssets(account.characterId, fresh);
+    }
+    throw err;
+  }
+}
+
+async function fetchCorp(corpId, token, account) {
+  try {
+    return await assets.getCorpAssets(corpId, token);
+  } catch (err) {
+    if (err && err.status === 401) {
+      const fresh = await accounts.getValidAccessToken(account, true);
+      return assets.getCorpAssets(corpId, fresh);
     }
     throw err;
   }
@@ -141,6 +176,8 @@ async function pull(onlyCharacterId) {
 
     const batchSize = Math.max(1, Number(eveConfig.ASSETS_SYNC?.batchSize) || 10);
     const batchDelay = Math.max(0, Number(eveConfig.ASSETS_SYNC?.batchDelayMs) || 0);
+
+    // Personal asset pulls.
     const batchCount = Math.ceil(tasks.length / batchSize);
 
     for (let i = 0; i < tasks.length; i += batchSize) {
@@ -193,6 +230,59 @@ async function pull(onlyCharacterId) {
         debug.log(SECTION, `pausing ${batchDelay}ms before the next batch`);
         await sleep(batchDelay);
       }
+    }
+
+    // Corp asset pulls — one per distinct corp. Character pulls orphan ~92%
+    // of rows to parents that are corp-owned (shared across members, which
+    // is why the same missing id appears for several characters). The corp
+    // map lets walkToTop continue through those parents to the real
+    // station/structure the corp asset sits in.
+    const corpTasks = [];
+    const seenCorps = new Set();
+    for (const { account, token } of tasks) {
+      let corpId = account.corporationId || null;
+      if (!corpId) {
+        try {
+          const info = await assets.getCharacterInfoPublic(account.characterId);
+          if (info && info.corporation_id != null) {
+            corpId = Number(info.corporation_id);
+            account.corporationId = corpId;
+          }
+        } catch {
+          corpId = null;
+        }
+      }
+      if (!corpId) continue;
+      const key = String(corpId);
+      if (seenCorps.has(key)) continue;
+      seenCorps.add(key);
+      corpTasks.push({ corpId: Number(corpId), token, account });
+    }
+
+    let corpPulled = 0;
+    for (const { corpId, token, account } of corpTasks) {
+      await accounts.waitRateLimit();
+      await accounts.waitErrorBudget();
+      try {
+        const rows = await fetchCorp(corpId, token, account);
+        storeCorp(corpId, rows);
+        account.corpAssetLastFetch = new Date().toISOString();
+        account.corpAssetCount = Array.isArray(rows) ? rows.length : 0;
+        corpPulled += 1;
+        debug.log(
+          SECTION,
+          `corp ${corpId}: ${account.corpAssetCount} corp asset rows`
+        );
+      } catch (err) {
+        errors[`corp-${corpId}`] = err?.message || String(err);
+        debug.log(
+          SECTION,
+          `corp ${corpId}: pull failed (status ${err?.status ?? 'n/a'}) — ${err?.message || err}`
+        );
+      }
+    }
+    if (corpPulled) {
+      debug.log(SECTION, `pulled raw assets for ${corpPulled} corporation(s)`);
     }
 
     saveCache();
@@ -256,5 +346,7 @@ module.exports = {
   getSyncState,
   resetCache,
   getRaw,
+  getCorpRaw,
+  storeCorp,
   removeCharacter
 };

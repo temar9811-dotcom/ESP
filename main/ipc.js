@@ -370,6 +370,16 @@ function registerIpcHandlers() {
     return assetsSync.getRaw(characterId);
   });
 
+  // Raw corp asset rows for this character's corp — lets the renderer walk
+  // character chains through corp-owned parents to the real location.
+  ipcMain.handle('assets:getCorpRaw', (_event, characterId) => {
+    const account = accounts.getAccounts().find(
+      (a) => Number(a.characterId) === Number(characterId)
+    );
+    if (!account || !account.corporationId) return null;
+    return assetsSync.getCorpRaw(account.corporationId);
+  });
+
   // Resolved location names from the sequenced 24-hour resolution pass.
   ipcMain.handle('assets:getNames', (_event, characterId) => {
     return assetsNames.getNames(characterId);
