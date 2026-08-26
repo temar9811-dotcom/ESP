@@ -529,6 +529,8 @@ switch (command) {
      // structures can be read, and a breakdown of resolved location kinds.
      const accountsMod = require('../main/accounts');
      const assetsNamesMod = require('../main/assets-names');
+     const assetsSyncMod = require('../main/assets-sync');
+     const assetsMod = require('../main/assets');
      const list = accountsMod.getAccounts();
      const out = [];
      for (const target of list) {
@@ -546,6 +548,26 @@ switch (command) {
            kinds[k] = (kinds[k] || 0) + 1;
          }
        }
+       // Raw-asset walk diagnostics: how many items find their parent chain.
+       const raw = assetsSyncMod.getRaw(target.characterId);
+       let rawCount = 0;
+       let orphanCount = 0;
+       let itemTopCount = 0;
+       const topLocTypes = {};
+       if (raw && Array.isArray(raw.assets)) {
+         rawCount = raw.assets.length;
+         const byItemId = new Map(raw.assets.map((a) => [a.item_id, a]));
+         const seenTops = new Set();
+         for (const asset of raw.assets) {
+           const { top } = assetsMod.walkToTop(asset, byItemId);
+           if (!top) { orphanCount++; continue; }
+           if (seenTops.has(top.item_id)) continue;
+           seenTops.add(top.item_id);
+           const t = top.location_type || 'unknown';
+           topLocTypes[t] = (topLocTypes[t] || 0) + 1;
+           if (t === 'item') itemTopCount++;
+         }
+       }
        out.push({
          character: target.characterName,
          characterId: target.characterId,
@@ -553,7 +575,11 @@ switch (command) {
          scopes: scopeList,
          resolved: names ? Object.keys(names.locations).length : 0,
          fetchedAt: names ? names.fetchedAt : null,
-         kinds
+         kinds,
+         rawCount,
+         orphanCount,
+         itemTopCount,
+         topLocTypes
        });
      }
      return { ok: true, result: out };
