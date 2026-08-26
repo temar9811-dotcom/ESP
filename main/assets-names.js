@@ -124,6 +124,24 @@ function makeTypeLookup() {
 // category 65 (or legacy starbase 23).
 const CONTAINER_GROUPS = new Set([12, 90, 155, 1145]);
 
+// Hardcoded flag classification: implants, clones, market orders, contract
+// items, and industry materials are generated assets, not ordinary items.
+// Returns { kind, label } or null when the flag has no special handling.
+function classifyFlag(flag) {
+  const f = String(flag || '');
+  if (f === '89' || f === '89 ' || f === ' 89') return { kind: 'implant', label: 'Plugged-in implant' };
+  if (f === 'JumpClone') return { kind: 'clone', label: 'Jump clone' };
+  if (f === 'ActiveClone') return { kind: 'clone', label: 'Active clone' };
+  if (f === 'MarketOrderSell') return { kind: 'market-order', label: 'Market sell order' };
+  if (f === 'MarketOrderBuy') return { kind: 'market-order', label: 'Market buy order' };
+  if (f === 'ContractIncluded') return { kind: 'contract', label: 'Contract item' };
+  if (f === 'ContractExcluded') return { kind: 'contract', label: 'Contract item (excluded)' };
+  if (f === 'Manufacturing') return { kind: 'industry', label: 'Manufacturing job' };
+  if (f === 'Reactions') return { kind: 'industry', label: 'Reaction job' };
+  if (f === 'Copying') return { kind: 'industry', label: 'Copying job' };
+  return null;
+}
+
 function classifyContainerItem(typeInfo) {
   if (!typeInfo) return 'unknown';
   if (typeInfo.categoryId === 6) return 'ship';
@@ -163,7 +181,8 @@ async function fetchItemNames(characterId, ids, token) {
 }
 
 // Classify + resolve one character's raw assets into a location-name map.
-// Walks each asset to its top-level location and resolves that once.
+// Exported so assets-sync can run it right after the raw pull and cache the
+// result — no redundant walks at render time.
 async function resolveCharacter(account, token) {
   const raw = assetsSync.getRaw(account.characterId);
   if (!raw || !Array.isArray(raw.assets)) return null;
@@ -231,10 +250,20 @@ async function resolveCharacter(account, token) {
     await assets.primeCorpStructureSystems(account.corporationId, token);
   }
 
-  // Resolve the player-given names of the missing parent items (nested
-  // containers / ships ESI doesn't return as their own row). Only items the
-  // player renamed return a name; the rest stay generic.
-  const orphanNames = await fetchItemNames(account.characterId, [...orphanParentIds], token);
+  // Fetch player-given names for ALL item ids (not just orphans). This
+  // matches jeveassets' primary-resolver approach: the names endpoint is
+  // authoritative for renamed ships/containers, and the walk is only for
+  // grouping into the tree.
+  const allIds = [...new Set(list.map((a) => Number(a.item_id)))];
+  const itemNames = new Map();
+  try {
+    const fetched = await fetchItemNames(account.characterId, allIds, token);
+    for (const [id, name] of fetched) {
+      itemNames.set(id, name);
+    }
+  } catch {
+    // Ignore — names are optional
+  }
 
   // The active ship is excluded from /assets/, so its cargo orphans to the
   // ship's item_id. Resolve it via /characters/{id}/ship/ so those contents
@@ -295,6 +324,19 @@ async function resolveCharacter(account, token) {
 
         const parentRow = byItemId.get(id);
         const givenName = orphanNames.get(id);
+        // Hardcoded flags (implants, clones, market orders, contracts,
+        // industry) are generated assets — classify them directly instead
+        // of the generic container/ship guess.
+        const flagHit = classifyFlag(asset.location_flag);
+        if (flagHit && !givenName) {
+          locations[id] = {
+            kind: flagHit.kind,
+            name: givenName || flagHit.label,
+            systemName: 'In transit',
+            regionName: 'Carried / in transit'
+          };
+          continue;
+        }
         let kind = 'inaccessible';
         let label = 'Container / ship contents';
         if (parentRow && parentRow.type_id != null) {
