@@ -10,7 +10,7 @@ const debug = require('./debug');
 const assets = require('./assets');
 const assetsSync = require('./assets-sync');
 const eveConfig = require('../eve/config');
-const { publicFetch } = require('../eve/http');
+const { publicFetch, esiPost } = require('../eve/http');
 
 // Sequenced asset name resolution — runs after the raw asset pull and
 // re-resolves every 24 hours. It walks the raw asset cache, classifies
@@ -136,6 +136,32 @@ function classifyContainerItem(typeInfo) {
   return 'unknown';
 }
 
+// Fetch the player-given names of item ids (ships / containers the player
+// renamed) via the authenticated /characters/{id}/assets/names/ endpoint.
+// ESI does not return nested parent containers as their own asset row, so
+// this is the only way to identify them. Returns a Map id -> name.
+async function fetchItemNames(characterId, ids, token) {
+  const out = new Map();
+  const want = [...new Set(ids.map(Number).filter(Number.isFinite))];
+  if (!want.length) return out;
+  const chunkSize = 1000;
+  for (let i = 0; i < want.length; i += chunkSize) {
+    const chunk = want.slice(i, i + chunkSize);
+    try {
+      await accounts.waitErrorBudget();
+      const arr = await esiPost(`/characters/${characterId}/assets/names/`, chunk, token);
+      for (const hit of arr || []) {
+        if (hit && hit.item_id != null && hit.name) {
+          out.set(Number(hit.item_id), String(hit.name));
+        }
+      }
+    } catch {
+      // 404 = none of these ids are named/valid; leave them unnamed.
+    }
+  }
+  return out;
+}
+
 // Classify + resolve one character's raw assets into a location-name map.
 // Walks each asset to its top-level location and resolves that once.
 async function resolveCharacter(account, token) {
@@ -163,28 +189,37 @@ async function resolveCharacter(account, token) {
   // structures even when the caller lacks the structures scope, so
   // inaccessible structures still get a real name (marked inaccessible).
   const nameIds = new Set();
+  const orphanParentIds = new Set();
   for (const asset of list) {
-    const { top } = assets.walkToTop(asset, byItemId);
+    const { top, missingParentId } = assets.walkToTop(asset, byItemId);
     if (top && (top.location_type === 'structure' || top.location_type === 'other')) {
       nameIds.add(Number(top.location_id));
+    }
+    if (!top && missingParentId != null) {
+      orphanParentIds.add(Number(missingParentId));
     }
   }
   if (nameIds.size) {
     await assets.batchResolveNames([...nameIds]);
   }
 
+  // Resolve the player-given names of the missing parent items (nested
+  // containers / ships ESI doesn't return as their own row). Only items the
+  // player renamed return a name; the rest stay generic.
+  const orphanNames = await fetchItemNames(account.characterId, [...orphanParentIds], token);
+
   for (const asset of list) {
     const { top, missingParentId } = assets.walkToTop(asset, byItemId);
 
     // walkToTop returns null only when the parent chain is genuinely absent
-    // from the asset list (consumed/moved container, or the active ship,
-    // which ESI excludes from /assets/). Classify that missing parent by its
-    // own type_id when we have it; otherwise it is in-transit contents.
+    // from the asset list (a nested container/ship ESI doesn't return, or
+    // the active ship). Name it from the player-given name when available.
     if (!top) {
       const id = missingParentId != null ? Number(missingParentId) : Number(asset.location_id);
       if (!resolved.has(id)) {
         resolved.add(id);
         const parentRow = byItemId.get(id);
+        const givenName = orphanNames.get(id);
         let kind = 'inaccessible';
         let label = 'Container / ship contents';
         if (parentRow && parentRow.type_id != null) {
@@ -192,6 +227,10 @@ async function resolveCharacter(account, token) {
           const k = classifyContainerItem(ti);
           if (k === 'ship') { kind = 'ship'; label = `Ship ${ti && ti.name ? ti.name : parentRow.type_id}`; }
           else if (k === 'container') { kind = 'container'; label = `Container ${ti && ti.name ? ti.name : parentRow.type_id}`; }
+        }
+        if (givenName) {
+          label = givenName;
+          if (kind === 'inaccessible') kind = 'container';
         }
         locations[id] = {
           kind,

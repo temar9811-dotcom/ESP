@@ -99,8 +99,27 @@ async function publicPost(path, body) {
   return handleResponse(res, `ESI ${safePath}`);
 }
 
+async function esiPost(path, body, accessToken) {
+  const safePath = normalizePath(path);
+
+  const res = await fetch(`${config.ESI_BASE}${safePath}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'User-Agent': config.USER_AGENT,
+      'X-User-Agent': config.USER_AGENT
+    },
+    body: JSON.stringify(body)
+  });
+
+  return handleResponse(res, `ESI ${safePath}`);
+}
+
 module.exports = {
   esiFetch,
+  esiPost,
   publicFetch,
   publicPost,
   getErrorLimitState
