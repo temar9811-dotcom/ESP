@@ -524,6 +524,40 @@ switch (command) {
      const result = await assetsNamesMod.pull();
      return { ok: true, result };
    }
+   case 'assets.namesDiag': {
+     // Diagnose name resolution: per character, the granted scopes, whether
+     // structures can be read, and a breakdown of resolved location kinds.
+     const accountsMod = require('../main/accounts');
+     const assetsNamesMod = require('../main/assets-names');
+     const list = accountsMod.getAccounts();
+     const out = [];
+     for (const target of list) {
+       accountsMod.ensureScopes(target);
+       const scopeList = typeof target.scopes === 'string'
+         ? target.scopes.split(' ').filter(Boolean)
+         : Array.isArray(target.scopes) ? target.scopes : null;
+       const canReadStructures =
+         scopeList == null || scopeList.includes('esi-universe.read_structures.v1');
+       const names = assetsNamesMod.getNames(target.characterId);
+       const kinds = {};
+       if (names && names.locations) {
+         for (const info of Object.values(names.locations)) {
+           const k = (info && info.kind) || 'unknown';
+           kinds[k] = (kinds[k] || 0) + 1;
+         }
+       }
+       out.push({
+         character: target.characterName,
+         characterId: target.characterId,
+         canReadStructures,
+         scopes: scopeList,
+         resolved: names ? Object.keys(names.locations).length : 0,
+         fetchedAt: names ? names.fetchedAt : null,
+         kinds
+       });
+     }
+     return { ok: true, result: out };
+   }
    case 'assets.locationClassify': {
      // Runs the pure location classifier over every top-level asset
      // location for a real character: station / planet / solar system /
