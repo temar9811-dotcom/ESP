@@ -633,17 +633,24 @@ switch (command) {
           // Classify the missing parents via the public batched names
           // endpoint: 'structure' = a player structure (never in any asset
           // pull); a miss = ship / container / contract wrap / active ship.
+          // Also annotate with the resolver's classification (kind/name) when
+          // a resolution cache exists, so residue (inaccessible vs structure,
+          // container vs unknown) is visible at a glance.
           var missingParentInfo = [];
+          const resolvedLocs = names && names.locations ? names.locations : null;
           if (missingParents.size) {
             try {
               await assetsMod.batchResolveNames([...missingParents]);
             } catch { /* best effort */ }
             for (const pid of missingParents) {
               const hit = assetsMod.getCachedName ? assetsMod.getCachedName(pid) : null;
+              const resolved = resolvedLocs ? resolvedLocs[pid] : null;
               missingParentInfo.push({
                 id: pid,
                 category: hit && hit.category ? hit.category : null,
-                name: hit && hit.name ? hit.name : null
+                name: hit && hit.name ? hit.name : null,
+                resolvedKind: resolved && resolved.kind ? resolved.kind : null,
+                resolvedName: resolved && resolved.name ? resolved.name : null
               });
             }
           }
