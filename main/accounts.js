@@ -60,12 +60,10 @@ function ensureScopes(account) {
 
   const token = storage.decryptSecret(account.accessTokenEnc);
   const scopes = scopesFromAccessToken(token);
-
   if (scopes) {
     account.scopes = scopes;
     saveAccounts();
   }
-
   return account.scopes;
 }
 
@@ -130,6 +128,7 @@ function enterRateLimit(seconds) {
 async function waitErrorBudget() {
   const { getErrorLimitState } = require('../eve/http');
   const { remain, resetAt } = getErrorLimitState();
+
   if (remain != null && remain <= 10 && resetAt && resetAt > Date.now()) {
     const waitMs = Math.min(resetAt - Date.now(), 60000);
     if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
@@ -138,7 +137,6 @@ async function waitErrorBudget() {
 
 async function waitRateLimit() {
   const waitMs = rateLimitedUntil - Date.now();
-
   if (waitMs > 0) {
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
@@ -164,14 +162,12 @@ async function getValidAccessToken(account, force = false) {
     account.accessTokenExpiresAt > now + safetyMs
   ) {
     const token = storage.decryptSecret(account.accessTokenEnc);
-
     if (token) {
       return token;
     }
   }
 
   const refreshToken = storage.decryptSecret(account.refreshTokenEnc);
-
   if (!refreshToken) {
     throw new Error('Missing refresh token. Remove and add this character again.');
   }
@@ -276,6 +272,7 @@ function checkQueueWarning(account, dashboard) {
   if (account.lastQueueWarnKey === key) return;
 
   account.lastQueueWarnKey = key;
+
   callbacks.onQueueWarning({
     characterId: account.characterId,
     characterName: account.characterName || 'Unknown',
@@ -337,7 +334,8 @@ async function refreshAll() {
   emitRefreshState();
 
   try {
-    const queue = [...accounts];
+    // Test pilots have no tokens — never send them through the ESI refresh.
+    const queue = [...accounts].filter((account) => !account.testPilot);
     const concurrency = Math.min(5, queue.length || 1);
 
     const workers = Array.from({ length: concurrency }, async () => {
