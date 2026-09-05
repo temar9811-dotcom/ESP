@@ -1,12 +1,6 @@
 // FILE: renderer/render.js
-// VERSION: 1.1.17-beta
+// VERSION: 1.1.18-beta
+// This file has been split into smaller modules to comply with the 200-line limit.
+// Please update renderer/index.html to load the new scripts instead of this one.
 'use strict';
-// Coordinator that imports all split render modules
-require('./render-overview');
-require('./render-queue');
-require('./render-wallet');
-require('./render-plans');
-require('./render-character');
-require('./render-search');
-require('./render-clones');
-require('./render-notes');
+window.ESP = window.ESP || {};
