@@ -1,7 +1,7 @@
 {
   "name": "eve-status-perception",
   "productName": "EVE Status Perception",
-  "version": "1.2.0H",
+  "version": "1.2.1-alpha",
   "description": "EVE Online skill training and wallet status tray app",
   "main": "main.js",
   "author": {
