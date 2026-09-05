@@ -1,5 +1,5 @@
 // FILE: renderer/render-list.js
-// VERSION: 1.1.17-beta
+// VERSION: 1.1.18-beta
 'use strict';
 window.ESP = window.ESP || {};
 ESP.render = function (accounts) {
@@ -36,18 +36,10 @@ ESP.render = function (accounts) {
   const accountsEl = document.getElementById('accounts');
   if (!accountsEl) return;
 
-  // ROBUST SCROLL CAPTURE:
-  // Capture from BOTH the specific scrollable rail and the parent container.
-  // This guarantees we catch the scroll position regardless of which element
-  // is actually handling the overflow in the current CSS layout.
+  // Capture scroll position from the actual scrollable container
   const charRail = accountsEl.querySelector('.char-rail');
   const railScroll = charRail ? charRail.scrollTop : 0;
   const accountScroll = accountsEl.scrollTop;
-
-  // Diagnostic log to verify we are capturing a non-zero value when scrolled
-  if (railScroll > 0 || accountScroll > 0) {
-    console.log('[ESP.render] Captured scroll -> rail:', railScroll, 'accounts:', accountScroll);
-  }
 
   if (!ESP.state.lastAccounts.length) {
     accountsEl.innerHTML = `
@@ -197,13 +189,10 @@ ${
 </div>
 `;
 
-  // ROBUST SCROLL RESTORATION:
-  // Restore synchronously immediately after innerHTML replacement.
-  // We restore BOTH potential scroll containers to guarantee the view is preserved.
+  // Restore scroll position immediately after DOM update
   const newCharRail = accountsEl.querySelector('.char-rail');
   if (newCharRail) {
     newCharRail.scrollTop = railScroll;
-    console.log('[ESP.render] Restored rail scroll to:', newCharRail.scrollTop);
   }
   accountsEl.scrollTop = accountScroll;
 
