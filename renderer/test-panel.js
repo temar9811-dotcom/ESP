@@ -26,7 +26,7 @@
       document.head.appendChild(style);
       const panel = document.createElement('div');
       panel.id = 'test-panel';
-      panel.innerHTML = `<div id="test-panel-header"> <span>Test Panel</span> <span class="tp-btns"> <button type="button" class="tp-small" id="test-collapse" title="Collapse">–</button> <button type="button" class="tp-small" id="test-close" title="Close">✕</button> </span> </div> <div id="test-panel-body"> <button type="button" data-cmd="pilots.add">Add 20 Test Pilots</button> <button type="button" data-cmd="pilots.remove">Remove Test Pilots</button> <button type="button" data-cmd="ping">Ping</button> <button type="button" data-cmd="assets.debug">Assets debug</button> <button type="button" data-cmd="assets.debug2">Assets debug 2</button> <button type="button" data-cmd="assets.structureAudit">Structure audit</button> <button type="button" data-cmd="assets.structureAuditAll">Structure audit (probe all)</button> <button type="button" data-cmd="assets.clearStructureFailures">Clear structure failures</button> <button type="button" data-cmd="assets.locationClassify">Location classify</button> <button type="button" data-cmd="app.version">Version</button> <button type="button" data-cache-clear="all">Clear ALL caches</button> <button type="button" data-cache-clear="skills">Clear skills cache</button> <button type="button" data-cache-clear="wallet">Clear wallet cache</button> <button type="button" data-cache-clear="assets">Clear assets cache</button> <button type="button" data-cache-clear="assetsNames">Clear asset names cache</button> <button type="button" data-cache-clear="structures">Clear structure names cache</button> <button type="button" data-cache-clear="universe">Clear universe cache</button> <button type="button" data-cmd="assets.pullRaw">Pull raw assets now</button> <button type="button" data-cmd="assets.resolveNames">Resolve asset names now</button> <button type="button" data-cmd="assets.namesDiag">Asset names diagnostic</button> <button type="button" data-cmd="bubble.skill">Skill bubble</button> <button type="button" data-cmd="bubble.queue">Queue bubble</button> <button type="button" data-cmd="bubble.wallet">Wallet bubble</button> <button type="button" data-cmd="accounts.summary">Accounts summary</button> <button type="button" data-cmd="app.refresh">Force refresh</button> <button type="button" data-cmd="app.showWindow">Show window</button> <button type="button" data-cmd="login.cancelIdle">Cancel idle login</button> <button type="button" data-cmd="groups.read">Groups read</button> <button type="button" data-cmd="settings.roundtrip">Settings roundtrip</button> <button type="button" data-cmd="plans.roundtrip">Plans roundtrip</button> <button type="button" data-cmd="skills.meta">Skill meta</button> <button type="button" data-cmd="wallet.details">Wallet details</button> <button type="button" data-cmd="corp.info">Corp info</button> <button type="button" data-cmd="history.inject">Inject recent skills</button> <button type="button" data-cmd="accounts.exportTokens">Export tokens</button> </div> <div id="test-result"></div>`;
+      panel.innerHTML = `<div id="test-panel-header"> <span>Test Panel</span> <span class="tp-btns"> <button type="button" class="tp-small" id="test-collapse" title="Collapse">–</button> <button type="button" class="tp-small" id="test-close" title="Close">✕</button> </span> </div> <div id="test-panel-body"> <button type="button" data-cmd="ping">Ping</button> <button type="button" data-cmd="assets.debug">Assets debug</button> <button type="button" data-cmd="assets.debug2">Assets debug 2</button> <button type="button" data-cmd="assets.structureAudit">Structure audit</button> <button type="button" data-cmd="assets.structureAuditAll">Structure audit (probe all)</button> <button type="button" data-cmd="assets.clearStructureFailures">Clear structure failures</button> <button type="button" data-cmd="assets.locationClassify">Location classify</button> <button type="button" data-cmd="app.version">Version</button> <button type="button" data-cache-clear="all">Clear ALL caches</button> <button type="button" data-cache-clear="skills">Clear skills cache</button> <button type="button" data-cache-clear="wallet">Clear wallet cache</button> <button type="button" data-cache-clear="assets">Clear assets cache</button> <button type="button" data-cache-clear="assetsNames">Clear asset names cache</button> <button type="button" data-cache-clear="structures">Clear structure names cache</button> <button type="button" data-cache-clear="universe">Clear universe cache</button> <button type="button" data-cmd="assets.pullRaw">Pull raw assets now</button> <button type="button" data-cmd="assets.resolveNames">Resolve asset names now</button> <button type="button" data-cmd="assets.namesDiag">Asset names diagnostic</button> <button type="button" data-cmd="bubble.skill">Skill bubble</button> <button type="button" data-cmd="bubble.queue">Queue bubble</button> <button type="button" data-cmd="bubble.wallet">Wallet bubble</button> <button type="button" data-cmd="accounts.summary">Accounts summary</button> <button type="button" data-cmd="app.refresh">Force refresh</button> <button type="button" data-cmd="app.showWindow">Show window</button> <button type="button" data-cmd="login.cancelIdle">Cancel idle login</button> <button type="button" data-cmd="groups.read">Groups read</button> <button type="button" data-cmd="settings.roundtrip">Settings roundtrip</button> <button type="button" data-cmd="plans.roundtrip">Plans roundtrip</button> <button type="button" data-cmd="skills.meta">Skill meta</button> <button type="button" data-cmd="wallet.details">Wallet details</button> <button type="button" data-cmd="corp.info">Corp info</button> <button type="button" data-cmd="history.inject">Inject recent skills</button> <button type="button" data-cmd="accounts.exportTokens">Export tokens</button> <button type="button" data-cmd="testPilot.add">Add Test Pilots</button> <button type="button" data-cmd="testPilot.remove">Remove Test Pilots</button> </div> <div id="test-result"></div>`;
       const fab = document.createElement('button');
       fab.id = 'test-fab';
       fab.type = 'button';
@@ -39,32 +39,25 @@
         if (clearBtn) {
           const which = clearBtn.dataset.cacheClear;
           setResult(true, `clearing ${which} cache…`);
-          window.eveApi
-            .clearCache(which)
-            .then((res) => {
-              const n = res && res.cleared ? res.cleared.length : 0;
-              setResult(true, `cleared ${n} cache file(s): ${(res.cleared || []).join(', ') || 'none present'}`);
-            })
-            .catch((err) => {
-              setResult(false, `clearCache: ${err?.message || String(err)}`);
-            });
+          window.eveApi.clearCache(which).then((res) => {
+            const n = res && res.cleared ? res.cleared.length : 0;
+            setResult(true, `cleared ${n} cache file(s): ${(res.cleared || []).join(', ') || 'none present'}`);
+          }).catch((err) => {
+            setResult(false, `clearCache: ${err?.message || String(err)}`);
+          });
           return;
         }
         const cmdBtn = event.target.closest('[data-cmd]');
         if (cmdBtn) {
-          const probeAll = cmdBtn.dataset.cmd === 'assets.structureAuditAll';
-          const cmd = probeAll ? 'assets.structureAudit' : cmdBtn.dataset.cmd;
-          const payload = probeAll ? { probeAll: true } : {};
+          const cmd = cmdBtn.dataset.cmd;
+          const payload = {};
           setResult(true, `running ${cmd}…`);
-          window.eveApi
-            .testRun(cmd, payload)
-            .then((res) => {
-              console.log('test:', cmd, res);
-              setResult(Boolean(res && res.ok), `${cmd}: ${summarize(res)}`);
-            })
-            .catch((err) => {
-              setResult(false, `${cmd}: ${err?.message || String(err)}`);
-            });
+          window.eveApi.testRun(cmd, payload).then((res) => {
+            console.log('test:', cmd, res);
+            setResult(Boolean(res && res.ok), `${cmd}: ${summarize(res)}`);
+          }).catch((err) => {
+            setResult(false, `${cmd}: ${err?.message || String(err)}`);
+          });
           return;
         }
         if (event.target.closest('#test-collapse')) {
