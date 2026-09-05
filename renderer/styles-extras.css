@@ -1,0 +1,244 @@
+/* FILE: renderer/styles-extras.css */
+/* VERSION: 1.1.17-beta */
+.sync-indicator {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  flex: 0 0 auto;
+}
+.sync-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(125, 144, 163, 0.35);
+  border-top-color: #7d90a3;
+  animation: syncSpin 1.4s linear infinite;
+}
+.sync-indicator.pulling .sync-spinner {
+  border-top-color: #4da3ff;
+  border-color: rgba(77, 163, 255, 0.25);
+  animation-duration: 0.7s;
+}
+@keyframes syncSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.sync-popup {
+  position: absolute;
+  right: 0;
+  top: 26px;
+  min-width: 170px;
+  padding: 8px 10px;
+  border: 1px solid #33455a;
+  border-radius: 8px;
+  background: #1b2733;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  color: #cfe0f2;
+  white-space: nowrap;
+  display: none;
+  z-index: 60;
+}
+.sync-indicator:hover .sync-popup {
+  display: block;
+}
+.sync-popup .sync-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+.sync-popup .sync-label {
+  color: #9fb3c8;
+}
+.sync-popup .sync-value {
+  font-variant-numeric: tabular-nums;
+}
+.sync-popup .sync-value.now {
+  color: #4da3ff;
+}
+.eve-time {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 900;
+  padding: 6px 10px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: rgba(22, 29, 38, 0.92);
+  color: #9fb2c5;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.eve-time:hover {
+  background: rgba(22, 29, 38, 1);
+  border-color: #4d739c;
+}
+.eve-time.clock-large {
+  padding: 12px 20px;
+  font-size: 24px;
+  border-radius: 10px;
+}
+.toast-root {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast-bubble {
+  min-width: 220px;
+  max-width: 320px;
+  background: rgba(22, 29, 38, 0.95);
+  border: 1px solid #33455a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #dfe7ef;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  animation: toastIn 0.2s ease-out;
+}
+.toast-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.toast-body {
+  color: #9fb2c5;
+}
+@keyframes toastIn {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.skill-search-input-wrap {
+  position: relative;
+  margin-right: 10px;
+}
+.skill-tab-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.skill-search-tab-btn {
+  padding: 8px 12px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: #223140;
+  color: #dfe7ef;
+  cursor: pointer;
+  font: inherit;
+}
+.skill-search-tab-btn:hover {
+  background: #2c3f52;
+}
+.skill-tab-toolbar .skill-search-input-wrap {
+  margin-right: 0;
+}
+.skill-search-input {
+  padding: 8px 12px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: #10151c;
+  color: #dfe7ef;
+  width: 300px;
+  font: inherit;
+}
+.skill-search-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #161d26;
+  border: 1px solid #33455a;
+  border-radius: 0 0 6px 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 1100;
+}
+.skill-search-suggestion {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #dfe7ef;
+}
+.skill-search-suggestion:hover,
+.skill-search-suggestion.active {
+  background: #223140;
+}
+.skill-search-count {
+  color: #7d90a3;
+  font-size: 12px;
+}
+.skill-search-card {
+  width: fit-content;
+  max-width: min(500px, calc(100vw - 40px));
+}
+.skill-search-card table {
+  table-layout: auto;
+  width: 100%;
+}
+.skill-search-card th:first-child,
+.skill-search-card td:first-child {
+  width: 1%;
+  white-space: nowrap;
+}
+.skill-search-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.skill-search-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.skill-search-controls {
+  display: flex;
+  gap: 6px;
+}
+.skill-search-controls .modal-close {
+  position: static;
+}
+.skill-search-minimize {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #33455a;
+  background: #223140;
+  color: #dfe7ef;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+.skill-search-minimize:hover {
+  background: #2b3d50;
+}
+.skill-search-pill {
+  position: fixed;
+  bottom: 44px;
+  right: 12px;
+  z-index: 950;
+  padding: 6px 14px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: rgba(22, 29, 38, 0.95);
+  color: #dfe7ef;
+  cursor: pointer;
+  font-size: 13px;
+}
+.skill-search-pill:hover {
+  background: #223140;
+}

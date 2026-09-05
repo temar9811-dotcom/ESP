@@ -1,5 +1,5 @@
 // FILE: renderer/render-list.js
-// VERSION: 1.1.18-beta
+// VERSION: 1.1.19-beta
 'use strict';
 window.ESP = window.ESP || {};
 ESP.render = function (accounts) {
@@ -170,13 +170,15 @@ Click <strong>Add character</strong> to log in with EVE SSO.
     }
   }
 
+  // Restructured layout: char-rail extends full height, tabs move into content area
   accountsEl.innerHTML = `
-${ESP.primaryTabsHtml()}
 <div class="layout-body">
   <aside class="char-rail">
 ${railHtml}
   </aside>
-  <section class="content-pane">
+  <div class="content-area">
+    ${ESP.primaryTabsHtml()}
+    <section class="content-pane">
 ${
   selected
     ? ESP.characterSheetHtml(selected, {
@@ -185,7 +187,8 @@ ${
       })
     : '<div class="idle">Select a character on the left.</div>'
 }
-  </section>
+    </section>
+  </div>
 </div>
 `;
 

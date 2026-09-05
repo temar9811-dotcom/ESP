@@ -1,0 +1,163 @@
+/* FILE: renderer/styles-modals.css */
+/* VERSION: 1.1.17-beta */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-card {
+  width: min(760px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  background: #161d26;
+  border: 1px solid #33455a;
+  border-radius: 10px;
+  padding: 16px;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #663333;
+  background: #351d1d;
+  color: #ffb3b3;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.modal-close:hover {
+  background: #472525;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+.modal-cancel,
+.modal-save {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #33455a;
+}
+.modal-cancel {
+  background: #223140;
+  color: #dfe7ef;
+}
+.modal-save {
+  background: #35516d;
+  color: #dfe7ef;
+}
+.modal-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.form-row {
+  margin: 10px 0;
+}
+.form-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 14px;
+}
+.form-row input[type="text"],
+.form-row select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #33455a;
+  background: #10151c;
+  color: #dfe7ef;
+}
+.plan-preview {
+  margin-top: 12px;
+  border: 1px solid #263442;
+  border-radius: 8px;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+.plan-preview ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.plan-box {
+  position: relative;
+  border: 1px solid #2b3948;
+  background: #1b2733;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+}
+.plan-box-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-box-meta {
+  color: #9fb2c5;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.plan-delete {
+  padding: 5px 9px;
+  border: 1px solid #663333;
+  background: #351d1d;
+  color: #ffb3b3;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.plan-delete:hover {
+  background: #472525;
+}
+.plan-glow {
+  animation: planGlow 2s ease-in-out infinite;
+}
+@keyframes planGlow {
+  0% {
+    background: #1b2733;
+    border-color: #2b3948;
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0);
+  }
+  50% {
+    background: #1f3d2a;
+    border-color: #4caf50;
+    box-shadow: 0 0 14px rgba(76, 175, 80, 0.55);
+  }
+  100% {
+    background: #1b2733;
+    border-color: #2b3948;
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+.plan-done-red {
+  border-color: #c62828;
+  background: #3d1f1f;
+  box-shadow: 0 0 10px rgba(198, 40, 40, 0.4);
+}
+.plan-done-red .plan-box-name {
+  color: #ff8a80;
+}
+.plan-completed-banner {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #2e7d32;
+  background: #17331f;
+  color: #b9f6ca;
+  border-radius: 8px;
+}

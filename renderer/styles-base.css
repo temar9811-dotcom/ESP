@@ -1,0 +1,122 @@
+/* FILE: renderer/styles-base.css */
+/* VERSION: 1.1.17-beta */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #10151c;
+  color: #dfe7ef;
+}
+.topbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #2b3948;
+  background: #161d26;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+}
+.version {
+  color: #7d90a3;
+  font-size: 13px;
+  margin-left: 8px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.actions button {
+  padding: 8px 12px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: #223140;
+  color: #dfe7ef;
+  cursor: pointer;
+}
+.actions button:hover {
+  background: #2c3f52;
+}
+.actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.status {
+  flex: 0 0 auto;
+  padding: 8px 18px;
+  color: #9fb2c5;
+  min-height: 20px;
+}
+.status.error {
+  color: #ff8080;
+}
+.app-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.app-main > .empty {
+  margin: 18px;
+}
+.primary-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid #2b3948;
+  background: #161d26;
+}
+.primary-tab {
+  padding: 8px 16px;
+  border: 1px solid #33455a;
+  border-radius: 6px;
+  background: #223140;
+  color: #dfe7ef;
+  cursor: pointer;
+}
+.primary-tab:hover {
+  background: #2c3f52;
+}
+.primary-tab.active {
+  background: #35516d;
+  border-color: #4d739c;
+}
+.layout-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.content-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  padding: 14px 18px;
+}
+.empty {
+  padding: 30px;
+  border: 1px dashed #3a4b5d;
+  border-radius: 10px;
+  color: #9fb2c5;
+  text-align: center;
+}
