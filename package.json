@@ -10,12 +10,21 @@
   "license": "MIT",
   "private": true,
   "scripts": {
+    "dev": "vite ui",
+    "build:ui": "vite build ui",
     "start": "electron .",
-    "dist": "electron-builder --win"
+    "dist": "npm run build:ui && electron-builder --win"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
     "electron": "^31.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1"
   },
   "build": {
     "appId": "com.esp.app",
@@ -24,8 +33,8 @@
       "icon": "build/icon.png"
     },
     "asarUnpack": [
-      "test/**",
-      "assets/**"
+      "test/",
+      "assets/"
     ],
     "files": [
       "main.js",
@@ -36,7 +45,7 @@
       "eve.js",
       "eve/**/*",
       "main/**/*",
-      "renderer/**/*",
+      "dist/**/*",
       "test/**/*",
       "assets/**/*",
       "package.json"

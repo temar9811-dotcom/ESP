@@ -1,5 +1,5 @@
+// File Version: 1.2.1-alpha
 'use strict';
-
 const {
   app,
   BrowserWindow,
@@ -9,7 +9,6 @@ const {
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
-
 const { VERSION } = require('../version');
 const eveConfig = require('../eve/config');
 
@@ -27,10 +26,6 @@ let actions = {
   addAccount: async () => {}
 };
 
-// The layout (character rail + skill groups sized to their text) needs
-// at least this much room; the window cannot be resized smaller. At this
-// width the queue stat cards wrap to two lines and the topbar actions
-// wrap below the title.
 const MIN_WIDTH = 700;
 const MIN_HEIGHT = 700;
 
@@ -55,13 +50,11 @@ function loadBounds() {
   } catch {
     // No saved bounds yet.
   }
-
   return null;
 }
 
 function saveBounds() {
   if (!win || win.isDestroyed()) return;
-
   const bounds = win.getBounds();
   const display = require('electron').screen.getDisplayMatching(bounds);
   const workArea = display.workArea;
@@ -71,7 +64,6 @@ function saveBounds() {
     width: Math.max(MIN_WIDTH, Math.min(bounds.width, workArea.width)),
     height: Math.max(MIN_HEIGHT, Math.min(bounds.height, workArea.height))
   };
-
   try {
     fs.mkdirSync(path.dirname(boundsFile()), { recursive: true });
     fs.writeFileSync(boundsFile(), JSON.stringify(clamped), 'utf8');
@@ -89,10 +81,7 @@ function debounceSaveBounds() {
 }
 
 function setActions(newActions) {
-  actions = {
-    ...actions,
-    ...(newActions || {})
-  };
+  actions = { ...actions, ...(newActions || {}) };
 }
 
 function setQuitting(value) {
@@ -105,36 +94,24 @@ function getWindow() {
 
 function getAppIconPath() {
   const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
-
   try {
-    if (fs.existsSync(iconPath)) {
-      return iconPath;
-    }
+    if (fs.existsSync(iconPath)) return iconPath;
   } catch {
     // Ignore lookup errors.
   }
-
   return undefined;
 }
 
 function getTrayIcon() {
   const assetPath = path.join(__dirname, '..', 'assets', 'tray.png');
-
   try {
     if (fs.existsSync(assetPath)) {
-      return nativeImage.createFromPath(assetPath).resize({
-        width: 16,
-        height: 16
-      });
+      return nativeImage.createFromPath(assetPath).resize({ width: 16, height: 16 });
     }
   } catch {
     // Fall back to embedded icon.
   }
-
-  return nativeImage.createFromDataURL(TRAY_ICON_DATA).resize({
-    width: 16,
-    height: 16
-  });
+  return nativeImage.createFromDataURL(TRAY_ICON_DATA).resize({ width: 16, height: 16 });
 }
 
 function showWindow() {
@@ -142,54 +119,37 @@ function showWindow() {
     createWindow();
     return;
   }
-
-  if (win.isMinimized()) {
-    win.restore();
-  }
-
+  if (win.isMinimized()) win.restore();
   win.show();
 }
 
 function remainingUntil(dateStr) {
   if (!dateStr) return '';
-
   const target = new Date(dateStr).getTime();
   if (Number.isNaN(target)) return '';
-
   const ms = target - Date.now();
   if (ms <= 0) return 'complete';
-
   const totalMinutes = Math.floor(ms / 60000);
   const days = Math.floor(totalMinutes / 1440);
   const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
-
   if (days > 0) return `${days}d ${hours}h ${minutes}m`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
+
 function updateTrayTooltip() {
   if (!tray) return;
-
   const header = `${eveConfig.APP_NAME} v${VERSION}`;
-
   if (!tooltipAccounts.length) {
     tray.setToolTip(`${header}\nNo characters added`);
     return;
   }
-
   const lines = tooltipAccounts.slice(0, 3).map((account) => {
-    if (!account.activeSkill) {
-      return `${account.characterName || 'Character'}: idle`;
-    }
-
+    if (!account.activeSkill) return `${account.characterName || 'Character'}: idle`;
     const remaining = remainingUntil(account.activeSkill.finish_date);
-
-    return `${account.characterName || 'Character'}: ${
-      account.activeSkill.skillName || 'Unknown'
-    } L${account.activeSkill.finished_level || '?'} (${remaining})`;
+    return `${account.characterName || 'Character'}: ${account.activeSkill.skillName || 'Unknown'} L${account.activeSkill.finished_level || '?'} (${remaining})`;
   });
-
   tray.setToolTip([header, ...lines].join('\n'));
 }
 
@@ -200,7 +160,6 @@ function setTooltipAccounts(accounts) {
 
 function createWindow() {
   const saved = loadBounds();
-
   const windowOpts = {
     width: MIN_WIDTH,
     height: 900,
@@ -217,35 +176,34 @@ function createWindow() {
       sandbox: false
     }
   };
-
   if (saved) {
     windowOpts.x = saved.x;
     windowOpts.y = saved.y;
     windowOpts.width = saved.width;
     windowOpts.height = saved.height;
   }
-
   win = new BrowserWindow(windowOpts);
 
-  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  // Load Vite dev server in development, built files in production
+  if (!app.isPackaged) {
+    win.loadURL('http://localhost:5173');
+  } else {
+    win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  }
 
   win.once('ready-to-show', () => {
     win.show();
   });
-
   win.on('resize', debounceSaveBounds);
   win.on('move', debounceSaveBounds);
-
   win.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault();
       win.hide();
       return;
     }
-
     saveBounds();
   });
-
   win.on('closed', () => {
     win = null;
   });
@@ -253,48 +211,23 @@ function createWindow() {
 
 function createTray() {
   if (tray) return;
-
   tray = new Tray(getTrayIcon());
   tray.setToolTip(`${eveConfig.APP_NAME} v${VERSION}\nNo characters added`);
-
   const menu = Menu.buildFromTemplate([
-    {
-      label: 'Open',
-      click: () => showWindow()
-    },
+    { label: 'Open', click: () => showWindow() },
     {
       label: 'Refresh now',
-      click: () => {
-        actions.refreshAll().catch(console.error);
-      }
+      click: () => { actions.refreshAll().catch(console.error); }
     },
     {
       label: 'Add character',
-      click: () => {
-        actions
-          .addAccount()
-          .then(() => showWindow())
-          .catch((err) => {
-            console.error(err);
-            showWindow();
-          });
-      }
+      click: () => { actions.addAccount().then(() => showWindow()).catch((err) => { console.error(err); showWindow(); }); }
     },
     { type: 'separator' },
-    {
-      label: 'Quit',
-      click: () => {
-        isQuitting = true;
-        app.quit();
-      }
-    }
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
   ]);
-
   tray.setContextMenu(menu);
-
-  tray.on('double-click', () => {
-    showWindow();
-  });
+  tray.on('double-click', () => { showWindow(); });
 }
 
 module.exports = {
