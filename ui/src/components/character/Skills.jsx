@@ -1,4 +1,4 @@
-// File: ui/src/components/character/Skills.jsx | Version: 1.5
+// File: ui/src/components/character/Skills.jsx | Version: 1.6
 import React, { useState, useEffect } from 'react';
 
 function formatQueueTime(ms) {
@@ -14,35 +14,44 @@ function formatQueueTime(ms) {
 
 export default function Skills({ account }) {
   const [loading, setLoading] = useState(true);
+  const [skillsData, setSkillsData] = useState(null);
   const [groupedSkills, setGroupedSkills] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
-    const fetchSkills = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
         const id = account?.characterId;
         if (!id) return;
-        const data = await window.eveApi.getCharacterSkills(id);
-        if (isMounted) setGroupedSkills(data);
+        
+        // Fetch new V2 cache for Queue and Total SP
+        if (window.eveApi.getSkillsData) {
+          const sData = await window.eveApi.getSkillsData(id);
+          if (isMounted) setSkillsData(sData);
+        }
+        
+        // Fetch grouped skills with names from legacy sync (until name resolver is built)
+        const gData = await window.eveApi.getCharacterSkills(id);
+        if (isMounted) setGroupedSkills(gData);
       } catch (err) {
-        console.error('Failed to load skills:', err);
+        window.eveApi?.debugLog?.({ level: 'ERROR', source: 'SKILLS-UI', message: 'Failed to load skills', data: { error: err?.message } });
       } finally {
         if (isMounted) setLoading(false);
       }
     };
-    fetchSkills();
+    fetchData();
     return () => { isMounted = false; };
   }, [account?.characterId]);
 
   if (!account) return <div className="p-4 text-gray-400">No account selected.</div>;
-
-  const queue = account.queue || [];
-  const totalSp = account.totalSp || 0;
-  const queueRemainingMs = account.queueRemainingMs || 0;
-
   if (loading) return <div className="p-4 text-gray-400">Loading skills...</div>;
+
+  const queue = skillsData?.queue || [];
+  const totalSp = skillsData?.total_sp || 0;
+  const queueRemainingMs = account.queueRemainingMs || 0; 
   const groups = groupedSkills?.groups || [];
+
   return (
     <div className="space-y-6">
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
@@ -53,7 +62,7 @@ export default function Skills({ account }) {
           ) : (
             queue.map((item, idx) => (
               <div key={idx} className="flex justify-between items-center bg-gray-700 p-2 rounded">
-                <span className="text-sm text-gray-200">{item.skillName} (Lvl {item.finished_level})</span>
+                <span className="text-sm text-gray-200">Skill ID: {item.skill_id} (Lvl {item.finished_level})</span>
                 <span className="text-xs text-gray-400">{new Date(item.finish_date).toLocaleString()}</span>
               </div>
             ))
@@ -65,10 +74,13 @@ export default function Skills({ account }) {
           </p>
         )}
       </div>
+
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-2">Total Skill Points</h2>
         <p className="text-2xl font-mono text-blue-400">{Number(totalSp).toLocaleString()} SP</p>
+        {skillsData?.fetchedAt && <p className="text-xs text-gray-500 mt-2">Updated: {new Date(skillsData.fetchedAt).toLocaleString()}</p>}
       </div>
+
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-3">Trained Skills</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
