@@ -1,36 +1,29 @@
+// main.js
+// VERSION: 1.3
 'use strict';
-
 const { app } = require('electron');
-
-// Software rendering fixes transparent-window repaint issues on Windows.
 app.disableHardwareAcceleration();
-
-// Allow notification chimes to play without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const eveConfig = require('./eve/config');
 const eve = require('./eve');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
-const skillsSync = require('./main/skills-sync');
-const walletSync = require('./main/wallet-sync');
-const assetsSync = require('./main/assets-sync');
-const assetsNames = require('./main/assets-names');
 const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
 const legacyGuard = require('./main/legacy-guard');
 const toastWindow = require('./main/toast-window');
 const notifications = require('./main/notifications');
 const settingsMod = require('./main/settings');
+const logger = require('./main/debug/logger');
+const debugEngine = require('./main/debug/engine');
+const scheduler = require('./main/scheduler');
 
 let testHarness = null;
 
 function sendToRenderer(channel, payload) {
   const win = windowTray.getWindow();
-
-  if (win && !win.isDestroyed()) {
-    win.webContents.send(channel, payload);
-  }
+  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
 function onAccountsBroadcast(publicAccounts) {
@@ -48,13 +41,8 @@ function onQueueWarning(payload) {
   sendToRenderer('notification:queue-warning', payload || {});
 }
 
-function onQueueEmpty(payload) {
-  sendToRenderer('notification:queue-empty', payload || {});
-}
-
-function onRefreshState(state) {
-  sendToRenderer('refresh-state', state);
-}
+function onQueueEmpty(payload) { sendToRenderer('notification:queue-empty', payload || {}); }
+function onRefreshState(state) { sendToRenderer('refresh-state', state); }
 
 function onWalletActivity(payload) {
   notifications.notifyWalletActivity(payload);
@@ -63,115 +51,72 @@ function onWalletActivity(payload) {
 
 function onAccountRemoved(characterId) {
   walletMonitor.removeBaseline(characterId);
-  skillsSync.removeCharacter(characterId);
-  walletSync.removeCharacter(characterId);
 }
 
 async function bootstrap() {
   app.setAppUserModelId(eveConfig.APP_USER_MODEL_ID);
-
   const currentSettings = settingsMod.getSettings();
+  app.setLoginItemSettings({ openAtLogin: Boolean(currentSettings.openAtLogin) });
 
-  app.setLoginItemSettings({
-    openAtLogin: Boolean(currentSettings.openAtLogin)
-  });
+  debugEngine.initEngine();
+  logger.info('MAIN', 'Bootstrap starting');
 
   accounts.loadAccounts();
-
   eve.loadImplantSlotCache();
-
   accounts.init({
     onBroadcast: onAccountsBroadcast,
-    onSkillCompleted,
-    onQueueWarning,
-    onQueueEmpty,
-    onRefreshState,
-    onAccountRemoved
+    onSkillCompleted, onQueueWarning, onQueueEmpty, onRefreshState, onAccountRemoved
   });
 
-  walletMonitor.init({
-    onWalletActivity
-  });
-
-  windowTray.setActions({
-    refreshAll: accounts.refreshAll,
-    addAccount: accounts.addAccount
-  });
+  walletMonitor.init({ onWalletActivity });
+  windowTray.setActions({ refreshAll: accounts.refreshAll, addAccount: accounts.addAccount });
 
   try {
     testHarness = require('./test/test-main.js');
-    testHarness.init({
-      getWindow: windowTray.getWindow,
-      getAccounts: accounts.getAccounts,
-      refreshAll: accounts.refreshAll,
-      showWindow: windowTray.showWindow
-    });
+    testHarness.init({ getWindow: windowTray.getWindow, getAccounts: accounts.getAccounts, refreshAll: accounts.refreshAll, showWindow: windowTray.showWindow });
     ipc.setTestHarness(testHarness);
   } catch (err) {
-    console.error('Test harness failed to load:', err);
+    logger.error('MAIN', 'Test harness failed to load', { error: err.message });
     testHarness = null;
   }
 
   ipc.registerIpcHandlers();
-
-  // Old 2-hourly sweep superseded by the sequenced assetsSync below.
-  // assetsQueue.start();
-
   windowTray.createWindow();
 
   if (currentSettings.startMinimized) {
     const win = windowTray.getWindow();
-    if (win && !win.isDestroyed()) {
-      win.hide();
-    }
+    if (win && !win.isDestroyed()) win.hide();
   }
 
   windowTray.createTray();
   toastWindow.createToastWindow();
 
-  // Skills pull is the first sequenced ESI section; it runs on its own
-  // timer from here (startup pull + every 15 minutes). The wallet pull
-  // queues behind it (startup pull + every 10 minutes).
-  skillsSync.start();
-  walletSync.start();
-  assetsSync.start();
-  assetsNames.start();
+  // Start the new V2 scheduler for ESI pullers
+  scheduler.start();
 
-  await accounts.refreshAll();
-
-  setInterval(() => {
-    accounts.refreshAll().catch(console.error);
-  }, eveConfig.REFRESH.intervalMs);
+  // Legacy syncs commented out while we rewrite the backend
+  // skillsSync.start(); walletSync.start(); assetsSync.start(); assetsNames.start();
+  // setInterval(() => { accounts.refreshAll().catch(console.error); }, eveConfig.REFRESH.intervalMs);
 
   walletMonitor.start(eveConfig.WALLET_MONITOR.intervalMs);
+  logger.info('MAIN', 'Bootstrap complete');
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
-
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    windowTray.showWindow();
-  });
-
+  app.on('second-instance', () => { windowTray.showWindow(); });
   app.whenReady().then(() => {
-    if (!legacyGuard.ensureLegacyAppClosed()) {
-      app.quit();
-      return;
-    }
-
+    if (!legacyGuard.ensureLegacyAppClosed()) { app.quit(); return; }
     bootstrap().catch(console.error);
   });
 }
 
 app.on('before-quit', () => {
   windowTray.setQuitting(true);
+  scheduler.stop();
   walletMonitor.stop();
-  skillsSync.stop();
-  walletSync.stop();
 });
 
-app.on('window-all-closed', () => {
-  // Keep running in tray.
-});
+app.on('window-all-closed', () => { /* Keep running in tray. */ });

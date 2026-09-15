@@ -1,36 +1,30 @@
-// File: main/ipc-debug.js | Version: 1.1
+// main/ipc-debug.js
+// VERSION: 1.1
 'use strict';
-const { ipcMain, BrowserWindow } = require('electron');
-const debugLogger = require('./debug-logger');
-const debugEngine = require('./debug-engine');
+const { ipcMain } = require('electron');
+const logger = require('./debug/logger');
+const debugEngine = require('./debug/engine');
+const windowTray = require('./window-tray');
 
-function broadcastLog(entry) {
-  for (const win of BrowserWindow.getAllWindows()) {
-    try { win.webContents.send('debug:log', entry); } catch {}
-  }
+function sendToRenderer(channel, payload) {
+  const win = windowTray.getWindow();
+  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
 function registerDebugIpc() {
-  debugLogger.init();
-  debugLogger.enableIPCTracing();
-  debugLogger.subscribe(broadcastLog);
-  debugEngine.registerDefaultActions();
-
-  ipcMain.handle('debug:getLogs', () => debugLogger.getLogs());
-  ipcMain.handle('debug:getActions', () => debugEngine.getActions());
-  ipcMain.handle('debug:runAction', async (_event, name, payload) => debugEngine.runAction(name, payload));
-  ipcMain.handle('debug:clearLogs', () => {
-    debugLogger.clearLogs();
-    return { ok: true };
+  // Subscribe to logger and push to UI
+  logger.subscribe((entry) => {
+    sendToRenderer('debug:log', entry);
   });
 
-  ipcMain.handle('debug:log', (_event, payload) => {
-    const level = String(payload?.level || 'debug').toLowerCase();
-    const safeLevel = ['debug', 'info', 'warn', 'error'].includes(level) ? level : 'debug';
-    const source = payload?.source || 'UI';
-    const message = payload?.message || '';
-    debugLogger[safeLevel](source, message, payload?.data);
-    return { ok: true };
+  ipcMain.handle('debug:getLogs', () => logger.getLogs());
+  ipcMain.handle('debug:clearLogs', () => { logger.clearLogs(); return true; });
+  ipcMain.handle('debug:getActions', () => debugEngine.getActions());
+  ipcMain.handle('debug:runAction', async (_e, name, payload) => debugEngine.runAction(name, payload));
+  
+  // Handle UI debug logs (filtered by logger V2)
+  ipcMain.handle('debug:log', (_e, payload) => {
+    logger.info(payload.source || 'UI', payload.message, payload.data);
   });
 }
 

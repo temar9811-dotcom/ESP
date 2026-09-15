@@ -1,4 +1,5 @@
-// File: ui/src/hooks/useDebug.js | Version: 1.1
+// ui/src/hooks/useDebug.js
+// VERSION: 1.2
 import { useEffect, useState } from 'react';
 
 export function useDebugLogs() {
@@ -6,21 +7,18 @@ export function useDebugLogs() {
 
   useEffect(() => {
     if (!window.eveApi?.debugGetLogs) return;
-
+    
     const fetchInitial = async () => {
       const initial = await window.eveApi.debugGetLogs();
       setLogs(initial || []);
     };
-
     fetchInitial();
 
     const unsub = window.eveApi.onDebugLog((entry) => {
       setLogs((prev) => [...prev, entry].slice(-500));
     });
 
-    return () => {
-      if (unsub) unsub();
-    };
+    return () => { if (unsub) unsub(); };
   }, []);
 
   const clearLogs = async () => {
@@ -38,12 +36,11 @@ export function useDebugActions() {
 
   useEffect(() => {
     if (!window.eveApi?.debugGetActions) return;
-
+    
     const fetchActions = async () => {
       const list = await window.eveApi.debugGetActions();
       setActions(list || []);
     };
-
     fetchActions();
   }, []);
 
