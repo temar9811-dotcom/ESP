@@ -105,3 +105,4 @@ This repository tracks the latest development (alpha) code. If you want to run t
 
 *ESP is developed against the Tranquility server using EVE SSO and ESI.
 EVE Online and the EVE logo are the registered trademarks of CCP hf.*
+

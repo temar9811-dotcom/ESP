@@ -1,268 +1,31 @@
-// FILE: main/assets-names.js
-// VERSION: 1.1.16-beta
+// File: main/assets-names.js | Version: 2.0
 'use strict';
-const { app } = require('electron');
-const fs = require('fs');
-const path = require('path');
 const accounts = require('./accounts');
 const sequencer = require('./esi-sequencer');
-const debug = require('./debug');
-const assets = require('./assets');
-const assetsSync = require('./assets-sync');
+const logger = require('./debug-logger');
 const eveConfig = require('../eve/config');
-const { publicFetch, esiPost } = require('../eve/http');
+const cache = require('./assets-names-cache');
+const { resolveCharacter } = require('./assets-names-resolve');
 
-const SECTION = 'assets-names';
-let cache = null;
-let pulling = false;
+const SECTION = 'ASSETS-NAMES';
 let started = false;
 let timer = null;
 let lastPullAt = null;
 let nextPullAt = null;
 
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
-function cacheFile() { return path.join(app.getPath('userData'), 'assets-names-cache.json'); }
-function loadCache() {
-  if (cache) return cache;
-  try { cache = JSON.parse(fs.readFileSync(cacheFile(), 'utf8')) || {}; } catch { cache = {}; }
-  if (!cache || typeof cache !== 'object') cache = {};
-  if (!cache.characters || typeof cache.characters !== 'object') cache.characters = {};
-  return cache;
-}
-function saveCache() {
-  try {
-    const file = cacheFile();
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(loadCache()), 'utf8');
-  } catch {}
-}
-function isPulling() { return pulling; }
-function resetCache() { cache = null; }
-function getNames(characterId) {
-  const entry = loadCache().characters[String(characterId)];
-  if (!entry || !entry.locations) return null;
-  return { locations: entry.locations, fetchedAt: entry.fetchedAt || null, pulling: isPulling() };
-}
-function removeCharacter(characterId) {
-  if (cache && cache.characters) { delete cache.characters[String(characterId)]; saveCache(); }
-}
-
-function makeTypeLookup() {
-  const map = new Map();
-  return async function typeOf(typeId) {
-    const id = Number(typeId);
-    if (!Number.isFinite(id)) return null;
-    if (map.has(id)) return map.get(id);
-    let info = null;
-    try {
-      await accounts.waitErrorBudget();
-      const t = await publicFetch(`/universe/types/${id}/`);
-      info = { categoryId: t && t.category_id != null ? Number(t.category_id) : null, groupId: t && t.group_id != null ? Number(t.group_id) : null, name: t && t.name ? String(t.name) : null };
-    } catch { info = null; }
-    map.set(id, info);
-    return info;
-  };
-}
-
-const CONTAINER_GROUPS = new Set([12, 90, 155, 1145]);
-function classifyFlag(flag) {
-  const f = String(flag || '');
-  if (f === '89' || f === '89 ' || f === ' 89') return { kind: 'implant', label: 'Plugged-in implant' };
-  if (f === 'JumpClone') return { kind: 'clone', label: 'Jump clone' };
-  if (f === 'ActiveClone') return { kind: 'clone', label: 'Active clone' };
-  if (f === 'MarketOrderSell') return { kind: 'market-order', label: 'Market sell order' };
-  if (f === 'MarketOrderBuy') return { kind: 'market-order', label: 'Market buy order' };
-  if (f === 'ContractIncluded') return { kind: 'contract', label: 'Contract item' };
-  if (f === 'ContractExcluded') return { kind: 'contract', label: 'Contract item (excluded)' };
-  if (f === 'Manufacturing') return { kind: 'industry', label: 'Manufacturing job' };
-  if (f === 'Reactions') return { kind: 'industry', label: 'Reaction job' };
-  if (f === 'Copying') return { kind: 'industry', label: 'Copying job' };
-  return null;
-}
-function classifyContainerItem(typeInfo) {
-  if (!typeInfo) return 'unknown';
-  if (typeInfo.categoryId === 6) return 'ship';
-  if (typeInfo.groupId != null && CONTAINER_GROUPS.has(typeInfo.groupId)) return 'container';
-  if (typeInfo.categoryId === 65 || typeInfo.categoryId === 23) return 'structure';
-  if (typeInfo.categoryId === 3) return 'station';
-  if (typeInfo.categoryId === 2) return 'container';
-  return 'unknown';
-}
-
-async function fetchItemNames(characterId, ids, token) {
-  const out = new Map();
-  const want = [...new Set(ids.map(Number).filter(Number.isFinite))];
-  if (!want.length) return out;
-  const chunkSize = 1000;
-  for (let i = 0; i < want.length; i += chunkSize) {
-    const chunk = want.slice(i, i + chunkSize);
-    try {
-      await accounts.waitErrorBudget();
-      const arr = await esiPost(`/characters/${characterId}/assets/names/`, chunk, token);
-      for (const hit of arr || []) {
-        if (hit && hit.item_id != null && hit.name) out.set(Number(hit.item_id), String(hit.name));
-      }
-    } catch {}
-  }
-  return out;
-}
-
-async function resolveCharacter(account, token) {
-  const raw = assetsSync.getRaw(account.characterId);
-  if (!raw || !Array.isArray(raw.assets)) return null;
-  const list = raw.assets;
-  const byItemId = new Map(list.map((a) => [Number(a.item_id), a]));
-
-  // Drain stale structure failures before resolution so previously
-  // blocked "Structure <id>" nodes get retried with the shorter TTL.
-  assets.drainStaleStructureFailures();
-
-  let corpByItemId = null;
-  try {
-    const corpId = account.corporationId || null;
-    if (corpId) {
-      const corpRaw = assetsSync.getCorpRaw(corpId);
-      if (corpRaw && Array.isArray(corpRaw.assets) && corpRaw.assets.length) corpByItemId = assets.buildCorpMap(corpRaw.assets);
-    }
-  } catch { corpByItemId = null; }
-
-  accounts.ensureScopes(account);
-  const scopes = typeof account.scopes === 'string' ? account.scopes.split(' ').filter(Boolean) : Array.isArray(account.scopes) ? account.scopes : null;
-  const canReadStructures = scopes == null || scopes.includes('esi-universe.read_structures.v1');
-  const locations = {};
-  const resolved = new Set();
-  const typeOf = makeTypeLookup();
-
-  const nameIds = new Set();
-  const orphanParentIds = new Set();
-  for (const asset of list) {
-    const { top, missingParentId } = assets.walkToTop(asset, byItemId, corpByItemId);
-    if (top && (top.location_type === 'structure' || top.location_type === 'other')) nameIds.add(Number(top.location_id));
-    if (!top && missingParentId != null) { orphanParentIds.add(Number(missingParentId)); nameIds.add(Number(missingParentId)); }
-  }
-  if (nameIds.size) await assets.batchResolveNames([...nameIds]);
-  if (account.corporationId) await assets.primeCorpStructureSystems(account.corporationId, token);
-
-  const allIds = [...new Set(list.map((a) => Number(a.item_id)))];
-  const itemNames = new Map();
-  try {
-    const fetched = await fetchItemNames(account.characterId, allIds, token);
-    for (const [id, name] of fetched) itemNames.set(id, name);
-  } catch {}
-
-  let activeShip = null;
-  try { activeShip = await assets.getActiveShipContext(token, canReadStructures); } catch { activeShip = null; }
-
-  for (const asset of list) {
-    const { top, missingParentId } = assets.walkToTop(asset, byItemId, corpByItemId);
-    if (!top) {
-      const id = missingParentId != null ? Number(missingParentId) : Number(asset.location_id);
-      if (!resolved.has(id)) {
-        resolved.add(id);
-        if (activeShip && Number(activeShip.shipItemId) === id) {
-          locations[id] = { kind: 'ship', name: `${activeShip.shipName} (active ship)`, systemName: activeShip.systemName || 'Unknown System', regionName: activeShip.regionName || 'Unknown Region' };
-          continue;
-        }
-        try {
-          const structure = await assets.getStructureInfo(id, token, canReadStructures);
-          if (!structure.isContainer) {
-            const generic = structure.name === `Structure ${id}`;
-            const { systemName, regionName } = await assets.systemAndRegion(structure.systemId);
-            locations[id] = { kind: generic ? 'inaccessible-structure' : 'structure', name: generic ? `Structure ${id} (no access)` : structure.name, systemName, regionName };
-            continue;
-          }
-        } catch (err) {
-          if (err && (err.status === 420 || err.status === 429)) throw err;
-          const label = err.status === 403 ? `Structure ${id} (no access)` : err.status === 404 ? `Structure ${id} (destroyed/unreachable)` : `Unknown location ${id}`;
-          locations[id] = { kind: err.status === 403 ? 'inaccessible-structure' : 'unknown', name: label, systemName: 'In transit', regionName: 'Carried / in transit' };
-          continue;
-        }
-        const givenName = itemNames.get(id);
-        const flagHit = classifyFlag(asset.location_flag);
-        if (flagHit && !givenName) {
-          locations[id] = { kind: flagHit.kind, name: givenName || flagHit.label, systemName: 'In transit', regionName: 'Carried / in transit' };
-          continue;
-        }
-        const parentRow = byItemId.get(id);
-        let kind = 'inaccessible', label = 'Container / ship contents';
-        if (parentRow && parentRow.type_id != null) {
-          const ti = await typeOf(parentRow.type_id);
-          const k = classifyContainerItem(ti);
-          if (k === 'ship') { kind = 'ship'; label = `Ship ${ti && ti.name ? ti.name : parentRow.type_id}`; }
-          else if (k === 'container') { kind = 'container'; label = `Container ${ti && ti.name ? ti.name : parentRow.type_id}`; }
-        }
-        if (givenName) { label = givenName; if (kind === 'inaccessible') kind = 'container'; }
-        locations[id] = { kind, name: label, systemName: 'In transit', regionName: 'Carried / in transit' };
-      }
-      continue;
-    }
-    const topType = await typeOf(top.type_id);
-    const topKind = classifyContainerItem(topType);
-    const key = Number(top.item_id);
-    if (resolved.has(key)) continue;
-    resolved.add(key);
-    if (top.location_type === 'station' && topKind !== 'ship' && topKind !== 'container') {
-      const locId = Number(top.location_id);
-      const station = await assets.getStationInfo(locId);
-      const { systemName, regionName } = await assets.systemAndRegion(station.systemId);
-      locations[key] = { kind: 'station', name: station.name, systemName, regionName };
-      continue;
-    }
-    if (topKind === 'ship' || topKind === 'container') {
-      const tname = topType && topType.name ? topType.name : String(top.type_id);
-      const label = topKind === 'ship' ? 'Ship' : 'Container';
-      let place = { name: 'Unknown location', systemName: 'Unknown System', regionName: 'Unknown Region' };
-      const parentLocId = Number(top.location_id);
-      try {
-        if (top.location_type === 'station') { const st = await assets.getStationInfo(parentLocId); const sr = await assets.systemAndRegion(st.systemId); place = { name: st.name, systemName: sr.systemName, regionName: sr.regionName }; }
-        else if (top.location_type === 'structure' || top.location_type === 'other') { const s = await assets.getStructureInfo(parentLocId, token, canReadStructures); if (!s.isContainer) { const sr = await assets.systemAndRegion(s.systemId); place = { name: s.name, systemName: sr.systemName, regionName: sr.regionName }; } }
-        else if (top.location_type === 'solar_system') { const sr = await assets.systemAndRegion(parentLocId); place = { name: `${sr.systemName} (space)`, systemName: sr.systemName, regionName: sr.regionName }; }
-      } catch {}
-      locations[key] = { kind: topKind, name: `${label} ${tname}`, systemName: place.systemName, regionName: place.regionName, locationName: place.name };
-      continue;
-    }
-    if (top.location_type === 'solar_system') {
-      const locId = Number(top.location_id);
-      const flag0 = (top.location_flag || '').toLowerCase();
-      if (flag0 === 'autofit' || flag0 === 'deliveries') {
-        const planet = await assets.getPlanetInfo(locId);
-        const { systemName, regionName } = await assets.systemAndRegion(planet.systemId || locId);
-        locations[key] = { kind: 'planet', name: planet.name, systemName, regionName };
-      } else {
-        const { systemName, regionName } = await assets.systemAndRegion(locId);
-        locations[key] = { kind: 'solar_system', name: `${systemName} (space)`, systemName, regionName };
-      }
-      continue;
-    }
-    {
-      const locId = Number(top.location_id);
-      const structure = await assets.getStructureInfo(locId, token, canReadStructures);
-      if (structure.isContainer) {
-        locations[key] = { kind: topKind === 'structure' ? 'structure' : 'container', name: topKind === 'structure' ? `Structure ${locId} (no access)` : `Container ${locId}`, systemName: 'See asset details', regionName: 'Carried / in transit' };
-        continue;
-      }
-      const generic = structure.name === `Structure ${locId}`;
-      const { systemName, regionName } = await assets.systemAndRegion(structure.systemId);
-      locations[key] = { kind: generic ? 'inaccessible-structure' : 'structure', name: generic ? `Structure ${locId} (no access)` : structure.name, systemName, regionName };
-      continue;
-    }
-  }
-  return { locations, fetchedAt: new Date().toISOString() };
-}
-
-function store(characterId, result) { loadCache().characters[String(characterId)] = result; }
 
 async function pull() {
-  if (pulling) { debug.log(SECTION, 'pull requested while one is already running — skipped'); return { skipped: true }; }
-  pulling = true;
+  if (cache.isPulling()) { logger.debug(SECTION, 'pull skipped — already running'); return { skipped: true }; }
+  cache.setPulling(true);
   lastPullAt = Date.now();
-  debug.log(SECTION, 'name resolution starting — acquiring the ESI sequencer');
+  logger.debug(SECTION, 'name resolution starting — acquiring sequencer');
   await sequencer.acquire(SECTION);
   const errors = {};
   let resolved = 0;
   try {
     const list = accounts.getAccounts();
-    debug.log(SECTION, `resolving names for ${list.length} character(s)`);
+    logger.debug(SECTION, `resolving names for ${list.length} character(s)`);
     const batchSize = Math.max(1, Number(eveConfig.ASSETS_NAMES?.batchSize) || 5);
     const batchDelay = Math.max(0, Number(eveConfig.ASSETS_NAMES?.batchDelayMs) || 0);
     for (let i = 0; i < list.length; i += batchSize) {
@@ -279,39 +42,41 @@ async function pull() {
             if (err && err.status === 401) { const fresh = await accounts.getValidAccessToken(account, true); result = await resolveCharacter(account, fresh); }
             else throw err;
           }
-          if (result) { store(account.characterId, result); resolved += 1; debug.log(SECTION, `${name}: resolved ${Object.keys(result.locations).length} location(s)`); }
+          if (result) { cache.store(account.characterId, result); resolved += 1; logger.debug(SECTION, `${name}: resolved ${Object.keys(result.locations).length} location(s)`); }
         } catch (err) {
           errors[account.characterId] = err?.message || String(err);
-          debug.log(SECTION, `${name}: resolution failed (status ${err?.status ?? 'n/a'}) — ${err?.message || err}`);
+          logger.error(SECTION, `${name}: resolution failed`, { status: err?.status, error: err?.message || String(err) });
           if (err && err.status === 420) accounts.enterRateLimit(Number(err.resetSeconds) || 60);
         }
       }
       if (i + batchSize < list.length) await sleep(batchDelay);
     }
-    saveCache();
-    debug.log(SECTION, `cache saved (${resolved} resolved, ${Object.keys(errors).length} failed)`);
-  } finally { sequencer.release(SECTION); pulling = false; }
-  debug.log(SECTION, `resolution finished — ${resolved} resolved, ${Object.keys(errors).length} failed`);
+    cache.saveCache();
+    logger.debug(SECTION, `cache saved`, { resolved, failed: Object.keys(errors).length });
+  } finally { sequencer.release(SECTION); cache.setPulling(false); }
+  logger.debug(SECTION, `resolution finished`, { resolved, failed: Object.keys(errors).length });
   return { resolved, errors };
 }
 
 function start() {
   if (started) return;
   started = true;
-  debug.log(SECTION, 'startup name resolution scheduled');
-  pull().catch((err) => console.error('[assets-names] startup resolution failed', err?.message || err));
+  logger.debug(SECTION, 'startup name resolution scheduled');
+  pull().catch((err) => logger.error(SECTION, 'startup resolution failed', { error: err?.message || String(err) }));
   const interval = Math.max(60000, Number(eveConfig.ASSETS_NAMES?.intervalMs) || 24 * 60 * 60 * 1000);
   nextPullAt = Date.now() + interval;
   timer = setInterval(() => {
-    debug.log(SECTION, 'scheduled resolution timer fired');
+    logger.debug(SECTION, 'scheduled resolution timer fired');
     nextPullAt = Date.now() + interval;
-    pull().catch((err) => console.error('[assets-names] scheduled resolution failed', err?.message || err));
+    pull().catch((err) => logger.error(SECTION, 'scheduled resolution failed', { error: err?.message || String(err) }));
   }, interval);
   if (timer.unref) timer.unref();
 }
+
 function getSyncState() {
-  return { pulling, lastPullAt, nextPullAt, intervalMs: Math.max(60000, Number(eveConfig.ASSETS_NAMES?.intervalMs) || 24 * 60 * 60 * 1000) };
+  return { pulling: cache.isPulling(), lastPullAt, nextPullAt, intervalMs: Math.max(60000, Number(eveConfig.ASSETS_NAMES?.intervalMs) || 24 * 60 * 60 * 1000) };
 }
+
 function stop() { if (timer) clearInterval(timer); timer = null; started = false; }
 
-module.exports = { start, stop, pull, isPulling, getSyncState, resetCache, getNames, removeCharacter };
+module.exports = { start, stop, pull, isPulling: cache.isPulling, getSyncState, resetCache: cache.resetCache, getNames: cache.getNames, removeCharacter: cache.removeCharacter };
