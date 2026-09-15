@@ -1,4 +1,4 @@
-// File Version: 1.1.15-beta
+// File: main/accounts.js | Version: 1.0
 'use strict';
 const storage = require('../storage');
 const eve = require('../eve');
@@ -7,6 +7,7 @@ const settings = require('./settings');
 const skillHistory = require('./skill-history');
 const notesStore = require('./notes');
 const eveConfig = require('../eve/config');
+const debugLogger = require('./debug-logger');
 
 let accounts = [];
 let loginInProgress = false;
@@ -37,6 +38,7 @@ function ensureScopes(account) {
 }
 
 function loadAccounts() {
+  debugLogger.info('ACCOUNTS', 'Loading accounts from storage');
   accounts = storage.loadAccounts();
   let backfilled = false;
   for (const account of accounts) {
@@ -48,6 +50,7 @@ function loadAccounts() {
     }
   }
   if (backfilled) saveAccounts();
+  debugLogger.info('ACCOUNTS', `Loaded ${accounts.length} accounts`);
 }
 
 const getAccounts = () => accounts;
@@ -66,7 +69,7 @@ function enterRateLimit(seconds) {
   const until = Date.now() + Math.max(5, Number(seconds) || 60) * 1000;
   if (until > rateLimitedUntil) {
     rateLimitedUntil = until;
-    console.warn(`[ESI] rate limited`);
+    debugLogger.warn('ACCOUNTS', `Rate limited for ${seconds || 60}s`);
     emitRefreshState();
   }
 }
@@ -85,8 +88,17 @@ async function waitRateLimit() {
   if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
 }
 
-function saveAccounts() { storage.saveAccounts(accounts); }
-function broadcastAccounts() { saveAccounts(); callbacks.onBroadcast(getPublicAccounts()); }
+function saveAccounts() { 
+  storage.saveAccounts(accounts); 
+  debugLogger.debug('ACCOUNTS', 'Accounts saved to storage');
+}
+
+function broadcastAccounts() { 
+  saveAccounts(); 
+  const publicAccs = getPublicAccounts();
+  callbacks.onBroadcast(publicAccs);
+  debugLogger.info('ACCOUNTS', `Broadcast ${publicAccs.length} accounts to UI`);
+}
 
 async function getValidAccessToken(account, force = false) {
   const now = Date.now(), safetyMs = eveConfig.REFRESH?.tokenExpirySafetyMs ?? 60000;
@@ -94,6 +106,7 @@ async function getValidAccessToken(account, force = false) {
     const token = storage.decryptSecret(account.accessTokenEnc);
     if (token) return token;
   }
+  debugLogger.debug('ACCOUNTS', `Refreshing token for ${account.characterName || account.characterId}`);
   const refreshToken = storage.decryptSecret(account.refreshTokenEnc);
   if (!refreshToken) throw new Error('Missing refresh token.');
   const tokens = await eve.refreshAccessToken(refreshToken);
@@ -132,6 +145,7 @@ function applyDashboard(account, dashboard) {
   account.shipType = dashboard.shipType || null;
   account.lastFetchedAt = dashboard.fetchedAt;
   account.lastError = null;
+  debugLogger.debug('ACCOUNTS', `Applied dashboard for ${account.characterName}: wallet=${dashboard.wallet?.balance}, queue=${dashboard.queue?.length || 0}`);
 }
 
 function checkSkillCompletion(account, dashboard) {
@@ -169,6 +183,7 @@ function checkQueueWarning(account, dashboard) {
 }
 
 async function refreshCharacter(account) {
+  debugLogger.info('ACCOUNTS', `Refreshing character: ${account.characterName || account.characterId}`);
   try {
     let token = await getValidAccessToken(account, false);
     const skillsSync = require('./skills-sync');
@@ -186,9 +201,10 @@ async function refreshCharacter(account) {
     checkQueueWarning(account, dashboard);
     skillHistory.seedFromQueue(account.characterId, dashboard.queue);
     account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
+    debugLogger.info('ACCOUNTS', `Refresh complete for ${account.characterName}`);
   } catch (err) {
     account.lastError = err?.message || String(err);
-    console.error('[ESI]', account.characterName || account.characterId, err?.status ?? '', err?.message || String(err));
+    debugLogger.error('ACCOUNTS', `Refresh failed for ${account.characterName || account.characterId}`, { error: err?.message, status: err?.status });
     if (err && err.status === 420) enterRateLimit(Number(err.resetSeconds) || 60);
     else await waitErrorBudget();
   }
@@ -198,9 +214,11 @@ async function refreshAll() {
   if (refreshInProgress) return getPublicAccounts();
   refreshInProgress = true;
   emitRefreshState();
+  debugLogger.info('ACCOUNTS', 'Starting refreshAll');
   try {
     const queue = [...accounts].filter((account) => !account.testPilot);
     const concurrency = Math.min(5, queue.length || 1);
+    debugLogger.info('ACCOUNTS', `Refreshing ${queue.length} characters with concurrency ${concurrency}`);
     const workers = Array.from({ length: concurrency }, async () => {
       while (queue.length) {
         await waitRateLimit();
@@ -212,6 +230,7 @@ async function refreshAll() {
     await Promise.allSettled(workers);
     if (rateLimitedUntil && rateLimitedUntil <= Date.now()) rateLimitedUntil = 0;
     broadcastAccounts();
+    debugLogger.info('ACCOUNTS', 'refreshAll complete');
     return getPublicAccounts();
   } finally {
     refreshInProgress = false;
@@ -222,6 +241,7 @@ async function refreshAll() {
 async function addAccount(scopeChoice) {
   if (loginInProgress) { sso.cancelLogin(); await new Promise((r) => setTimeout(r, 50)); }
   loginInProgress = true;
+  debugLogger.info('ACCOUNTS', 'Adding new account');
   try {
     const login = await eve.startLogin(true, scopeChoice);
     let account = accounts.find((e) => Number(e.characterId) === Number(login.characterId));
@@ -234,6 +254,7 @@ async function addAccount(scopeChoice) {
     account.lastError = null;
     await refreshCharacter(account);
     broadcastAccounts();
+    debugLogger.info('ACCOUNTS', `Account added: ${login.characterName}`);
     return getPublicAccounts();
   } finally { loginInProgress = false; }
 }
@@ -244,6 +265,7 @@ function removeAccount(characterId) {
   accounts = accounts.filter((a) => Number(a.characterId) !== Number(characterId));
   callbacks.onAccountRemoved(Number(characterId));
   broadcastAccounts();
+  debugLogger.info('ACCOUNTS', `Account removed: ${characterId}`);
   return getPublicAccounts();
 }
 

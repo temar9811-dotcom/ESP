@@ -1,12 +1,8 @@
 @echo off
-echo Starting ESP in development mode...
-echo.
-
-if not exist "node_modules\" (
-    echo Installing dependencies...
-    call npm install
-    echo.
-)
-
-call npm start
+echo Starting Vite dev server...
+start "Vite Dev Server" cmd /c "npm run dev"
+echo Waiting for Vite to be ready...
+timeout /t 3 /nobreak >nul
+echo Starting Electron...
+npm start
 pause

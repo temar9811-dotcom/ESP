@@ -1,14 +1,12 @@
-// File: ui/src/components/Topbar.jsx | Version: 1.0
+// File: ui/src/components/Topbar.jsx | Version: 1.1
 import React, { useState } from 'react';
 import { useVersion, useRefreshState, eveApi } from '../hooks/useEveApi';
 import AddCharacterModal from './modals/AddCharacterModal';
-import SettingsModal from './modals/SettingsModal';
 
-export default function Topbar() {
+export default function Topbar({ onOpenSettings, isSettingsOpen }) {
   const version = useVersion();
   const { refreshing } = useRefreshState();
   const [showAdd, setShowAdd] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
 
   const handleRefresh = () => eveApi.refreshAll().catch(console.error);
 
@@ -33,15 +31,14 @@ export default function Topbar() {
           Add Character
         </button>
         <button
-          onClick={() => setShowSettings(true)}
-          className="rounded bg-gray-600 px-3 py-1 text-sm font-medium text-white hover:bg-gray-500"
+          onClick={onOpenSettings}
+          disabled={isSettingsOpen}
+          className="rounded bg-gray-600 px-3 py-1 text-sm font-medium text-white hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Settings
         </button>
       </div>
-
       {showAdd && <AddCharacterModal onClose={() => setShowAdd(false)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </header>
   );
 }
