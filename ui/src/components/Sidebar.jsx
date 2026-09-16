@@ -1,12 +1,12 @@
 // ui/src/components/Sidebar.jsx
-// VERSION: 1.8
+// VERSION: 1.9
 import React, { useEffect, useState } from 'react';
 import { useAccounts, eveApi } from '../hooks/useEveApi';
 
 export default function Sidebar({ selectedAccount, onSelect }) {
   const accounts = useAccounts();
   const [charData, setCharData] = useState({});
-  const [corpData, setCorpData] = useState({});
+  const [universeNames, setUniverseNames] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,9 +16,9 @@ export default function Sidebar({ selectedAccount, onSelect }) {
       }
       setCharData(cData);
       
-      if (eveApi.getCorpAllianceData) {
-        const corpAlliance = await eveApi.getCorpAllianceData();
-        setCorpData(corpAlliance || {});
+      if (eveApi.getUniverseNames) {
+        const uNames = await eveApi.getUniverseNames();
+        setUniverseNames(uNames || {});
       }
     };
     fetchData();
@@ -46,7 +46,7 @@ export default function Sidebar({ selectedAccount, onSelect }) {
           {accounts.map((acc) => {
             const cd = charData[acc.characterId] || {};
             const systemName = cd.system_name || `System ${cd.location?.solar_system_id || 'Unknown'}`;
-            const corpName = corpData[cd.corporation_id] || `Corp ${cd.corporation_id || 'Unknown'}`;
+            const corpName = universeNames[cd.corporation_id] || `Corp ${cd.corporation_id || 'Unknown'}`;
             
             return (
               <div

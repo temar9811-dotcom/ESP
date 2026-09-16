@@ -1,4 +1,4 @@
-// File: ui/src/App.jsx | Version: 1.6
+// ui/src/App.jsx | Version: 1.7
 import React, { useState, useEffect, useRef } from 'react';
 import Topbar from './components/Topbar';
 import Sidebar from './components/Sidebar';
@@ -13,6 +13,8 @@ import Assets from './components/character/Assets';
 import Clones from './components/character/Clones';
 import Notes from './components/character/Notes';
 import SkillPlans from './components/character/SkillPlans';
+import UpdateDialog from './components/UpdateDialog';
+import ChangelogDialog from './components/ChangelogDialog';
 
 export default function App() {
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -21,7 +23,9 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [isDev, setIsDev] = useState(false);
 
-  useEffect(() => { setIsDev(!window.require?.('electron')?.app?.isPackaged); }, []);
+  useEffect(() => { 
+    setIsDev(!window.require?.('electron')?.app?.isPackaged); 
+  }, []);
 
   useEffect(() => {
     if (!window.eveApi) return;
@@ -51,6 +55,7 @@ export default function App() {
     if (activeTab === 'settings') return <SettingsTab onClose={() => setActiveTab('overview')} />;
     if (activeTab === 'debug') return <DebugTab />;
     if (!selectedAccount) return <p className="text-gray-500">Select a character from the sidebar.</p>;
+    
     switch (activeTab) {
       case 'overview': return <Overview account={selectedAccount} />;
       case 'skills': return <Skills account={selectedAccount} />;
@@ -72,8 +77,15 @@ export default function App() {
         <main className="flex-1 flex flex-col overflow-hidden">
           <div className="flex border-b border-gray-700 bg-gray-800 shrink-0">
             {tabs.map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${activeTab === tab ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700' : 'text-gray-400 hover:text-gray-200'}`}>
+              <button 
+                key={tab} 
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
+                  activeTab === tab 
+                    ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700' 
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
                 {tab}
               </button>
             ))}
@@ -83,7 +95,11 @@ export default function App() {
           </div>
         </main>
       </div>
+      
+      {/* Global UI Elements */}
       <ToastContainer toasts={toasts} />
+      <UpdateDialog />
+      <ChangelogDialog />
     </div>
   );
 }

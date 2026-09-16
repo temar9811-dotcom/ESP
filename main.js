@@ -1,10 +1,9 @@
 // main.js
-// VERSION: 1.3
+// VERSION: 1.4
 'use strict';
 const { app } = require('electron');
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
-
 const eveConfig = require('./eve/config');
 const eve = require('./eve');
 const windowTray = require('./main/window-tray');
@@ -18,6 +17,7 @@ const settingsMod = require('./main/settings');
 const logger = require('./main/debug/logger');
 const debugEngine = require('./main/debug/engine');
 const scheduler = require('./main/scheduler');
+const updater = require('./main/updater'); // FIXED: Path corrected to ./main/updater
 
 let testHarness = null;
 
@@ -63,6 +63,7 @@ async function bootstrap() {
 
   accounts.loadAccounts();
   eve.loadImplantSlotCache();
+
   accounts.init({
     onBroadcast: onAccountsBroadcast,
     onSkillCompleted, onQueueWarning, onQueueEmpty, onRefreshState, onAccountRemoved
@@ -83,6 +84,12 @@ async function bootstrap() {
   ipc.registerIpcHandlers();
   windowTray.createWindow();
 
+  // Initialize the auto-updater with the main window
+  const mainWindow = windowTray.getWindow();
+  if (mainWindow) {
+    updater.initUpdater(mainWindow);
+  }
+
   if (currentSettings.startMinimized) {
     const win = windowTray.getWindow();
     if (win && !win.isDestroyed()) win.hide();
@@ -97,8 +104,8 @@ async function bootstrap() {
   // Legacy syncs commented out while we rewrite the backend
   // skillsSync.start(); walletSync.start(); assetsSync.start(); assetsNames.start();
   // setInterval(() => { accounts.refreshAll().catch(console.error); }, eveConfig.REFRESH.intervalMs);
-
   walletMonitor.start(eveConfig.WALLET_MONITOR.intervalMs);
+
   logger.info('MAIN', 'Bootstrap complete');
 }
 
@@ -118,5 +125,4 @@ app.on('before-quit', () => {
   scheduler.stop();
   walletMonitor.stop();
 });
-
 app.on('window-all-closed', () => { /* Keep running in tray. */ });

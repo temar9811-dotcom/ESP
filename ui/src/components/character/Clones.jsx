@@ -1,83 +1,80 @@
-// File: ui/src/components/character/Clones.jsx | Version: 1.0
+// ui/src/components/character/Clones.jsx | Version: 1.2
 import React, { useState, useEffect } from 'react';
 
-export default function Clones({ characterId }) {
-  const [loading, setLoading] = useState(true);
-  const [clones, setClones] = useState(null);
-  const [nicknames, setNicknames] = useState({});
-  const [editingId, setEditingId] = useState(null);
-  const [editValue, setEditValue] = useState('');
+export default function Clones({ account }) {
+  const [clonesData, setClonesData] = useState(null);
+  const [universeNames, setUniverseNames] = useState({});
+  const [structureNames, setStructureNames] = useState({});
 
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
-      setLoading(true);
       try {
-        const [cloneData, nickData] = await Promise.all([
-          window.eveApi.getCloneDetails(characterId),
-          window.eveApi.getAllCloneNicknames()
+        const [clData, uNames, sNames] = await Promise.all([
+          window.eveApi.getClonesData(account.characterId),
+          window.eveApi.getUniverseNames(),
+          window.eveApi.getStructureNames()
         ]);
         if (isMounted) {
-          setClones(cloneData);
-          setNicknames(nickData || {});
+          setClonesData(clData);
+          setUniverseNames(uNames || {});
+          setStructureNames(sNames || {});
         }
-      } catch (err) {
-        console.error('Failed to load clones:', err);
-      } finally {
-        if (isMounted) setLoading(false);
+      } catch (err) { 
+        window.eveApi?.debugLog?.({ level: 'ERROR', source: 'CLONES-UI', message: 'Failed to load', data: { error: err?.message } }); 
       }
     };
-    fetchData();
+    if (account?.characterId) fetchData();
     return () => { isMounted = false; };
-  }, [characterId]);
+  }, [account?.characterId]);
 
-  const saveNickname = async (cloneId) => {
-    await window.eveApi.setCloneNickname(cloneId, editValue);
-    setNicknames(prev => ({ ...prev, [cloneId]: editValue }));
-    setEditingId(null);
+  if (!account) return <div className="p-4 text-gray-400">No account selected.</div>;
+  if (!clonesData) return <div className="p-4 text-gray-400">Loading clones...</div>;
+
+  const getLocName = (id, type) => {
+    if (type === 'structure') return structureNames[id]?.name || `Structure ${id}`;
+    return universeNames[id] || 'Unknown Location';
   };
 
-  if (loading) return <div className="p-4 text-gray-400">Loading clones...</div>;
-
-  const jumpClones = clones?.jump_clones || [];
-  const homeStation = clones?.home_location_id;
+  const homeLoc = clonesData.home_location;
+  const homeName = getLocName(homeLoc?.location_id, homeLoc?.location_type);
+  const homeTypeLabel = homeLoc?.location_type === 'structure' ? 'Citadel' : 'Station';
+  const jumpClones = clonesData.jump_clones || [];
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-6">
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-2">Home Station</h2>
-        <p className="text-gray-300">{homeStation ? `Location ID: ${homeStation}` : 'Unknown'}</p>
+        <p className="text-gray-300">{homeTypeLabel} - {homeName}</p>
+        {clonesData.last_station_change_date && <p className="text-xs text-gray-500 mt-2">Last changed: {new Date(clonesData.last_station_change_date).toLocaleString()}</p>}
       </div>
 
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-3">Jump Clones ({jumpClones.length})</h2>
-        <div className="space-y-3">
-          {jumpClones.length === 0 ? (
-            <p className="text-gray-500 italic">No jump clones.</p>
-          ) : (
-            jumpClones.map((clone) => (
-              <div key={clone.clone_id} className="bg-gray-700 p-3 rounded">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-200">Clone ID: {clone.clone_id}</span>
-                  <div className="text-xs text-gray-400">
-                    {editingId === clone.clone_id ? (
-                      <div className="flex gap-1">
-                        <input type="text" value={editValue} onChange={(e) => setEditValue(e.target.value)} className="bg-gray-800 text-xs px-1 py-0.5 rounded" />
-                        <button onClick={() => saveNickname(clone.clone_id)} className="text-green-400">Save</button>
-                        <button onClick={() => setEditingId(null)} className="text-red-400">X</button>
+        {jumpClones.length === 0 ? <p className="text-gray-500 italic">No jump clones installed.</p> : (
+          <div className="space-y-2">
+            {jumpClones.map((clone, idx) => {
+              const cloneName = getLocName(clone.location_id, clone.location_type);
+              const cloneTypeLabel = clone.location_type === 'structure' ? 'Citadel' : 'Station';
+              const implants = clone.implant || [];
+              return (
+                <details key={idx} className="group bg-gray-700 rounded-lg">
+                  <summary className="cursor-pointer p-3 text-sm font-medium text-blue-400 hover:text-blue-300 list-none flex justify-between items-center">
+                    <span>{cloneTypeLabel} - {cloneName}</span>
+                    <span className="text-xs text-gray-400">{implants.length} Implants</span>
+                  </summary>
+                  <div className="px-3 pb-3 space-y-1">
+                    {implants.length > 0 ? implants.map((implantId, iIdx) => (
+                      <div key={iIdx} className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded">
+                        {universeNames[implantId] || `Implant ${implantId}`}
                       </div>
-                    ) : (
-                      <button onClick={() => { setEditingId(clone.clone_id); setEditValue(nicknames[clone.clone_id] || ''); }}>
-                        {nicknames[clone.clone_id] || 'Set Nickname'}
-                      </button>
-                    )}
+                    )) : <p className="text-xs text-gray-500 italic">No implants installed.</p>}
                   </div>
-                </div>
-                <div className="text-xs text-gray-400">Implants: {clone.implants?.length || 0}</div>
-              </div>
-            ))
-          )}
-        </div>
+                </details>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

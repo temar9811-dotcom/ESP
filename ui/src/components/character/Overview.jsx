@@ -1,5 +1,4 @@
-// ui/src/components/character/Overview.jsx
-// VERSION: 1.8
+// ui/src/components/character/Overview.jsx | Version: 1.11
 import React, { useState, useEffect } from 'react';
 
 function formatQueueTime(ms) {
@@ -23,50 +22,49 @@ function calculateSkillProgress(activeSkill) {
 }
 
 export default function Overview({ account }) {
-  const [charData, setCharData] = useState(null);
-  const [corpAllianceData, setCorpAllianceData] = useState({});
-  const [skillsData, setSkillsData] = useState(null);
-  const [walletData, setWalletData] = useState(null);
+  const [cData, setCData] = useState(null);
+  const [uNames, setUNames] = useState({});
+  const [sNames, setSNames] = useState({});
+  const [skData, setSkData] = useState(null);
+  const [wData, setWData] = useState(null);
+  const [clData, setClData] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
-    const fetchData = async () => {
+    const fetchAll = async () => {
       try {
         const id = account.characterId;
-        const [cData, caData, sData, wData] = await Promise.all([
+        const [c, u, s, sk, w, cl] = await Promise.all([
           window.eveApi.getCharData(id),
-          window.eveApi.getCorpAllianceData(),
+          window.eveApi.getUniverseNames(),
+          window.eveApi.getStructureNames(),
           window.eveApi.getSkillsData(id),
-          window.eveApi.getWalletData(id)
+          window.eveApi.getWalletData(id),
+          window.eveApi.getClonesData(id)
         ]);
-        if (isMounted) {
-          setCharData(cData);
-          setCorpAllianceData(caData || {});
-          setSkillsData(sData);
-          setWalletData(wData);
-        }
-      } catch (err) {
-        window.eveApi?.debugLog?.({ level: 'ERROR', source: 'OVERVIEW', message: 'Failed to load data', data: { error: err?.message } });
-      }
+        if (isMounted) { setCData(c); setUNames(u || {}); setSNames(s || {}); setSkData(sk); setWData(w); setClData(cl); }
+      } catch (err) { window.eveApi?.debugLog?.({ level: 'ERROR', source: 'OVERVIEW', message: 'Failed to load', data: { error: err?.message } }); }
     };
-    if (account?.characterId) fetchData();
+    if (account?.characterId) fetchAll();
     return () => { isMounted = false; };
   }, [account?.characterId]);
 
   if (!account) return <div className="p-4 text-gray-400">No account selected.</div>;
 
-  // Use new V2 caches, fallback to legacy account data
-  const activeSkill = skillsData?.queue?.[0] || account.activeSkill;
-  const queueLength = skillsData?.queue?.length || account.queue?.length || 0;
-  const walletBalance = Number(walletData?.balance ?? account.wallet ?? 0);
+  const activeSkill = skData?.queue?.[0] || account.activeSkill;
+  const queueLength = skData?.queue?.length || account.queue?.length || 0;
+  const walletBalance = Number(wData?.balance ?? account.wallet ?? 0);
   const queueRemainingMs = account.queueRemainingMs || 0;
-  
-  const systemName = charData?.system_name || `System ${charData?.location?.solar_system_id || 'Unknown'}`;
-  const corpName = corpAllianceData[charData?.corporation_id] || `Corp ${charData?.corporation_id || 'Unknown'}`;
-  const allianceName = corpAllianceData[charData?.alliance_id] || (charData?.alliance_id ? `Alliance ${charData.alliance_id}` : 'No Alliance');
-  const shipName = account.shipName || 'Unknown';
-  const shipType = account.shipType || null;
   const progress = calculateSkillProgress(activeSkill);
+
+  const systemName = cData?.system_name || `System ${cData?.location?.solar_system_id || 'Unknown'}`;
+  const corpName = uNames[cData?.corporation_id] || `Corp ${cData?.corporation_id || 'Unknown'}`;
+  const allianceName = uNames[cData?.alliance_id] || (cData?.alliance_id ? `Alliance ${cData.alliance_id}` : 'No Alliance');
+
+  const homeLoc = clData?.home_location;
+  const homeName = homeLoc?.location_type === 'structure' ? (sNames[homeLoc.location_id]?.name || `Structure ${homeLoc.location_id}`) : (uNames[homeLoc?.location_id] || 'Unknown Station');
+  const homeTypeLabel = homeLoc?.location_type === 'structure' ? 'Citadel' : 'Station';
+  const jumpClones = clData?.jump_clones?.length || 0;
 
   return (
     <div className="space-y-4">
@@ -76,10 +74,7 @@ export default function Overview({ account }) {
         <div className="w-full bg-gray-700 rounded-full h-2.5 mt-3 overflow-hidden">
           <div className="bg-green-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
         </div>
-        <p className="text-xs text-gray-400 mt-1">
-          Queue length: {queueLength} skills
-          {queueRemainingMs > 0 && ` • Completes in: ${formatQueueTime(queueRemainingMs)}`}
-        </p>
+        <p className="text-xs text-gray-400 mt-1">Queue: {queueLength} skills {queueRemainingMs > 0 && `• ${formatQueueTime(queueRemainingMs)}`}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -94,18 +89,16 @@ export default function Overview({ account }) {
         </div>
       </div>
 
-      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-100 mb-2">Location & Ship</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-gray-500 uppercase mb-1">Location</p>
-            <p className="text-gray-300">{systemName}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase mb-1">Ship</p>
-            <p className="text-gray-300">{shipName}</p>
-            {shipType && <p className="text-xs text-gray-400">{shipType}</p>}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-100 mb-2">Location & Ship</h2>
+          <p className="text-gray-300">{systemName}</p>
+          <p className="text-sm text-gray-400 mt-1">{account.shipName || 'Unknown'} {account.shipType ? `(${account.shipType})` : ''}</p>
+        </div>
+        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-100 mb-2">Clones</h2>
+          <p className="text-gray-300">Home: {homeTypeLabel} - {homeName}</p>
+          <p className="text-sm text-gray-400 mt-1">Jump Clones: {jumpClones}</p>
         </div>
       </div>
     </div>

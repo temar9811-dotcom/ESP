@@ -1,5 +1,4 @@
-// main/debug/engine.js
-// VERSION: 2.1
+// main/debug/engine.js | Version: 2.5
 'use strict';
 const logger = require('./logger');
 const scheduler = require('../scheduler');
@@ -7,152 +6,65 @@ const syncer = require('../esi/syncer');
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
-
 const actions = new Map();
-
-function registerAction(name, description, handler) {
-  actions.set(name, { name, description, handler });
-  logger.info('ENGINE', `Registered debug action: ${name}`);
-}
-
-function getActions() {
-  return Array.from(actions.values()).map(a => ({ name: a.name, description: a.description }));
-}
-
-async function runAction(name, payload) {
+const registerAction = (name, description, handler) => actions.set(name, { name, description, handler });
+const getActions = () => Array.from(actions.values()).map(a => ({ name: a.name, description: a.description }));
+const runAction = async (name, payload) => {
   const action = actions.get(name);
-  if (!action) return { ok: false, error: `Unknown action: ${name}` };
-  logger.info('ENGINE', `Running debug action: ${name}`, payload);
-  try {
-    const result = await action.handler(payload || {});
-    logger.info('ENGINE', `Action ${name} completed`, { result });
-    return { ok: true, result };
-  } catch (err) {
-    logger.error('ENGINE', `Action ${name} failed`, { error: err.message });
-    return { ok: false, error: err.message };
-  }
+  if (!action) return { ok: false, error: `Unknown: ${name}` };
+  logger.info('ENGINE', `Running: ${name}`, payload);
+  try { const result = await action.handler(payload || {}); return { ok: true, result }; }
+  catch (err) { logger.error('ENGINE', `Failed: ${name}`, { error: err.message }); return { ok: false, error: err.message }; }
+};
+const clearFile = (name) => {
+  const p = path.join(app.getPath('userData'), name);
+  try { if (fs.existsSync(p)) { fs.unlinkSync(p); return { ok: true, message: 'Cleared' }; } return { ok: true, message: 'Not found' }; }
+  catch (err) { return { ok: false, error: err.message }; }
+};
+function getMainWindow() {
+  try { return require('../window-tray').getWindow(); } catch { return null; }
 }
-
 function registerV2Actions() {
-  registerAction('Force Char Data Pull', 'Triggers a Priority 2 pull for basic char data', async () => {
-    scheduler.forcePull('char-data');
-    return { ok: true, message: 'Queued with Priority 2' };
+  registerAction('Force Char Data Pull', 'Priority 2 pull for char data', () => { scheduler.forcePull('char-data'); return { ok: true }; });
+  registerAction('Force Wallet Data Pull', 'Priority 2 pull for wallet', () => { scheduler.forcePull('wallet-data'); return { ok: true }; });
+  registerAction('Force Skills Data Pull', 'Priority 2 pull for skills', () => { scheduler.forcePull('skills-data'); return { ok: true }; });
+  registerAction('Force Clones Data Pull', 'Priority 2 pull for clones', () => { scheduler.forcePull('clones-data'); return { ok: true }; });
+  registerAction('Force Assets Data Pull', 'Priority 2 pull for assets', () => { scheduler.forcePull('assets-data'); return { ok: true }; });
+  registerAction('Download Static DB', 'Downloads Fuzzwork SQLite DB', async () => {
+    const db = require('../esi/static-db'); await db.downloadAndExtract(); await db.initDb(); return { ok: true };
   });
-
-  registerAction('Force Wallet Data Pull', 'Triggers a Priority 2 pull for wallet data', async () => {
-    scheduler.forcePull('wallet-data');
-    return { ok: true, message: 'Queued with Priority 2' };
+  registerAction('Clear Char Data Cache', 'Deletes char-data-cache.json', () => clearFile('char-data-cache.json'));
+  registerAction('Clear Wallet Data Cache', 'Deletes wallet-data-cache.json', () => clearFile('wallet-data-cache.json'));
+  registerAction('Clear Skills Data Cache', 'Deletes skills-data-cache.json', () => clearFile('skills-data-cache.json'));
+  registerAction('Clear Clones Data Cache', 'Deletes clones-data-cache.json', () => clearFile('clones-data-cache.json'));
+  registerAction('Clear Assets Data Cache', 'Deletes assets-data-cache.json', () => clearFile('assets-data-cache.json'));
+  registerAction('Clear Universe Names Cache', 'Deletes universe-names-cache.json', () => clearFile('universe-names-cache.json'));
+  registerAction('Inspect Universe Names', 'Dumps resolved names to help debug structures', () => {
+    const cache = require('../pullers/universe-names').getCache();
+    logger.info('INSPECT', `Universe Names Cache Size: ${Object.keys(cache).length}`);
+    logger.info('INSPECT', 'First 30 entries:', Object.entries(cache).slice(0, 30));
+    return { ok: true, size: Object.keys(cache).length };
   });
-
-  registerAction('Force Skills Data Pull', 'Triggers a Priority 2 pull for skills data', async () => {
-    scheduler.forcePull('skills-data');
-    return { ok: true, message: 'Queued with Priority 2' };
-  });
-
-  registerAction('Get ESI Queue State', 'Returns current Syncer queue and active tasks', async () => {
-    return syncer.getState();
-  });
-
-  registerAction('Download Static DB', 'Downloads and extracts the Fuzzwork SQLite DB', async () => {
-    const staticDb = require('../esi/static-db');
-    await staticDb.downloadAndExtract();
-    await staticDb.initDb();
-    return { ok: true, message: 'DB ready' };
-  });
-
-  registerAction('Clear Char Data Cache', 'Deletes the char-data-cache.json file', async () => {
-    const cachePath = path.join(app.getPath('userData'), 'char-data-cache.json');
-    try {
-      if (fs.existsSync(cachePath)) {
-        fs.unlinkSync(cachePath);
-        logger.info('CACHE', 'char-data-cache.json deleted');
-        return { ok: true, message: 'Cache cleared. Force pull to rebuild.' };
-      }
-      return { ok: true, message: 'Cache file did not exist.' };
-    } catch (err) {
-      logger.error('CACHE', 'Failed to delete cache', { error: err.message });
-      return { ok: false, error: err.message };
+  registerAction('Test Update Available Popup', 'Simulates an update available event', () => {
+    const win = getMainWindow();
+    if (win) {
+      win.webContents.send('updater:available', { version: '1.2.2-beta' });
+      return { ok: true, message: 'Sent updater:available' };
     }
+    return { ok: false, error: 'Main window not found' };
   });
-
-  registerAction('Clear Skills Data Cache', 'Deletes the skills-data-cache.json file', async () => {
-    const cachePath = path.join(app.getPath('userData'), 'skills-data-cache.json');
-    try {
-      if (fs.existsSync(cachePath)) {
-        fs.unlinkSync(cachePath);
-        logger.info('CACHE', 'skills-data-cache.json deleted');
-        return { ok: true, message: 'Cache cleared. Force pull to rebuild.' };
-      }
-      return { ok: true, message: 'Cache file did not exist.' };
-    } catch (err) {
-      logger.error('CACHE', 'Failed to delete cache', { error: err.message });
-      return { ok: false, error: err.message };
-    }
-  });
-
-  registerAction('Test Character Systems in DB', 'Tests if character system IDs exist in the static DB', async () => {
-    const staticDb = require('../esi/static-db');
-    await staticDb.initDb();
-    
-    const testIds = [30000142, 30000765, 30000835, 30000580];
-    
-    for (const id of testIds) {
-      const name = staticDb.getSystemName(id);
-      logger.info('TEST', `System ${id}: ${name || 'NOT FOUND'}`);
-    }
-    
-    const count = staticDb.query('SELECT COUNT(*) as count FROM mapSolarSystems');
-    logger.info('TEST', `Total systems in DB: ${count[0]?.count || 0}`);
-    
-    return { ok: true };
-  });
-
-  registerAction('Inspect Char Data & Static DB', 'Dumps the char-data cache and tests static DB lookups', async () => {
-    const staticDb = require('../esi/static-db');
-    const charData = require('../pullers/char-data');
-    
-    await staticDb.initDb();
-    const jitaTest = staticDb.getSystemName(30000142);
-    logger.info('INSPECT', `Static DB test - Jita (30000142): ${jitaTest || 'NOT FOUND'}`);
-    
-    const cache = charData.getCache();
-    const entries = Object.entries(cache);
-    logger.info('INSPECT', `Char data cache has ${entries.length} entries`);
-    
-    for (const [id, data] of entries) {
-      logger.info('INSPECT', `Character ${id}:`, {
-        name: data.name,
-        system_id: data.location?.solar_system_id,
-        system_name: data.system_name,
-        corp_id: data.corporation_id,
-        corp_name: data.corporation_name,
-        alliance_id: data.alliance_id,
-        fetchedAt: data.fetchedAt ? new Date(data.fetchedAt).toISOString() : null
+  registerAction('Test Changelog Popup', 'Simulates a changelog event', () => {
+    const win = getMainWindow();
+    if (win) {
+      win.webContents.send('updater:show-changelog', {
+        version: '1.2.2-beta',
+        notes: 'Test changelog:\n- Fixed bug A\n- Added feature B\n- Improved performance'
       });
+      return { ok: true, message: 'Sent updater:show-changelog' };
     }
-    
-    return { ok: true, cacheSize: entries.length, jitaTest };
+    return { ok: false, error: 'Main window not found' };
   });
-
-  registerAction('Check Syncer Queue', 'Shows detailed syncer queue and active task info', async () => {
-    const state = syncer.getState();
-    logger.info('SYNCER', 'Queue state:', state);
-    return state;
-  });
-
-  registerAction('Test Log Levels', 'Generates test logs for all levels', async () => {
-    logger.debug('ENGINE', 'Test debug message');
-    logger.info('ENGINE', 'Test info message');
-    logger.warn('ENGINE', 'Test warn message');
-    logger.error('ENGINE', 'Test error message');
-    return { ok: true };
-  });
+  registerAction('Check Syncer Queue', 'Returns syncer state', () => syncer.getState());
 }
-
-function initEngine() {
-  logger.init();
-  registerV2Actions();
-  logger.info('ENGINE', 'Debug engine V2 initialized with core actions.');
-}
-
+function initEngine() { logger.init(); registerV2Actions(); logger.info('ENGINE', 'Debug engine V2 initialized.'); }
 module.exports = { registerAction, getActions, runAction, initEngine };

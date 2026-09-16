@@ -1,105 +1,165 @@
-// File: ui/src/components/character/Assets.jsx | Version: 1.4
+// ui/src/components/character/Assets.jsx | Version: 3.1
 import React, { useState, useEffect } from 'react';
-const uiLog = (level, message, data) => { try { window.eveApi?.debugLog?.({ level, source: 'ASSETS-UI', message, data }); } catch {} };
+
 export default function Assets({ account }) {
+  const [tree, setTree] = useState({});
+  const [missingData, setMissingData] = useState([]);
+  const [uNames, setUNames] = useState({});
+  const [sNames, setSNames] = useState({});
   const [loading, setLoading] = useState(true);
-  const [isCorp, setIsCorp] = useState(false);
-  const [assets, setAssets] = useState([]);
-  const [names, setNames] = useState(null);
-  const [reload, setReload] = useState(0);
+
   useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
+    let mounted = true;
+    const load = async () => {
+      if (!account?.characterId) return;
       setLoading(true);
       try {
-        const id = account?.characterId;
-        if (!id) return;
-        uiLog('DEBUG', `Fetching ${isCorp ? 'corp' : 'personal'} assets`, { characterId: id });
-        const data = isCorp ? await window.eveApi.getCorpAssets(id) : await window.eveApi.getPersonalAssets(id);
-        const safeAssets = Array.isArray(data) ? data : (data?.assets || []);
-        uiLog('DEBUG', 'Assets received', { count: safeAssets.length, isCorp });
-        if (!isMounted) return;
-        setAssets(safeAssets);
-        const nameData = await window.eveApi.getAssetNames(id);
-        uiLog('DEBUG', 'Asset names received', {
-          hasNames: Boolean(nameData),
-          pulling: nameData?.pulling,
-          items: nameData?.items ? Object.keys(nameData.items).length : 0,
-          types: nameData?.types ? Object.keys(nameData.types).length : 0
-        });
-        if (isMounted) setNames(nameData);
+        const [assets, u, s] = await Promise.all([
+          window.eveApi.getAssetsData(account.characterId),
+          window.eveApi.getUniverseNames(),
+          window.eveApi.getStructureNames()
+        ]);
+        if (!mounted) return;
+        setUNames(u || {});
+        setSNames(s || {});
+
+        const rawAssets = assets?.assets || [];
+        if (rawAssets.length === 0) {
+          setTree({});
+          setMissingData([]);
+          setLoading(false);
+          return;
+        }
+
+        // Group by unique locations first
+        const uniqueLocs = new Map();
+        for (const a of rawAssets) {
+          if (!uniqueLocs.has(a.location_id)) {
+            uniqueLocs.set(a.location_id, { type: a.location_type, items: [] });
+          }
+          uniqueLocs.get(a.location_id).items.push(a);
+        }
+
+        const newTree = {};
+        const newMissing = [];
+
+        // Process each unique location
+        for (const [locId, data] of uniqueLocs.entries()) {
+          try {
+            let hierarchy = null;
+            let locName = null;
+
+            // Check structure cache first
+            if (data.type === 'structure' && sNames[locId]) {
+              locName = sNames[locId].name;
+              if (sNames[locId].system_id) {
+                hierarchy = await window.eveApi.getLocationHierarchy(sNames[locId].system_id);
+              }
+            } else {
+              // Try to get hierarchy from static DB
+              hierarchy = await window.eveApi.getLocationHierarchy(locId);
+              if (hierarchy) locName = hierarchy.locationName;
+            }
+
+            // If we have complete hierarchy, add to tree
+            if (hierarchy && hierarchy.regionName && hierarchy.systemName && locName) {
+              const r = hierarchy.regionName;
+              const sys = hierarchy.systemName;
+              if (!newTree[r]) newTree[r] = {};
+              if (!newTree[r][sys]) newTree[r][sys] = {};
+              if (!newTree[r][sys][locName]) {
+                newTree[r][sys][locName] = { type: data.type, items: [] };
+              }
+              newTree[r][sys][locName].items.push(...data.items);
+            } else {
+              // Add to missing data
+              newMissing.push(...data.items);
+            }
+          } catch (err) {
+            console.error('[ASSETS] Error processing location', locId, err);
+            newMissing.push(...data.items);
+          }
+        }
+
+        setTree(newTree);
+        setMissingData(newMissing);
       } catch (err) {
-        uiLog('ERROR', 'Failed to load assets', { error: err?.message || String(err), isCorp });
-        if (isMounted) setAssets([]);
+        console.error('[ASSETS-UI] Load failed:', err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
-    fetchData();
-    return () => { isMounted = false; };
-  }, [account?.characterId, isCorp, reload]);
+    load();
+    return () => { mounted = false; };
+  }, [account?.characterId]);
+
   if (!account) return <div className="p-4 text-gray-400">No account selected.</div>;
   if (loading) return <div className="p-4 text-gray-400">Loading assets...</div>;
-  const locations = Array.isArray(assets) ? assets.reduce((acc, item) => {
-    const loc = item.location_id || 'Unknown';
-    if (!acc[loc]) acc[loc] = [];
-    acc[loc].push(item);
-    return acc;
-  }, {}) : {};
-  const locationLabel = (locId) => {
-    const loc = names?.locations?.[locId];
-    if (loc?.name) return loc.name;
-    const itemName = names?.items?.[locId];
-    if (itemName) return itemName;
-    return `Location ID: ${locId}`;
+
+  const getItemName = (typeId) => uNames[typeId] || `Type ${typeId}`;
+  const fmtType = (t) => t === 'item' ? 'Inside Container/Ship' : t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const renderTree = (data, isMissing = false) => {
+    if (!data || typeof data !== 'object') return null;
+    return (
+      <div className="space-y-2">
+        {Object.entries(data).map(([key, children]) => (
+          <details key={key} className="bg-gray-800 rounded-lg border border-gray-700" open={isMissing}>
+            <summary className="cursor-pointer p-3 text-sm font-medium text-blue-400 hover:text-blue-300">
+              {key}
+            </summary>
+            <div className="px-3 pb-3 space-y-3">
+              {typeof children === 'object' && !Array.isArray(children) ? (
+                renderTree(children, isMissing)
+              ) : (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">{fmtType(children.type)}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                    {children.items && children.items.map((item, idx) => (
+                      <div key={idx} className="text-xs text-gray-300 flex justify-between bg-gray-700 px-2 py-1 rounded">
+                        <span className="truncate mr-2">{getItemName(item.type_id)}</span>
+                        <span className="text-gray-400 shrink-0">x{item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
+        ))}
+      </div>
+    );
   };
-  const locationSub = (locId) => {
-    const loc = names?.locations?.[locId];
-    if (!loc) return null;
-    return [loc.systemName, loc.regionName].filter(Boolean).join(' • ');
-  };
-  const itemLabel = (item) => names?.items?.[item.item_id] || names?.types?.[item.type_id] || item.type_name || item.name || `Type ${item.type_id || item.item_id}`;
-  const refreshAssets = async () => {
-    uiLog('DEBUG', 'Manual asset refresh requested', { isCorp });
-    try {
-      await window.eveApi.refreshAssetsNow(account.characterId);
-      setReload((n) => n + 1);
-    } catch (err) {
-      uiLog('ERROR', 'Manual asset refresh failed', { error: err?.message || String(err) });
-    }
-  };
+
+  const totalRegions = Object.keys(tree).length;
+  const totalMissing = missingData.length;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-100">Assets</h2>
-        <div className="flex gap-2">
-          <button onClick={() => setIsCorp(false)} className={`px-3 py-1 text-sm rounded ${!isCorp ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Personal</button>
-          <button onClick={() => setIsCorp(true)} className={`px-3 py-1 text-sm rounded ${isCorp ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Corporation</button>
-          <button onClick={refreshAssets} className="px-3 py-1 text-sm rounded bg-gray-600 text-gray-200 hover:bg-gray-500">Refresh</button>
+        <div className="text-sm text-gray-400">
+          <span className="mr-4">Regions: {totalRegions}</span>
+          {totalMissing > 0 && <span className="text-yellow-400">Missing: {totalMissing}</span>}
         </div>
       </div>
-      {names?.pulling && <p className="text-xs text-yellow-400">Asset name resolution is still running.</p>}
-      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-2">
-        {Object.keys(locations).length === 0 ? (
-          <p className="text-gray-500 italic">No assets found.</p>
-        ) : (
-          Object.entries(locations).map(([locId, items]) => (
-            <details key={locId} className="group">
-              <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-300">
-                <span>{locationLabel(locId)} ({items.length} items)</span>
-                {locationSub(locId) && <span className="block text-xs text-gray-500">{locationSub(locId)}</span>}
+      {totalRegions === 0 && totalMissing === 0 ? (
+        <p className="text-gray-500 italic">No assets found.</p>
+      ) : (
+        <>
+          {renderTree(tree)}
+          {totalMissing > 0 && (
+            <details className="bg-red-900/20 rounded-lg border border-red-800" open>
+              <summary className="cursor-pointer p-3 text-sm font-medium text-red-400 hover:text-red-300">
+                Missing Data ({totalMissing} items)
               </summary>
-              <div className="mt-2 pl-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-                {items.map((item, idx) => (
-                  <div key={idx} className="text-xs text-gray-300">
-                    {itemLabel(item)} (Qty: {item.quantity || 1})
-                  </div>
-                ))}
+              <div className="px-3 pb-3 space-y-3">
+                {renderTree({ 'Unknown': { 'Unknown': { 'Unresolvable ID': { type: 'item', items: missingData } } } }, true)}
               </div>
             </details>
-          ))
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

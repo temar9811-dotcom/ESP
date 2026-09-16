@@ -1,5 +1,5 @@
 // main/pullers/clones-data.js
-// VERSION: 1.0
+// VERSION: 1.3
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -9,6 +9,7 @@ const fetcher = require('../esi/fetcher');
 const logger = require('../debug/logger');
 const accounts = require('../accounts');
 const universeNames = require('./universe-names');
+const structureNames = require('./structure-names');
 
 const CACHE_FILE = 'clones-data-cache.json';
 let cache = {};
@@ -30,7 +31,6 @@ async function pullCharacter(account, priority) {
   const clonesUrl = `${baseUrl}/characters/${account.characterId}/clones/?datasource=tranquility`;
 
   let token = await accounts.getValidAccessToken(account, false);
-
   async function makeRequest(url) {
     try { return await fetcher.request(url, token); } 
     catch (err) {
@@ -46,27 +46,32 @@ async function pullCharacter(account, priority) {
   const clonesRes = await makeRequest(clonesUrl);
   const data = clonesRes.data;
 
-  // Collect all location IDs to resolve (Home station + Jump clone locations)
-  const idsToResolve = [];
-  if (data.home_location) idsToResolve.push(data.home_location.location_id);
-  if (data.jump_clones) {
-    for (const clone of data.jump_clones) {
-      if (clone.location_id) idsToResolve.push(clone.location_id);
-    }
-  }
+  const stationIds = [];
+  const structureIds = [];
 
-  // Queue name resolution right behind this pull
-  universeNames.queueResolution(idsToResolve, priority);
+  const home = data.home_location ? {
+    location_id: data.home_location.location_id,
+    location_type: data.home_location.location_type
+  } : null;
+  if (home) (home.location_type === 'structure' ? structureIds : stationIds).push(home.location_id);
+
+  const jumpClones = (data.jump_clones || []).map(jc => {
+    if (jc.location_id) (jc.location_type === 'structure' ? structureIds : stationIds).push(jc.location_id);
+    if (jc.implants) universeNames.queueResolution(jc.implants, priority);
+    return { location_id: jc.location_id, location_type: jc.location_type, implant: jc.implants || [] };
+  });
+
+  universeNames.queueResolution(stationIds, priority);
+  structureNames.resolve(structureIds); // Scope-gated shared resolver
 
   cache[account.characterId] = {
-    home_location: data.home_location,
-    jump_clones: data.jump_clones || [],
+    home_location: home, jump_clones: jumpClones,
     last_clone_jump_date: data.last_clone_jump_date,
     last_station_change_date: data.last_station_change_date,
     fetchedAt: Date.now()
   };
   saveCache();
-  logger.info('CLONES-DATA', `Updated clones for ${account.characterName}`, { id: account.characterId, jump_clones: cache[account.characterId].jump_clones.length });
+  logger.info('CLONES-DATA', `Updated clones for ${account.characterName}`, { id: account.characterId, jump_clones: jumpClones.length });
   return data;
 }
 
