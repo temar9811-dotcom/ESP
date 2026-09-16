@@ -1,5 +1,5 @@
 // preload.js
-// VERSION: 1.6
+// VERSION: 1.7
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 const on = (channel) => (callback) => {
@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   getCharData: (id) => ipcRenderer.invoke('app:getCharData', id),
   getWalletData: (id) => ipcRenderer.invoke('app:getWalletData', id),
   getSkillsData: (id) => ipcRenderer.invoke('app:getSkillsData', id),
+  getCorpAllianceData: () => ipcRenderer.invoke('app:getCorpAllianceData'),
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
   addAccount: (s) => ipcRenderer.invoke('accounts:add', s),
   cancelLogin: () => ipcRenderer.invoke('accounts:cancelLogin'),

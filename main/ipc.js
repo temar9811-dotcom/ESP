@@ -1,5 +1,5 @@
 // main/ipc.js
-// VERSION: 1.7
+// VERSION: 1.8
 'use strict';
 const { ipcMain, app } = require('electron');
 const { VERSION } = require('../version');
@@ -33,6 +33,7 @@ function registerIpcHandlers() {
   handle('app:getCharData', (_e, id) => require('./pullers/char-data').getCache()[id] || null);
   handle('app:getWalletData', (_e, id) => require('./pullers/wallet-data').getCache()[id] || null);
   handle('app:getSkillsData', (_e, id) => require('./pullers/skills-data').getCache()[id] || null);
+  handle('app:getCorpAllianceData', () => require('./pullers/corp-alliance-data').getCache());
   handle('accounts:list', () => accounts.getPublicAccounts());
   handle('accounts:add', (_e, s) => accounts.addAccount(s));
   handle('accounts:cancelLogin', () => { accounts.cancelLogin(); return true; });
@@ -59,7 +60,7 @@ function registerIpcHandlers() {
   handle('test:run', (_e, c, p) => !testHarness ? { ok: false, error: 'No harness' } : testHarness.run(c, p));
   handle('test:enabled', () => testHarness ? testHarness.testEnabled() : false);
   handle('scheduler:forcePull', (_e, n) => scheduler.forcePull(n));
-  const CF = { skills: 'skills-cache.json', wallet: 'wallet-cache.json', assets: 'assets-raw-cache.json', assetsNames: 'assets-names-cache.json', structures: 'structure-names.json', universe: 'universe-cache.json', charData: 'char-data-cache.json', walletData: 'wallet-data-cache.json', skillsData: 'skills-data-cache.json' };
+  const CF = { skills: 'skills-cache.json', wallet: 'wallet-cache.json', assets: 'assets-raw-cache.json', assetsNames: 'assets-names-cache.json', structures: 'structure-names.json', universe: 'universe-cache.json', charData: 'char-data-cache.json', walletData: 'wallet-data-cache.json', skillsData: 'skills-data-cache.json', corpAlliance: 'corp-alliance-cache.json' };
   const clear = (n) => { try { require('fs').unlinkSync(require('path').join(app.getPath('userData'), n)); return true; } catch { return false; } };
   handle('cache:clear', (_e, w) => {
     if (w === 'all') return { cleared: [...Object.values(CF)].filter(clear) };
