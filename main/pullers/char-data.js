@@ -1,5 +1,5 @@
 // main/pullers/char-data.js
-// VERSION: 1.5
+// VERSION: 1.6
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +9,7 @@ const fetcher = require('../esi/fetcher');
 const logger = require('../debug/logger');
 const accounts = require('../accounts');
 const staticDb = require('../esi/static-db');
-const corpAllianceData = require('./corp-alliance-data');
+const universeNames = require('./universe-names'); // Updated import
 
 const CACHE_FILE = 'char-data-cache.json';
 let cache = {};
@@ -64,9 +64,8 @@ async function pullCharacter(account, priority) {
   cache[account.characterId] = data;
   saveCache();
   
-  // Trigger corp/alliance resolution right behind this pull with the same priority
   const idsToResolve = [data.corporation_id, data.alliance_id].filter(Boolean);
-  corpAllianceData.queueResolution(idsToResolve, priority);
+  universeNames.queueResolution(idsToResolve, priority); // Updated call
 
   logger.info('CHAR-DATA', `Updated ${data.name}`, { id: account.characterId, system: systemName });
   return data;

@@ -1,5 +1,5 @@
 // main/esi/static-db.js
-// VERSION: 2.2
+// VERSION: 2.3
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -112,11 +112,15 @@ function getSystemName(systemId) {
   return row[0]?.solarSystemName || null;
 }
 
-// Fixed: table is crpNPCCorporations, not crpCorporations
-// Note: Only NPC corps exist in the SDE. Player corps return null.
 function getCorporationName(corpId) {
   const row = query('SELECT corporationName FROM crpNPCCorporations WHERE corporationID = ?', [corpId]);
   return row[0]?.corporationName || null;
 }
 
-module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getCorporationName, initDb };
+// NEW: Get skill name and group name in one query
+function getSkillInfo(typeId) {
+  const row = query('SELECT t.typeName AS name, g.groupName AS groupName FROM invTypes t LEFT JOIN invGroups g ON t.groupID = g.groupID WHERE t.typeID = ?', [typeId]);
+  return row[0] || null;
+}
+
+module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getCorporationName, getSkillInfo, initDb };

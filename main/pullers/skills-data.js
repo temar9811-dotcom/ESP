@@ -1,5 +1,5 @@
 // main/pullers/skills-data.js
-// VERSION: 1.0
+// VERSION: 1.1
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -8,6 +8,7 @@ const syncer = require('../esi/syncer');
 const fetcher = require('../esi/fetcher');
 const logger = require('../debug/logger');
 const accounts = require('../accounts');
+const staticDb = require('../esi/static-db');
 
 const CACHE_FILE = 'skills-data-cache.json';
 let cache = {};
@@ -16,21 +17,17 @@ let cacheLoaded = false;
 function loadCache() {
   if (cacheLoaded) return;
   cacheLoaded = true;
-  try {
-    const p = path.join(app.getPath('userData'), CACHE_FILE);
-    cache = JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch { cache = {}; }
+  try { cache = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), CACHE_FILE), 'utf8')); } catch { cache = {}; }
 }
 
 function saveCache() {
-  try {
-    const p = path.join(app.getPath('userData'), CACHE_FILE);
-    fs.writeFileSync(p, JSON.stringify(cache, null, 2));
-  } catch (e) { logger.error('SKILLS-DATA', 'Save cache failed', { error: e.message }); }
+  try { fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2)); } catch (e) { logger.error('SKILLS-DATA', 'Save failed', { error: e.message }); }
 }
 
 async function pullCharacter(account) {
   loadCache();
+  await staticDb.initDb(); // Ensure DB is loaded
+
   const baseUrl = 'https://esi.evetech.net/latest';
   const skillsUrl = `${baseUrl}/characters/${account.characterId}/skills/?datasource=tranquility`;
   const queueUrl = `${baseUrl}/characters/${account.characterId}/skillqueue/?datasource=tranquility`;
@@ -38,9 +35,8 @@ async function pullCharacter(account) {
   let token = await accounts.getValidAccessToken(account, false);
 
   async function makeRequest(url) {
-    try {
-      return await fetcher.request(url, token);
-    } catch (err) {
+    try { return await fetcher.request(url, token); } 
+    catch (err) {
       if (err.status === 401) {
         logger.warn('SKILLS-DATA', 'Token expired (401), forcing refresh', { id: account.characterId });
         token = await accounts.getValidAccessToken(account, true);
@@ -53,11 +49,27 @@ async function pullCharacter(account) {
   const skillsRes = await makeRequest(skillsUrl);
   const queueRes = await makeRequest(queueUrl);
 
+  // Enrich skills with names and groups from Static DB
+  const enrichedSkills = skillsRes.data.skills.map(s => {
+    const info = staticDb.getSkillInfo(s.skill_id);
+    return {
+      ...s,
+      skill_name: info?.name || `Skill ${s.skill_id}`,
+      group_name: info?.groupName || 'Unknown Group'
+    };
+  });
+
+  // Enrich queue with skill names
+  const enrichedQueue = queueRes.data.map(q => {
+    const info = staticDb.getSkillInfo(q.skill_id);
+    return { ...q, skill_name: info?.name || `Skill ${q.skill_id}` };
+  });
+
   const data = {
     total_sp: skillsRes.data.total_sp,
     unallocated_sp: skillsRes.data.unallocated_sp,
-    skills: skillsRes.data.skills,
-    queue: queueRes.data,
+    skills: enrichedSkills,
+    queue: enrichedQueue,
     fetchedAt: Date.now()
   };
   

@@ -1,5 +1,5 @@
 // main/debug/engine.js
-// VERSION: 2.0
+// VERSION: 2.1
 'use strict';
 const logger = require('./logger');
 const scheduler = require('../scheduler');
@@ -66,6 +66,21 @@ function registerV2Actions() {
       if (fs.existsSync(cachePath)) {
         fs.unlinkSync(cachePath);
         logger.info('CACHE', 'char-data-cache.json deleted');
+        return { ok: true, message: 'Cache cleared. Force pull to rebuild.' };
+      }
+      return { ok: true, message: 'Cache file did not exist.' };
+    } catch (err) {
+      logger.error('CACHE', 'Failed to delete cache', { error: err.message });
+      return { ok: false, error: err.message };
+    }
+  });
+
+  registerAction('Clear Skills Data Cache', 'Deletes the skills-data-cache.json file', async () => {
+    const cachePath = path.join(app.getPath('userData'), 'skills-data-cache.json');
+    try {
+      if (fs.existsSync(cachePath)) {
+        fs.unlinkSync(cachePath);
+        logger.info('CACHE', 'skills-data-cache.json deleted');
         return { ok: true, message: 'Cache cleared. Force pull to rebuild.' };
       }
       return { ok: true, message: 'Cache file did not exist.' };
