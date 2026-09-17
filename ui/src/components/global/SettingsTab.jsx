@@ -1,6 +1,6 @@
 // File: ui/src/components/global/SettingsTab.jsx | Version: 1.1
 import React, { useState, useEffect } from 'react';
-import { THEME_OPTIONS, applyTheme } from '../../theme';
+import { THEME_OPTIONS, applyTheme, applyTextScale } from '../../theme';
 
 export default function SettingsTab({ onClose }) {
   const [settings, setSettings] = useState(null);
@@ -30,8 +30,10 @@ export default function SettingsTab({ onClose }) {
   };
 
   const updateSetting = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    const next = value;
+    setSettings(prev => ({ ...prev, [key]: next }));
     if (key === 'theme') applyTheme(value);
+    if (key === 'biggerText') applyTextScale(next);
   };
 
   if (loading || !settings) return <div className="p-4 text-gray-400">Loading settings...</div>;
@@ -97,6 +99,10 @@ export default function SettingsTab({ onClose }) {
             ))}
           </select>
         </div>
+        <label className="flex items-center justify-between text-gray-300">
+          <span>Larger text (+20%)</span>
+          <input type="checkbox" checked={!!settings.biggerText} onChange={(e) => updateSetting('biggerText', e.target.checked)} className="w-4 h-4" />
+        </label>
       </div>
       <div className="flex justify-end">
         <button onClick={handleSave} className="px-6 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">

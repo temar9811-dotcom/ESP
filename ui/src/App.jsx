@@ -17,7 +17,7 @@ import Notes from './components/character/Notes';
 import SkillPlans from './components/character/SkillPlans';
 import UpdateDialog from './components/UpdateDialog';
 import ChangelogDialog from './components/ChangelogDialog';
-import { applyTheme } from './theme';
+import { applyTheme, applyTextScale } from './theme';
 
 export default function App() {
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -34,6 +34,7 @@ export default function App() {
     if (!window.eveApi?.getSettings) return;
     window.eveApi.getSettings().then((s) => {
       if (s?.theme) applyTheme(s.theme);
+      applyTextScale(!!s?.biggerText);
     }).catch(() => {});
   }, []);
 

@@ -23,6 +23,16 @@ export function fadeToward(hex, bg, t) {
   return `#${toHex(mix(r1, r2))}${toHex(mix(g1, g2))}${toHex(mix(b1, b2))}`;
 }
 
+export function applyTextScale(enabled) {
+  if (enabled) {
+    document.documentElement.style.fontSize = '120%';
+    document.body.classList.add('bigger-text');
+  } else {
+    document.documentElement.style.fontSize = '';
+    document.body.classList.remove('bigger-text');
+  }
+}
+
 /* Assets tree: alternating region hues + depth fade (kick-mrchi) */
 export const ASSET_REGION_COLORS = ['#67e8f9', '#5eead4'];
 export const ASSET_BG = '#0b1526';
