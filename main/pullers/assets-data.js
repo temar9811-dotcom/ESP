@@ -1,5 +1,4 @@
-// main/pullers/assets-data.js
-// VERSION: 2.0
+// File: main/pullers/assets-data.js | Version: 2.0
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -23,11 +22,8 @@ function loadCache() {
 }
 
 function saveCache() {
-  try {
-    fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2));
-  } catch (e) {
-    logger.error('ASSETS-DATA', 'Save failed', { error: e.message });
-  }
+  try { fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2)); }
+  catch (e) { logger.error('ASSETS-DATA', 'Save failed', { error: e.message }); }
 }
 
 function buildTree(assets) {
@@ -36,35 +32,50 @@ function buildTree(assets) {
   const unresolvedMap = new Map();
   const structureCache = structureNames.getCache();
   const universeCache = universeNames.getCache();
+  const itemIdSet = new Set(assets.map(a => a.item_id));
 
   for (const asset of assets) {
     const locId = asset.location_id;
     let regionName = null, systemName = null, locationName = null;
 
+    // Skip if location_id is another asset's item_id (dynamic container/ship)
+    if (itemIdSet.has(locId)) continue;
+
     // Try static DB first (stations, systems, planets)
-    const hierarchy = staticDb.getLocationHierarchy(locId);
-    if (hierarchy) {
-      regionName = hierarchy.regionName;
-      systemName = hierarchy.systemName;
-      locationName = hierarchy.locationName;
+    try {
+      const hierarchy = staticDb.getLocationHierarchy(locId);
+      if (hierarchy) {
+        regionName = hierarchy.regionName;
+        systemName = hierarchy.systemName;
+        locationName = hierarchy.locationName;
+      }
+    } catch (err) {
+      logger.debug('ASSETS-DATA', `getLocationHierarchy failed for ${locId}`, { error: err.message });
     }
+
     // Try structure cache (player structures)
-    else if (structureCache[locId] && structureCache[locId].name) {
+    if (!regionName && structureCache[locId] && structureCache[locId].name) {
       const struct = structureCache[locId];
-      const systemNameFromDb = staticDb.getSystemName(struct.system_id);
-      const hierarchyFromSystem = systemNameFromDb ? staticDb.getLocationHierarchy(struct.system_id) : null;
-      regionName = hierarchyFromSystem?.regionName || 'Unknown Region';
-      systemName = systemNameFromDb || `System ${struct.system_id}`;
-      locationName = struct.name;
+      try {
+        const systemNameFromDb = staticDb.getSystemName(struct.system_id);
+        const hierarchyFromSystem = systemNameFromDb ? staticDb.getLocationHierarchy(struct.system_id) : null;
+        regionName = hierarchyFromSystem?.regionName || 'Unknown Region';
+        systemName = systemNameFromDb || `System ${struct.system_id}`;
+        locationName = struct.name;
+      } catch (err) {
+        logger.debug('ASSETS-DATA', `Structure hierarchy failed for ${locId}`, { error: err.message });
+      }
     }
-    // Try universe cache (fallback for types/other IDs)
-    else if (universeCache[locId]) {
+
+    // Try universe cache (fallback)
+    if (!regionName && universeCache[locId]) {
       locationName = universeCache[locId];
       regionName = 'Unresolved';
       systemName = 'Unresolved';
     }
+
     // Mark as unresolved
-    else {
+    if (!regionName) {
       const key = `${locId}:${asset.location_type}`;
       if (!unresolvedMap.has(key)) {
         unresolvedMap.set(key, { id: locId, type: asset.location_type, assetCount: 0 });
@@ -94,7 +105,8 @@ function buildTree(assets) {
 
 async function pullCharacter(account, priority) {
   loadCache();
-  await staticDb.initDb();
+  await staticDb.initDb(); // FIX: Initialize static DB before tree building
+  
   const baseUrl = 'https://esi.evetech.net/latest';
   let token = await accounts.getValidAccessToken(account, false);
 
@@ -125,16 +137,19 @@ async function pullCharacter(account, priority) {
       typeIds.add(a.type_id);
       const locId = a.location_id, locType = a.location_type;
 
-      if (locType === 'item') {
-        // Dynamic containers/ships - skip for now
-      } else if (locId >= 60000000 && locId < 70000000) {
+      // Collect ALL location_ids for resolution
+      if (locId >= 60000000 && locId < 70000000) {
         universeIds.add(locId); // NPC Stations
       } else if (locId >= 30000000 && locId < 40000000) {
-        universeIds.add(locId); // Solar Systems (PI)
+        universeIds.add(locId); // Solar Systems
       } else if (locType === 'other') {
         universeIds.add(locId); // POCOs / Asset Safety
+      } else if (locType === 'item') {
+        // Could be structure, station, or container - let tree builder figure it out
+        structureIds.add(locId);
+        universeIds.add(locId);
       } else {
-        structureIds.add(locId); // Player Structures
+        structureIds.add(locId);
         universeIds.add(locId);
       }
     }
@@ -143,12 +158,13 @@ async function pullCharacter(account, priority) {
     page++;
   }
 
-  // Queue name resolution
   if (typeIds.size > 0) universeNames.queueResolution(Array.from(typeIds), priority);
   if (universeIds.size > 0) universeNames.queueResolution(Array.from(universeIds), priority);
-  if (structureIds.size > 0) await structureNames.resolve(Array.from(structureIds));
+  if (structureIds.size > 0) {
+    try { await structureNames.resolve(Array.from(structureIds)); }
+    catch (err) { logger.warn('ASSETS-DATA', 'structureNames.resolve failed', { error: err.message }); }
+  }
 
-  // Build tree and track unresolved
   const { tree, unresolved } = buildTree(allAssets);
 
   cache[account.characterId] = {
@@ -170,6 +186,7 @@ async function pullCharacter(account, priority) {
     id: account.characterId,
     count: allAssets.length,
     types: locationTypeCounts,
+    hasTree: Boolean(tree),
     unresolvedCount: unresolved.length
   });
 }

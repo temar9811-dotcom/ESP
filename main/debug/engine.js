@@ -1,4 +1,4 @@
-// main/debug/engine.js | Version: 2.5
+// File: main/debug/engine.js | Version: 2.6
 'use strict';
 const logger = require('./logger');
 const scheduler = require('../scheduler');
@@ -39,11 +39,43 @@ function registerV2Actions() {
   registerAction('Clear Clones Data Cache', 'Deletes clones-data-cache.json', () => clearFile('clones-data-cache.json'));
   registerAction('Clear Assets Data Cache', 'Deletes assets-data-cache.json', () => clearFile('assets-data-cache.json'));
   registerAction('Clear Universe Names Cache', 'Deletes universe-names-cache.json', () => clearFile('universe-names-cache.json'));
+  registerAction('Clear Structure Names Cache', 'Deletes structure-names.json', () => clearFile('structure-names.json'));
   registerAction('Inspect Universe Names', 'Dumps resolved names to help debug structures', () => {
     const cache = require('../pullers/universe-names').getCache();
     logger.info('INSPECT', `Universe Names Cache Size: ${Object.keys(cache).length}`);
     logger.info('INSPECT', 'First 30 entries:', Object.entries(cache).slice(0, 30));
     return { ok: true, size: Object.keys(cache).length };
+  });
+  registerAction('Inspect Assets Tree', 'Dumps asset tree structure and unresolved IDs for debugging', () => {
+    const cache = require('../pullers/assets-data').getCache();
+    const charIds = Object.keys(cache);
+    logger.info('INSPECT', `Assets cache has ${charIds.length} character(s)`);
+    for (const cid of charIds) {
+      const entry = cache[cid];
+      const tree = entry.tree || {};
+      const regions = tree.regions || {};
+      const regionCount = Object.keys(regions).length;
+      let systemCount = 0, stationCount = 0, assetCount = 0;
+      for (const r of Object.values(regions)) {
+        const systems = r.systems || {};
+        systemCount += Object.keys(systems).length;
+        for (const s of Object.values(systems)) {
+          const stations = s.stations || {};
+          stationCount += Object.keys(stations).length;
+          for (const a of Object.values(stations)) assetCount += Array.isArray(a) ? a.length : 0;
+        }
+      }
+      const unresolved = entry.unresolved || [];
+      logger.info('INSPECT', `Character ${cid}:`, {
+        regions: regionCount,
+        systems: systemCount,
+        stations: stationCount,
+        assets: assetCount,
+        unresolvedCount: unresolved.length,
+        unresolvedSample: unresolved.slice(0, 10)
+      });
+    }
+    return { ok: true, characters: charIds.length };
   });
   registerAction('Test Update Available Popup', 'Simulates an update available event', () => {
     const win = getMainWindow();

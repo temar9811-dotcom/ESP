@@ -1,105 +1,120 @@
-// ui/src/App.jsx | Version: 1.7
-import React, { useState, useEffect, useRef } from 'react';
-import Topbar from './components/Topbar';
-import Sidebar from './components/Sidebar';
-import ToastContainer from './components/global/ToastContainer';
-import SyncIndicator from './components/global/SyncIndicator';
-import DebugTab from './components/global/DebugTab';
-import SettingsTab from './components/global/SettingsTab';
-import Overview from './components/character/Overview';
-import Skills from './components/character/Skills';
-import Wallet from './components/character/Wallet';
-import Assets from './components/character/Assets';
-import Clones from './components/character/Clones';
-import Notes from './components/character/Notes';
-import SkillPlans from './components/character/SkillPlans';
-import UpdateDialog from './components/UpdateDialog';
-import ChangelogDialog from './components/ChangelogDialog';
+// File: ui/src/components/character/Assets.jsx | Version: 2.0
+import React, { useState, useEffect } from 'react';
+const uiLog = (level, message, data) => { try { window.eveApi?.debugLog?.({ level, source: 'ASSETS-UI', message, data }); } catch {} };
 
-export default function App() {
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const mainRef = useRef(null);
-  const [toasts, setToasts] = useState([]);
-  const [isDev, setIsDev] = useState(false);
-
-  useEffect(() => { 
-    setIsDev(!window.require?.('electron')?.app?.isPackaged); 
-  }, []);
+export default function Assets({ account }) {
+  const [loading, setLoading] = useState(true);
+  const [treeData, setTreeData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!window.eveApi) return;
-    const unsubs = [
-      window.eveApi.onSkillCompleted((p) => addToast('Skill Complete', p.skillName)),
-      window.eveApi.onWalletActivity((p) => addToast('Wallet Activity', `${p.amount} ISK`)),
-      window.eveApi.onQueueWarning((p) => addToast('Queue Warning', p.message)),
-      window.eveApi.onQueueEmpty((p) => addToast('Queue Empty', p.characterName)),
-    ];
-    return () => unsubs.forEach(u => u());
-  }, []);
+    let isMounted = true;
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const id = account?.characterId;
+        if (!id) { setLoading(false); return; }
+        uiLog('DEBUG', 'Fetching asset tree', { characterId: id });
+        const data = await window.eveApi.getAssetTree(id);
+        if (!isMounted) return;
+        if (!data) {
+          setTreeData(null);
+          uiLog('WARN', 'No tree data returned', { characterId: id });
+        } else {
+          setTreeData(data);
+          uiLog('DEBUG', 'Tree data received', {
+            hasTree: Boolean(data.tree),
+            unresolvedCount: data.unresolved?.length || 0,
+            typeNamesCount: data.typeNames ? Object.keys(data.typeNames).length : 0
+          });
+        }
+      } catch (err) {
+        uiLog('ERROR', 'Failed to load asset tree', { error: err?.message || String(err) });
+        if (isMounted) setError(err?.message || 'Failed to load assets');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { isMounted = false; };
+  }, [account?.characterId]);
 
-  const addToast = (title, body) => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, title, body }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
-  };
+  if (!account) return <div className="p-4 text-gray-400">No account selected.</div>;
+  if (loading) return <div className="p-4 text-gray-400">Loading assets...</div>;
+  if (error) return <div className="p-4 text-red-400">Error: {error}</div>;
+  if (!treeData) return <div className="p-4 text-gray-500 italic">No asset data available.</div>;
 
-  useEffect(() => {
-    if (mainRef.current) mainRef.current.scrollTop = 0;
-  }, [selectedAccount?.characterId, activeTab]);
+  const tree = treeData.tree;
+  const unresolved = treeData.unresolved || [];
+  const typeNames = treeData.typeNames || {};
 
-  const tabs = ['overview', 'skills', 'wallet', 'assets', 'clones', 'notes', 'plans'];
-  if (isDev) tabs.push('debug');
-
-  const renderContent = () => {
-    if (activeTab === 'settings') return <SettingsTab onClose={() => setActiveTab('overview')} />;
-    if (activeTab === 'debug') return <DebugTab />;
-    if (!selectedAccount) return <p className="text-gray-500">Select a character from the sidebar.</p>;
-    
-    switch (activeTab) {
-      case 'overview': return <Overview account={selectedAccount} />;
-      case 'skills': return <Skills account={selectedAccount} />;
-      case 'wallet': return <Wallet account={selectedAccount} />;
-      case 'assets': return <Assets account={selectedAccount} />;
-      case 'clones': return <Clones account={selectedAccount} />;
-      case 'notes': return <Notes account={selectedAccount} />;
-      case 'plans': return <SkillPlans account={selectedAccount} />;
-      default: return <p className="text-gray-400">Unknown tab.</p>;
-    }
-  };
+  const getItemName = (typeId) => typeNames[typeId] || `Type ${typeId}`;
 
   return (
-    <div className="flex h-screen flex-col bg-gray-900 text-gray-100 min-w-[700px]">
-      <Topbar onOpenSettings={() => setActiveTab('settings')} isSettingsOpen={activeTab === 'settings'} />
-      <SyncIndicator />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar selectedAccount={selectedAccount} onSelect={setSelectedAccount} />
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex border-b border-gray-700 bg-gray-800 shrink-0">
-            {tabs.map((tab) => (
-              <button 
-                key={tab} 
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
-                  activeTab === tab 
-                    ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700' 
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                {tab}
-              </button>
+    <div className="space-y-4 p-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-gray-100">Assets</h2>
+        <div className="text-xs text-gray-500">
+          Last updated: {treeData.lastUpdated ? new Date(treeData.lastUpdated).toLocaleString() : 'Never'}
+        </div>
+      </div>
+
+      {!tree && <div className="text-yellow-400 text-sm">Tree structure not built yet. Data may still be resolving.</div>}
+
+      {tree && Object.keys(tree.regions || {}).length > 0 && (
+        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h3 className="text-sm font-medium text-blue-400 mb-2">Resolved Locations</h3>
+          {Object.entries(tree.regions).map(([regionName, regionData]) => (
+            <details key={regionName} className="mb-2">
+              <summary className="cursor-pointer text-sm font-medium text-gray-200 hover:text-blue-300">
+                🌍 {regionName}
+              </summary>
+              <div className="ml-4 mt-1">
+                {Object.entries(regionData.systems || {}).map(([systemName, systemData]) => (
+                  <details key={systemName} className="mb-1">
+                    <summary className="cursor-pointer text-xs text-gray-300 hover:text-blue-300">
+                      ☀️ {systemName}
+                    </summary>
+                    <div className="ml-4 mt-1">
+                      {Object.entries(systemData.stations || {}).map(([stationName, assets]) => (
+                        <details key={stationName} className="mb-1">
+                          <summary className="cursor-pointer text-xs text-gray-400 hover:text-blue-300">
+                            🏢 {stationName} ({assets.length} items)
+                          </summary>
+                          <div className="ml-4 mt-1 grid grid-cols-1 md:grid-cols-2 gap-1">
+                            {assets.map((asset, idx) => (
+                              <div key={idx} className="text-xs text-gray-300">
+                                {getItemName(asset.type_id)} (Qty: {asset.quantity || 1})
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+
+      {unresolved.length > 0 && (
+        <div className="bg-gray-800 p-4 rounded-lg border border-yellow-700">
+          <h3 className="text-sm font-medium text-yellow-400 mb-2">
+            Unresolved Locations ({unresolved.length})
+          </h3>
+          <div className="text-xs text-gray-400 space-y-1">
+            {unresolved.map((loc, idx) => (
+              <div key={idx} className="flex justify-between">
+                <span>ID: {loc.id}</span>
+                <span className="text-gray-500">Type: {loc.type} | Assets: {loc.assetCount}</span>
+              </div>
             ))}
           </div>
-          <div ref={mainRef} className="flex-1 overflow-y-auto p-4">
-            {renderContent()}
-          </div>
-        </main>
-      </div>
-      
-      {/* Global UI Elements */}
-      <ToastContainer toasts={toasts} />
-      <UpdateDialog />
-      <ChangelogDialog />
+        </div>
+      )}
     </div>
   );
 }
