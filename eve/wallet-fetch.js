@@ -2,7 +2,7 @@
 'use strict';
 const config = require('./config');
 const { esiFetch } = require('./http');
-const logger = require('../main/debug-logger');
+const logger = require('../main/debug/logger');
 const log = (msg, data) => logger.debug('WALLET-FETCH', msg, data);
 
 async function fetchPaged(url, accessToken, cutoffMs, maxPages, idField) {

@@ -16,7 +16,9 @@ const DEFAULT_SETTINGS = {
   queueWarnHours: 24,
   failTTL: 300,
   walletNotifyThreshold: 0,
-  clockLarge: false
+  clockLarge: false,
+  theme: 'kick-mrchi',
+  biggerText: false
 };
 function getSettingsFile() {
   return path.join(app.getPath('userData'), 'config.json');

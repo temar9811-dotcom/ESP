@@ -76,10 +76,10 @@ export default function Skills({ account }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {groups.length === 0 ? <p className="text-gray-500 italic col-span-full">No skills data available.</p> : groups.map(([groupName, skills]) => (
             <details key={groupName} className="group">
-              <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-300">{groupName} ({skills.length})</summary>
+              <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-300 trained-skills-branch">{groupName} ({skills.length})</summary>
               <div className="mt-2 pl-4 space-y-1">
                 {skills.map((skill) => (
-                  <div key={skill.skill_id} className="text-xs text-gray-300">
+                  <div key={skill.skill_id} className="text-xs text-gray-300 trained-skills-leaf">
                     {skill.skill_name} - Lvl {skill.trained_skill_level}
                     {skill.skillpoints_in_skill > 0 && <span className="text-gray-500 ml-1">({skill.skillpoints_in_skill.toLocaleString()} SP)</span>}
                   </div>

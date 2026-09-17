@@ -1,5 +1,5 @@
 // main/esi/static-db.js
-// VERSION: 2.7
+// VERSION: 2.8
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -8,6 +8,8 @@ const http = require('http');
 const zlib = require('zlib');
 const { app } = require('electron');
 const logger = require('../debug/logger');
+
+const MAP_PLANETS_DISABLED = true;
 
 let db = null;
 let SQL = null;
@@ -117,7 +119,15 @@ function getStationName(stationId) {
   return row[0]?.stationName || null;
 }
 
+function getSkillInfo(skillId) {
+  const row = query('SELECT typeID, typeName, groupID FROM invTypes WHERE typeID = ?', [skillId]);
+  if (!row[0]) return null;
+  const group = row[0].groupID ? query('SELECT groupName FROM invGroups WHERE groupID = ?', [row[0].groupID])[0] : null;
+  return { id: row[0].typeID, name: row[0].typeName, groupName: group?.groupName || 'Unknown Group' };
+}
+
 function getPlanetName(planetId) {
+  if (MAP_PLANETS_DISABLED) return null;
   const row = query('SELECT planetName FROM mapPlanets WHERE planetID = ?', [planetId]);
   return row[0]?.planetName || null;
 }
@@ -136,8 +146,10 @@ function getLocationHierarchy(id) {
     }
   }
 
-  // Check if it's a planet (for PI)
-  const planet = query('SELECT planetName, solarSystemID FROM mapPlanets WHERE planetID = ?', [locId])[0];
+  let planet = null;
+  if (!MAP_PLANETS_DISABLED) {
+    planet = query('SELECT planetName, solarSystemID FROM mapPlanets WHERE planetID = ?', [locId])[0];
+  }
   if (planet) {
     const system = query('SELECT solarSystemName, regionID FROM mapSolarSystems WHERE solarSystemID = ?', [planet.solarSystemID])[0];
     if (system) {
@@ -156,4 +168,16 @@ function getLocationHierarchy(id) {
   return null;
 }
 
-module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getStationName, getPlanetName, getLocationHierarchy, initDb };
+function getSystemInfo(systemId) {
+  const row = query('SELECT solarSystemID, solarSystemName, regionID FROM mapSolarSystems WHERE solarSystemID = ?', [systemId]);
+  if (!row[0]) return null;
+  const region = query('SELECT regionName FROM mapRegions WHERE regionID = ?', [row[0].regionID])[0];
+  return {
+    systemId: row[0].solarSystemID,
+    systemName: row[0].solarSystemName,
+    regionId: row[0].regionID,
+    regionName: region?.regionName || null
+  };
+}
+
+module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getStationName, getPlanetName, getSkillInfo, getLocationHierarchy, getSystemInfo, initDb };

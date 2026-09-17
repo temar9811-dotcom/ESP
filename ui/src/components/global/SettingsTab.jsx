@@ -1,5 +1,6 @@
-// File: ui/src/components/global/SettingsTab.jsx | Version: 1.0
+// File: ui/src/components/global/SettingsTab.jsx | Version: 1.1
 import React, { useState, useEffect } from 'react';
+import { THEME_OPTIONS, applyTheme, applyTextScale } from '../../theme';
 
 export default function SettingsTab({ onClose }) {
   const [settings, setSettings] = useState(null);
@@ -29,7 +30,10 @@ export default function SettingsTab({ onClose }) {
   };
 
   const updateSetting = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    const next = value;
+    setSettings(prev => ({ ...prev, [key]: next }));
+    if (key === 'theme') applyTheme(value);
+    if (key === 'biggerText') applyTextScale(next);
   };
 
   if (loading || !settings) return <div className="p-4 text-gray-400">Loading settings...</div>;
@@ -80,6 +84,25 @@ export default function SettingsTab({ onClose }) {
             <input type="number" min="0" value={settings.walletNotifyThreshold} onChange={(e) => updateSetting('walletNotifyThreshold', Number(e.target.value))} className="w-32 bg-gray-700 text-gray-200 px-2 py-1 rounded border border-gray-600 text-right" />
           </div>
         </div>
+      </div>
+      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
+        <h3 className="text-md font-semibold text-gray-200">Appearance</h3>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-300">Theme</span>
+          <select
+            value={settings.theme || ''}
+            onChange={(e) => updateSetting('theme', e.target.value)}
+            className="w-48 bg-gray-700 text-gray-200 px-2 py-1 rounded border border-gray-600"
+          >
+            {THEME_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <label className="flex items-center justify-between text-gray-300">
+          <span>Larger text (+20%)</span>
+          <input type="checkbox" checked={!!settings.biggerText} onChange={(e) => updateSetting('biggerText', e.target.checked)} className="w-4 h-4" />
+        </label>
       </div>
       <div className="flex justify-end">
         <button onClick={handleSave} className="px-6 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">

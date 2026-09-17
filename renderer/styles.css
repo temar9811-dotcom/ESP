@@ -1,9 +1,0 @@
-/* FILE: renderer/styles.css */
-/* VERSION: 1.1.17-beta */
-@import url('./styles-base.css');
-@import url('./styles-characters.css');
-@import url('./styles-skills.css');
-@import url('./styles-wallet.css');
-@import url('./styles-assets.css');
-@import url('./styles-modals.css');
-@import url('./styles-extras.css');

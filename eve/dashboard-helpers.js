@@ -1,7 +1,7 @@
 // File: eve/dashboard-helpers.js | Version: 1.1
 'use strict';
 const { esiFetch, publicFetch, publicPost } = require('./http');
-const logger = require('../main/debug-logger');
+const logger = require('../main/debug/logger');
 const log = (msg, data) => logger.debug('DASH-HELP', msg, data);
 
 async function getTypeNames(ids) {

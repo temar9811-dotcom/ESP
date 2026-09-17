@@ -2,7 +2,7 @@
 'use strict';
 const { esiFetch } = require('./http');
 const helpers = require('./dashboard-helpers');
-const logger = require('../main/debug-logger');
+const logger = require('../main/debug/logger');
 const log = (msg, data) => logger.debug('DASHBOARD', msg, data);
 
 async function getWallet(characterId, accessToken) {

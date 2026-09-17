@@ -1,4 +1,4 @@
-// ui/src/components/character/Clones.jsx | Version: 1.2
+// ui/src/components/character/Clones.jsx | Version: 1.3
 import React, { useState, useEffect } from 'react';
 
 export default function Clones({ account }) {
@@ -45,7 +45,7 @@ export default function Clones({ account }) {
     <div className="space-y-6">
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-2">Home Station</h2>
-        <p className="text-gray-300">{homeTypeLabel} - {homeName}</p>
+        <p className="text-gray-300"><span className="clone-structure-name">{homeTypeLabel} - {homeName}</span></p>
         {clonesData.last_station_change_date && <p className="text-xs text-gray-500 mt-2">Last changed: {new Date(clonesData.last_station_change_date).toLocaleString()}</p>}
       </div>
 
@@ -60,7 +60,7 @@ export default function Clones({ account }) {
               return (
                 <details key={idx} className="group bg-gray-700 rounded-lg">
                   <summary className="cursor-pointer p-3 text-sm font-medium text-blue-400 hover:text-blue-300 list-none flex justify-between items-center">
-                    <span>{cloneTypeLabel} - {cloneName}</span>
+                    <span className="clone-structure-name">{cloneTypeLabel} - {cloneName}</span>
                     <span className="text-xs text-gray-400">{implants.length} Implants</span>
                   </summary>
                   <div className="px-3 pb-3 space-y-1">

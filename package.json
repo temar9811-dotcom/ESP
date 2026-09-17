@@ -46,7 +46,7 @@
       "eve.js",
       "eve/**/*",
       "main/**/*",
-      "dist/**/*",
+      "ui/dist/**/*",
       "test/**/*",
       "assets/**/*",
       "package.json"
