@@ -18,10 +18,10 @@ function JournalRow({ entry }) {
   return (
     <div className="border-b border-gray-700 pb-2">
       <div className="flex justify-between gap-2">
-        <span className="text-xs text-gray-200 truncate">{entry.description || entry.ref_type || 'Unknown entry'}</span>
+        <span className="text-xs text-gray-200 truncate wallet-main">{entry.description || entry.ref_type || 'Unknown entry'}</span>
         <span className={`text-xs font-mono shrink-0 ${positive ? 'text-green-400' : 'text-red-400'}`}>{positive ? '+' : ''}{formatISK(entry.amount)}</span>
       </div>
-      <div className="flex justify-between gap-2 text-[11px] text-gray-500">
+      <div className="flex justify-between gap-2 text-[11px] text-gray-500 wallet-sub">
         <span className="truncate">{entry.first_party_id ? `Party: ${entry.first_party_id}` : 'Unknown party'}</span>
         <span className="shrink-0">{formatDate(entry.date)}</span>
       </div>
@@ -34,10 +34,10 @@ function TransRow({ entry }) {
   return (
     <div className="border-b border-gray-700 pb-2">
       <div className="flex justify-between gap-2">
-        <span className="text-xs text-gray-200 truncate">{entry.type_name || `Type ID ${entry.type_id}`}</span>
+        <span className="text-xs text-gray-200 truncate wallet-main">{entry.type_name || `Type ID ${entry.type_id}`}</span>
         <span className="text-xs font-mono text-blue-400 shrink-0">{formatISK(total)}</span>
       </div>
-      <div className="flex justify-between gap-2 text-[11px] text-gray-500">
+      <div className="flex justify-between gap-2 text-[11px] text-gray-500 wallet-sub">
         <span className="truncate">Qty: {entry.quantity} @ {formatISK(entry.unit_price)}</span>
         <span className="shrink-0">{formatDate(entry.date)}</span>
       </div>

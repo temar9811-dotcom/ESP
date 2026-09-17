@@ -7,13 +7,25 @@ const { app } = require('electron');
 const fetcher = require('../esi/fetcher');
 const logger = require('../debug/logger');
 const accounts = require('../accounts');
+const staticDb = require('../esi/static-db');
 const CACHE_FILE = 'structure-names.json';
 let cache = {};
 let loaded = false;
 function load() {
 if (loaded) return;
 loaded = true;
-try { cache = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), CACHE_FILE), 'utf8')); } catch { cache = {}; }
+try {
+cache = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), CACHE_FILE), 'utf8'));
+let changed = false;
+for (const key of Object.keys(cache)) {
+const c = cache[key];
+if (c && typeof c === 'object' && typeof c.systemId === 'number' && c.system_id === undefined) {
+c.system_id = c.systemId;
+changed = true;
+}
+}
+if (changed) save();
+} catch { cache = {}; }
 }
 function save() {
 try { fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2)); } catch {}
@@ -34,7 +46,7 @@ const unknown = ids.filter(id => {
 const c = cache[id];
 if (!c) return true;
 if (c.failed && c.expiresAt > now) return false;
-if (c.name) return false;
+if (c.name && c.system_id) return false;
 return true;
 });
 logger.debug('STRUCTURES', 'After cache filter', { unknownCount: unknown.length, unknownIds: unknown.slice(0, 20) });
@@ -50,7 +62,15 @@ try {
 const url = `https://esi.evetech.net/latest/universe/structures/${id}/?datasource=tranquility`;
 logger.debug('STRUCTURES', 'Fetching structure', { id, url });
 const res = await fetcher.request(url, token);
-cache[id] = { name: res.data.name, system_id: res.data.solar_system_id };
+const systemId = res.data.solar_system_id;
+const sys = systemId ? staticDb.getSystemInfo(systemId) : null;
+cache[id] = {
+name: res.data.name,
+system_id: systemId,
+system_name: sys?.systemName || null,
+region_id: sys?.regionId || null,
+region_name: sys?.regionName || null
+};
 logger.info('STRUCTURES', `Resolved ${res.data.name}`, { id });
 } catch (err) {
 if (err.status === 403 || err.status === 404) {

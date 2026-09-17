@@ -1,6 +1,5 @@
 'use strict';
 const settings = require('./settings');
-const skillHistory = require('./skill-history');
 const eve = require('../eve');
 
 function applyDashboard(account, dashboard) {
@@ -30,10 +29,6 @@ function checkSkillCompletion(account, dashboard, api) {
       const lastKey = `${lastSkill.skill_id}-${lastSkill.finished_level}-${lastSkill.finish_date}`;
       const currentKey = currentActive ? `${currentActive.skill_id}-${currentActive.finished_level}-${currentActive.finish_date}` : 'none';
       if (lastKey !== currentKey) {
-        skillHistory.recordCompletion(account.characterId, {
-          skillId: lastSkill.skill_id, skillName: lastSkill.skillName || 'Unknown skill',
-          level: lastSkill.finished_level || 0, finishedAt: lastSkill.finish_date
-        });
         api.emitSkillCompleted({
           characterId: account.characterId, characterName: account.characterName || 'Unknown',
           skillName: lastSkill.skillName || 'Unknown skill', level: lastSkill.finished_level || '?'
@@ -63,8 +58,7 @@ function checkQueueWarning(account, dashboard, api) {
 async function refreshCharacter(account, api) {
   try {
     let token = await api.getValidAccessToken(account, false);
-    const skillsSync = require('./skills-sync');
-    const cachedSkills = skillsSync.getSkills(account.characterId);
+    const cachedSkills = require('./pullers/skills-data').getCache()[account.characterId] || null;
     let dashboard;
     try { dashboard = await eve.getDashboard(account.characterId, token, cachedSkills); }
     catch (err) {
@@ -76,8 +70,6 @@ async function refreshCharacter(account, api) {
     applyDashboard(account, dashboard);
     checkSkillCompletion(account, dashboard, api);
     checkQueueWarning(account, dashboard, api);
-    skillHistory.seedFromQueue(account.characterId, dashboard.queue);
-    account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
   } catch (err) {
     account.lastError = err?.message || String(err);
     console.error('[ESI]', account.characterName || account.characterId, err?.status ?? '', err?.message || String(err));

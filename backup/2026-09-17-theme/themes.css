@@ -1,0 +1,144 @@
+/* ui/src/themes.css | Ported from MIL */
+
+/* Kick MRCHI - navy + metallic gold */
+body[data-theme="kick-mrchi"] { background: #0b1526; color: #e2e8f0; }
+body[data-theme="kick-mrchi"] .bg-gray-900 { background-color: #0b1526 !important; }
+body[data-theme="kick-mrchi"] .bg-gray-800 { background-color: #111c33 !important; }
+body[data-theme="kick-mrchi"] .bg-gray-700 { background-color: #16233f !important; }
+body[data-theme="kick-mrchi"] .bg-gray-600 { background-color: #1b2b4d !important; }
+body[data-theme="kick-mrchi"] .border-gray-700 { border-color: #334155 !important; }
+body[data-theme="kick-mrchi"] .border-gray-600 { border-color: #3b4c6b !important; }
+body[data-theme="kick-mrchi"] .text-gray-100 { color: #f1f5f9 !important; }
+body[data-theme="kick-mrchi"] .text-gray-200 { color: #e2e8f0 !important; }
+body[data-theme="kick-mrchi"] .text-gray-300 { color: #cbd5e1 !important; }
+body[data-theme="kick-mrchi"] .text-gray-400 { color: #94a3b8 !important; }
+body[data-theme="kick-mrchi"] .text-gray-500 { color: #64748b !important; }
+body[data-theme="kick-mrchi"] .bg-blue-600 { background-color: #e94560 !important; }
+body[data-theme="kick-mrchi"] .border-blue-500 { border-color: #e94560 !important; }
+body[data-theme="kick-mrchi"] .text-blue-400 { color: #ff7a8a !important; }
+body[data-theme="kick-mrchi"] .hover\:bg-blue-500:hover { background-color: #ff5c78 !important; }
+body[data-theme="kick-mrchi"] .hover\:text-blue-300:hover { color: #ff9fab !important; }
+body[data-theme="kick-mrchi"] .bg-green-600 { background-color: #e94560 !important; }
+body[data-theme="kick-mrchi"] .hover\:bg-green-500:hover { background-color: #ff5c78 !important; }
+body[data-theme="kick-mrchi"] input, body[data-theme="kick-mrchi"] select { background: #16233f !important; color: #e2e8f0 !important; border-color: #334155 !important; }
+body[data-theme="kick-mrchi"] button { background: linear-gradient(to bottom, #FDF5C9 0%, #D4AF37 45%, #996515 100%) !important; color: #1a1100 !important; border: 1px solid #8A5A19 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.3) !important; font-weight: 600 !important; }
+body[data-theme="kick-mrchi"] button:hover { background: linear-gradient(to bottom, #FFF8D6 0%, #E5C150 45%, #AA771C 100%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.4) !important; }
+body[data-theme="kick-mrchi"] button:active { background: linear-gradient(to bottom, #996515 0%, #D4AF37 55%, #FDF5C9 100%) !important; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3) !important; }
+body[data-theme="kick-mrchi"] button:disabled { opacity: 0.6 !important; cursor: not-allowed !important; }
+
+/* 1. Tab bar: selected=dark red, unselected=black */
+body[data-theme="kick-mrchi"] .text-sm.font-medium.capitalize.transition-colors:not(.text-blue-400) { color: #000000 !important; }
+body[data-theme="kick-mrchi"] .text-blue-400.bg-gray-700 { color: #8b0000 !important; border-color: #8b0000 !important; }
+
+/* 2. Debug tab buttons: black text */
+body[data-theme="kick-mrchi"] .debug button { color: #000000 !important; }
+
+/* 3. Tab headers (Active Skill, Wallet Balance, etc.): dark gritty gold */
+body[data-theme="kick-mrchi"] .text-lg.font-semibold { color: #996515 !important; }
+body[data-theme="kick-mrchi"] .text-xl.font-bold { color: #996515 !important; }
+
+/* 4. Selected char card: dark red metallic, fade to center */
+body[data-theme="kick-mrchi"] .bg-blue-600.border-blue-500 {
+  background: radial-gradient(ellipse at center, #c62828 0%, #8b0000 60%, #4a0000 100%) !important;
+  border-color: #6b0000 !important;
+}
+
+/* 5. Sidebar character text: cyan/teal */
+body[data-theme="kick-mrchi"] aside .text-white { color: #67e8f9 !important; }
+body[data-theme="kick-mrchi"] aside .text-gray-400 { color: #5eead4 !important; }
+body[data-theme="kick-mrchi"] aside .text-gray-300 { color: #22d3ee !important; }
+
+/* 6. Trained skills tree: branch teal, leaf cyan */
+body[data-theme="kick-mrchi"] .trained-skills-branch { color: #5eead4 !important; }
+body[data-theme="kick-mrchi"] .trained-skills-branch:hover { color: #67e8f9 !important; }
+body[data-theme="kick-mrchi"] .trained-skills-leaf { color: #67e8f9 !important; }
+
+/* 7. Total Skill Points number: green (matches wallet ISK) */
+body[data-theme="kick-mrchi"] .text-2xl.font-mono.text-blue-400 { color: #4ade80 !important; }
+
+/* 8. Wallet journal + transactions: main text cyan, sub text teal */
+body[data-theme="kick-mrchi"] .wallet-main { color: #67e8f9 !important; }
+body[data-theme="kick-mrchi"] .wallet-sub { color: #5eead4 !important; }
+
+/* 9. Assets tree: alternating region hues + fade with depth */
+body[data-theme="kick-mrchi"] .assets-region, body[data-theme="kick-mrchi"] .assets-system,
+body[data-theme="kick-mrchi"] .assets-station, body[data-theme="kick-mrchi"] .assets-group,
+body[data-theme="kick-mrchi"] .assets-leaf { color: var(--k-color) !important; }
+body[data-theme="kick-mrchi"] .assets-region:hover, body[data-theme="kick-mrchi"] .assets-system:hover,
+body[data-theme="kick-mrchi"] .assets-station:hover, body[data-theme="kick-mrchi"] .assets-group:hover { color: var(--k-hue) !important; }
+
+/* 10. Clones: jump clone structure names teal */
+body[data-theme="kick-mrchi"] .clone-structure-name { color: #5eead4 !important; }
+
+/* 11. Sidebar: ocean waves (feTurbulence) */
+@keyframes ocean-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 256px 0; }
+}
+body[data-theme="kick-mrchi"] aside {
+  background-color: #111c33 !important;
+  background-image:
+    url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='256'%20height='256'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.02%200.07'%20numOctaves='1'%20seed='7'%20stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncR%20type='table'%20tableValues='0.02%200.04%200.05%200.03'/%3E%3CfeFuncG%20type='table'%20tableValues='0.03%200.06%200.08%200.04'/%3E%3CfeFuncB%20type='table'%20tableValues='0.05%200.09%200.13%200.07'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='256'%20height='256'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px !important;
+  animation: ocean-drift 18s linear infinite !important;
+  box-shadow:
+    inset -2px 0 12px rgba(10,18,32,0.6),
+    4px 0 18px rgba(0,0,0,0.5) !important;
+}
+
+/* Standout - high contrast black/white/red */
+body[data-theme="standout"] { background: #000000; color: #ffffff; }
+body[data-theme="standout"] .bg-gray-900 { background-color: #000000 !important; }
+body[data-theme="standout"] .bg-gray-800 { background-color: #0a0a0a !important; }
+body[data-theme="standout"] .bg-gray-700 { background-color: #1a1a1a !important; }
+body[data-theme="standout"] .bg-gray-600 { background-color: #222222 !important; }
+body[data-theme="standout"] .border-gray-700, body[data-theme="standout"] .border-gray-600 { border-color: #ffffff !important; }
+body[data-theme="standout"] .text-gray-100, body[data-theme="standout"] .text-gray-200, body[data-theme="standout"] .text-gray-300 { color: #ffffff !important; }
+body[data-theme="standout"] .text-gray-400 { color: #dddddd !important; }
+body[data-theme="standout"] .bg-blue-600 { background-color: #ff0000 !important; }
+body[data-theme="standout"] .border-blue-500 { border-color: #ffff00 !important; }
+body[data-theme="standout"] .text-blue-400 { color: #ffff00 !important; }
+body[data-theme="standout"] .hover\:bg-blue-500:hover { background-color: #cc0000 !important; }
+body[data-theme="standout"] .bg-green-600 { background-color: #006400 !important; color: #ffffff !important; }
+body[data-theme="standout"] input, body[data-theme="standout"] select { background: #1a1a1a !important; color: #ffffff !important; border: 1px solid #ffffff !important; }
+body[data-theme="standout"] button { background: #1a1a1a !important; color: #ffffff !important; border: 2px solid #ffffff !important; }
+body[data-theme="standout"] .text-yellow-400 { color: #ffff00 !important; }
+
+/* Lonely Night - near black minimal */
+body[data-theme="lonely-night"] { background: #050505; color: #888888; }
+body[data-theme="lonely-night"] .bg-gray-900 { background-color: #050505 !important; }
+body[data-theme="lonely-night"] .bg-gray-800 { background-color: #0a0a0a !important; }
+body[data-theme="lonely-night"] .bg-gray-700 { background-color: #111111 !important; }
+body[data-theme="lonely-night"] .bg-gray-600 { background-color: #1a1a1a !important; }
+body[data-theme="lonely-night"] .border-gray-700, body[data-theme="lonely-night"] .border-gray-600 { border-color: #222222 !important; }
+body[data-theme="lonely-night"] .text-gray-100 { color: #aaaaaa !important; }
+body[data-theme="lonely-night"] .text-gray-200 { color: #999999 !important; }
+body[data-theme="lonely-night"] .text-gray-300 { color: #888888 !important; }
+body[data-theme="lonely-night"] .text-gray-400 { color: #666666 !important; }
+body[data-theme="lonely-night"] .bg-blue-600 { background-color: #333333 !important; }
+body[data-theme="lonely-night"] .border-blue-500 { border-color: #555555 !important; }
+body[data-theme="lonely-night"] .text-blue-400 { color: #cccccc !important; }
+body[data-theme="lonely-night"] .hover\:bg-blue-500:hover { background-color: #444444 !important; }
+body[data-theme="lonely-night"] .bg-green-600 { background-color: #222222 !important; }
+body[data-theme="lonely-night"] input, body[data-theme="lonely-night"] select { background: #0a0a0a !important; color: #888888 !important; border-color: #222222 !important; }
+body[data-theme="lonely-night"] button { background: #0a0a0a !important; color: #888888 !important; border: 1px solid #222222 !important; }
+body[data-theme="lonely-night"] .text-yellow-400 { color: #888888 !important; }
+
+/* Shine Bright - light mode */
+body[data-theme="shine-bright"] { background: #F8F9FA; color: #212529; }
+body[data-theme="shine-bright"] .bg-gray-900 { background-color: #F8F9FA !important; }
+body[data-theme="shine-bright"] .bg-gray-800 { background-color: #FFFFFF !important; }
+body[data-theme="shine-bright"] .bg-gray-700 { background-color: #E9ECEF !important; }
+body[data-theme="shine-bright"] .bg-gray-600 { background-color: #DEE2E6 !important; }
+body[data-theme="shine-bright"] .border-gray-700, body[data-theme="shine-bright"] .border-gray-600 { border-color: #CED4DA !important; }
+body[data-theme="shine-bright"] .text-gray-100, body[data-theme="shine-bright"] .text-gray-200, body[data-theme="shine-bright"] .text-gray-300 { color: #212529 !important; }
+body[data-theme="shine-bright"] .text-gray-400 { color: #495057 !important; }
+body[data-theme="shine-bright"] .text-gray-500 { color: #6c757d !important; }
+body[data-theme="shine-bright"] .bg-blue-600 { background-color: #0D6EFD !important; }
+body[data-theme="shine-bright"] .border-blue-500 { border-color: #0A58CA !important; }
+body[data-theme="shine-bright"] .text-blue-400 { color: #0A58CA !important; }
+body[data-theme="shine-bright"] .hover\:bg-blue-500:hover { background-color: #0A58CA !important; }
+body[data-theme="shine-bright"] .bg-green-600 { background-color: #198754 !important; color: #ffffff !important; }
+body[data-theme="shine-bright"] input, body[data-theme="shine-bright"] select { background: #FFFFFF !important; color: #212529 !important; border: 1px solid #CED4DA !important; }
+body[data-theme="shine-bright"] button { background: #0D6EFD !important; color: #FFFFFF !important; border: 1px solid #0A58CA !important; }
+body[data-theme="shine-bright"] .text-yellow-400 { color: #FFC107 !important; }

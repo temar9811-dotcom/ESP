@@ -4,10 +4,9 @@ const storage = require('../storage');
 const eve = require('../eve');
 const sso = require('../eve/sso');
 const settings = require('./settings');
-const skillHistory = require('./skill-history');
 const notesStore = require('./notes');
 const eveConfig = require('../eve/config');
-const debugLogger = require('./debug-logger');
+const debugLogger = require('./debug/logger');
 
 let accounts = [];
 let loginInProgress = false;
@@ -42,7 +41,6 @@ function loadAccounts() {
   accounts = storage.loadAccounts();
   let backfilled = false;
   for (const account of accounts) {
-    account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
     account.notes = notesStore.getNote(account.characterId);
     if (account.scopes == null) {
       const scopes = scopesFromAccessToken(storage.decryptSecret(account.accessTokenEnc));
@@ -158,7 +156,6 @@ function checkSkillCompletion(account, dashboard) {
       const lastKey = `${lastSkill.skill_id}-${lastSkill.finished_level}-${lastSkill.finish_date}`;
       const currentKey = currentActive ? `${currentActive.skill_id}-${currentActive.finished_level}-${currentActive.finish_date}` : 'none';
       if (lastKey !== currentKey) {
-        skillHistory.recordCompletion(account.characterId, { skillId: lastSkill.skill_id, skillName: lastSkill.skillName || 'Unknown skill', level: lastSkill.finished_level || 0, finishedAt: lastSkill.finish_date });
         callbacks.onSkillCompleted({ characterId: account.characterId, characterName: account.characterName || 'Unknown', skillName: lastSkill.skillName || 'Unknown skill', level: lastSkill.finished_level || '?' });
         if (!currentActive) callbacks.onQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
       }
@@ -186,8 +183,7 @@ async function refreshCharacter(account) {
   debugLogger.info('ACCOUNTS', `Refreshing character: ${account.characterName || account.characterId}`);
   try {
     let token = await getValidAccessToken(account, false);
-    const skillsSync = require('./skills-sync');
-    const cachedSkills = skillsSync.getSkills(account.characterId);
+    const cachedSkills = require('./pullers/skills-data').getCache()[account.characterId] || null;
     let dashboard;
     try { dashboard = await eve.getDashboard(account.characterId, token, cachedSkills); }
     catch (err) {
@@ -199,8 +195,6 @@ async function refreshCharacter(account) {
     applyDashboard(account, dashboard);
     checkSkillCompletion(account, dashboard);
     checkQueueWarning(account, dashboard);
-    skillHistory.seedFromQueue(account.characterId, dashboard.queue);
-    account.recentCompletions = skillHistory.getRecent(account.characterId, 7);
     debugLogger.info('ACCOUNTS', `Refresh complete for ${account.characterName}`);
   } catch (err) {
     account.lastError = err?.message || String(err);
@@ -245,7 +239,10 @@ async function addAccount(scopeChoice) {
   try {
     const login = await eve.startLogin(true, scopeChoice);
     let account = accounts.find((e) => Number(e.characterId) === Number(login.characterId));
-    if (!account) account = { characterId: Number(login.characterId), addedAt: new Date().toISOString(), testPilot: false };
+    if (!account) {
+      account = { characterId: Number(login.characterId), addedAt: new Date().toISOString(), testPilot: false };
+      accounts.push(account);
+    }
     account.characterName = login.characterName;
     account.refreshTokenEnc = storage.encryptSecret(login.refreshToken);
     account.accessTokenEnc = storage.encryptSecret(login.accessToken);

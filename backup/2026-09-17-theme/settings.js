@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS = {
   failTTL: 300,
   walletNotifyThreshold: 0,
   clockLarge: false,
-  theme: 'kick-mrchi'
+  theme: ''
 };
 function getSettingsFile() {
   return path.join(app.getPath('userData'), 'config.json');

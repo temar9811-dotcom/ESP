@@ -3,7 +3,7 @@
 const config = require('./config');
 const { esiFetch, publicFetch, publicPost } = require('./http');
 const { fetchWalletJournal, fetchWalletTransactions } = require('./wallet-fetch');
-const logger = require('../main/debug-logger');
+const logger = require('../main/debug/logger');
 const log = (msg, data) => logger.debug('WALLET', msg, data);
 const isRateLimit = (err) => Boolean(err && (err.status === 420 || err.status === 429 || err.statusCode === 420 || err.statusCode === 429));
 

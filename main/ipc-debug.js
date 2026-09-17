@@ -21,7 +21,7 @@ function registerDebugIpc() {
   ipcMain.handle('debug:clearLogs', () => { logger.clearLogs(); return true; });
   ipcMain.handle('debug:getActions', () => debugEngine.getActions());
   ipcMain.handle('debug:runAction', async (_e, name, payload) => debugEngine.runAction(name, payload));
-  
+
   // Handle UI debug logs (filtered by logger V2)
   ipcMain.handle('debug:log', (_e, payload) => {
     logger.info(payload.source || 'UI', payload.message, payload.data);

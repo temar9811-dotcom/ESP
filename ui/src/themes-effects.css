@@ -1,0 +1,165 @@
+/* ui/src/themes-effects.css | Per-theme ocean/ripple effects built on the kick-mrchi template.
+   The kick-mrchi rules in themes.css are left untouched; these rules ride the same .ocean-waves
+   markup so the other themes get the see-through template too. The "Default (Original)" theme
+   (no data-theme attribute) intentionally stays plain and opaque. */
+
+/* Structural base (values mirror themes.css rule 11; kick-mrchi's own rules still win) */
+.wave {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 200%;
+  background-repeat: repeat-x;
+  background-size: 50% 100%;
+  will-change: transform;
+}
+.wave-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: transparent;
+}
+.sidebar-content { position: relative; z-index: 1; }
+
+/* ===== Standout - subtle ripples on a still black lake (high contrast) ===== */
+@keyframes ripple-ring {
+  0%   { transform: scale(0.2); opacity: 0; }
+  8%   { opacity: 0.4; }
+  100% { transform: scale(16); opacity: 0; }
+}
+body[data-theme="standout"] .wave {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+body[data-theme="standout"] .wave-1 {
+  left: 8%; top: 22%;
+  background: radial-gradient(circle, transparent 60%, rgba(255,255,255,0.42) 68%, transparent 76%);
+  animation: ripple-ring 6s ease-out infinite;
+}
+body[data-theme="standout"] .wave-2 {
+  left: 62%; top: 58%;
+  background: radial-gradient(circle, transparent 60%, rgba(255,255,255,0.30) 68%, transparent 76%);
+  animation: ripple-ring 8s ease-out infinite 1s;
+}
+body[data-theme="standout"] .wave-3 {
+  left: 24%; top: 72%;
+  background: radial-gradient(circle, transparent 62%, rgba(255,0,0,0.35) 70%, transparent 78%);
+  animation: ripple-ring 10s ease-out infinite 2s;
+}
+body[data-theme="standout"] .wave-4 {
+  left: 70%; top: 18%;
+  background: radial-gradient(circle, transparent 56%, rgba(255,255,255,0.22) 64%, transparent 72%);
+  animation: ripple-ring 12s ease-out infinite 3s;
+}
+body[data-theme="standout"] .wave-shade {
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.30) 100%);
+}
+body[data-theme="standout"] header.bg-gray-800 { background-color: rgba(0,0,0,0.35) !important; }
+body[data-theme="standout"] aside.bg-gray-800 { background-color: rgba(0,0,0,0.35) !important; }
+body[data-theme="standout"] .tab-bar { background-color: rgba(0,0,0,0.30) !important; }
+body[data-theme="standout"] .bottom-bar { background-color: rgba(0,0,0,0.35) !important; }
+body[data-theme="standout"] .tab-shell { background-color: transparent !important; }
+body[data-theme="standout"] .tab-shell .bg-gray-800 { background-color: rgba(0,0,0,0.45) !important; }
+body[data-theme="standout"] .tab-shell .bg-gray-900 { background-color: rgba(0,0,0,0.45) !important; }
+body[data-theme="standout"] aside .bg-gray-700 { background-color: transparent !important; }
+body[data-theme="standout"] aside .border-gray-600 { border-color: rgba(255,255,255,0.30) !important; }
+body[data-theme="standout"] aside .hover\:bg-gray-600:hover { background-color: rgba(255,255,255,0.08) !important; }
+body[data-theme="standout"] .bg-blue-600.border-blue-500 {
+  background: radial-gradient(ellipse at center, #ff3030 0%, #c00000 60%, #700000 100%) !important;
+  border-color: #ffff00 !important;
+}
+
+/* ===== Lonely Night - sullen, slow-drifting ash in the dark ===== */
+@keyframes lonely-fall-a { from { background-position: 0 0; } to { background-position: 0 -200px; } }
+@keyframes lonely-fall-b { from { background-position: 0 0; } to { background-position: 0 -150px; } }
+body[data-theme="lonely-night"] .wave-1 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='200'%3E%3Ccircle%20cx='28'%20cy='36'%20r='3'%20fill='%232b2b2b'%20fill-opacity='0.55'/%3E%3Ccircle%20cx='105'%20cy='70'%20r='2.5'%20fill='%23333333'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='52'%20cy='120'%20r='4'%20fill='%23262626'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='118'%20cy='150'%20r='2.5'%20fill='%23303030'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='24'%20cy='176'%20r='2'%20fill='%232b2b2b'%20fill-opacity='0.6'/%3E%3C/svg%3E");
+  background-size: 140px 200px;
+  background-repeat: repeat;
+  animation: lonely-fall-a 60s linear infinite;
+}
+body[data-theme="lonely-night"] .wave-2 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='150'%3E%3Ccircle%20cx='70'%20cy='30'%20r='3'%20fill='%23242424'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='25'%20cy='65'%20r='2'%20fill='%232e2e2e'%20fill-opacity='0.55'/%3E%3Ccircle%20cx='80'%20cy='110'%20r='2.5'%20fill='%23262626'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='40'%20cy='135'%20r='2'%20fill='%23333333'%20fill-opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 100px 150px;
+  background-repeat: repeat;
+  animation: lonely-fall-b 90s linear infinite 25s;
+}
+body[data-theme="lonely-night"] .wave-3 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='200'%3E%3Ccircle%20cx='28'%20cy='36'%20r='3'%20fill='%232b2b2b'%20fill-opacity='0.55'/%3E%3Ccircle%20cx='105'%20cy='70'%20r='2.5'%20fill='%23333333'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='52'%20cy='120'%20r='4'%20fill='%23262626'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='118'%20cy='150'%20r='2.5'%20fill='%23303030'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='24'%20cy='176'%20r='2'%20fill='%232b2b2b'%20fill-opacity='0.6'/%3E%3C/svg%3E");
+  background-size: 140px 200px;
+  background-repeat: repeat;
+  animation: lonely-fall-a 120s linear infinite 60s;
+}
+body[data-theme="lonely-night"] .wave-4 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='150'%3E%3Ccircle%20cx='70'%20cy='30'%20r='3'%20fill='%23242424'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='25'%20cy='65'%20r='2'%20fill='%232e2e2e'%20fill-opacity='0.55'/%3E%3Ccircle%20cx='80'%20cy='110'%20r='2.5'%20fill='%23262626'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='40'%20cy='135'%20r='2'%20fill='%23333333'%20fill-opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 100px 150px;
+  background-repeat: repeat;
+  animation: lonely-fall-b 160s linear infinite 100s;
+}
+body[data-theme="lonely-night"] .wave-shade {
+  background: linear-gradient(180deg, rgba(5,5,5,0.25) 0%, rgba(5,5,5,0.45) 55%, rgba(3,3,3,0.65) 100%);
+}
+body[data-theme="lonely-night"] header.bg-gray-800 { background-color: rgba(5,5,5,0.40) !important; }
+body[data-theme="lonely-night"] aside.bg-gray-800 { background-color: rgba(5,5,5,0.40) !important; }
+body[data-theme="lonely-night"] .tab-bar { background-color: rgba(5,5,5,0.35) !important; }
+body[data-theme="lonely-night"] .bottom-bar { background-color: rgba(5,5,5,0.40) !important; }
+body[data-theme="lonely-night"] .tab-shell { background-color: transparent !important; }
+body[data-theme="lonely-night"] .tab-shell .bg-gray-800 { background-color: rgba(10,10,10,0.50) !important; }
+body[data-theme="lonely-night"] .tab-shell .bg-gray-900 { background-color: rgba(10,10,10,0.50) !important; }
+body[data-theme="lonely-night"] aside .bg-gray-700 { background-color: transparent !important; }
+body[data-theme="lonely-night"] aside .border-gray-600 { border-color: rgba(136,136,136,0.22) !important; }
+body[data-theme="lonely-night"] aside .hover\:bg-gray-600:hover { background-color: rgba(136,136,136,0.06) !important; }
+body[data-theme="lonely-night"] .bg-blue-600.border-blue-500 {
+  background: radial-gradient(ellipse at center, #4a4a4a 0%, #333333 60%, #1a1a1a 100%) !important;
+  border-color: #555555 !important;
+}
+
+/* ===== Shine Bright - bright, lively, rising bubbles ===== */
+@keyframes shine-rise-a { from { background-position: 0 0; } to { background-position: 0 160px; } }
+@keyframes shine-rise-b { from { background-position: 0 0; } to { background-position: 0 240px; } }
+body[data-theme="shine-bright"] .wave-1 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='160'%3E%3Ccircle%20cx='30'%20cy='28'%20r='5'%20fill='%2387CEEB'%20fill-opacity='0.75'/%3E%3Ccircle%20cx='95'%20cy='60'%20r='3.5'%20fill='%23F7A8C4'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='14'%20cy='92'%20r='4'%20fill='%237FD8BE'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='88'%20cy='120'%20r='6'%20fill='%23FFE08A'%20fill-opacity='0.75'/%3E%3Ccircle%20cx='52'%20cy='138'%20r='3'%20fill='%23FFB38A'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='108'%20cy='150'%20r='2.5'%20fill='%23B39DDB'%20fill-opacity='0.7'/%3E%3C/svg%3E");
+  background-size: 120px 160px;
+  background-repeat: repeat;
+  animation: shine-rise-a 9s linear infinite;
+}
+body[data-theme="shine-bright"] .wave-2 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='240'%3E%3Ccircle%20cx='40'%20cy='50'%20r='7'%20fill='%23B39DDB'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='130'%20cy='110'%20r='5'%20fill='%2387CEEB'%20fill-opacity='0.75'/%3E%3Ccircle%20cx='70'%20cy='180'%20r='8'%20fill='%23F7A8C4'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='125'%20cy='215'%20r='4'%20fill='%237FD8BE'%20fill-opacity='0.7'/%3E%3C/svg%3E");
+  background-size: 160px 240px;
+  background-repeat: repeat;
+  animation: shine-rise-b 12s linear infinite 3s;
+}
+body[data-theme="shine-bright"] .wave-3 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='160'%3E%3Ccircle%20cx='30'%20cy='28'%20r='5'%20fill='%2387CEEB'%20fill-opacity='0.75'/%3E%3Ccircle%20cx='95'%20cy='60'%20r='3.5'%20fill='%23F7A8C4'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='14'%20cy='92'%20r='4'%20fill='%237FD8BE'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='88'%20cy='120'%20r='6'%20fill='%23FFE08A'%20fill-opacity='0.75'/%3E%3Ccircle%20cx='52'%20cy='138'%20r='3'%20fill='%23FFB38A'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='108'%20cy='150'%20r='2.5'%20fill='%23B39DDB'%20fill-opacity='0.7'/%3E%3C/svg%3E");
+  background-size: 120px 160px;
+  background-repeat: repeat;
+  animation: shine-rise-a 15s linear infinite 7s;
+}
+body[data-theme="shine-bright"] .wave-4 {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='240'%3E%3Ccircle%20cx='40'%20cy='50'%20r='7'%20fill='%23B39DDB'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='130'%20cy='110'%20r='5'%20fill='%2387CEEB'%20fill-opacity='0.75'/%3E%3Ccircle%20cx='70'%20cy='180'%20r='8'%20fill='%23F7A8C4'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='125'%20cy='215'%20r='4'%20fill='%237FD8BE'%20fill-opacity='0.7'/%3E%3C/svg%3E");
+  background-size: 160px 240px;
+  background-repeat: repeat;
+  animation: shine-rise-b 20s linear infinite 11s;
+}
+body[data-theme="shine-bright"] .wave-shade {
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.40) 55%, rgba(255,255,255,0.65) 100%);
+}
+body[data-theme="shine-bright"] header.bg-gray-800 { background-color: rgba(255,255,255,0.60) !important; }
+body[data-theme="shine-bright"] aside.bg-gray-800 { background-color: rgba(255,255,255,0.55) !important; }
+body[data-theme="shine-bright"] .tab-bar { background-color: rgba(255,255,255,0.55) !important; }
+body[data-theme="shine-bright"] .bottom-bar { background-color: rgba(255,255,255,0.60) !important; }
+body[data-theme="shine-bright"] .tab-shell { background-color: transparent !important; }
+body[data-theme="shine-bright"] .tab-shell .bg-gray-800 { background-color: rgba(255,255,255,0.75) !important; }
+body[data-theme="shine-bright"] .tab-shell .bg-gray-900 { background-color: rgba(255,255,255,0.70) !important; }
+body[data-theme="shine-bright"] aside .bg-gray-700 { background-color: transparent !important; }
+body[data-theme="shine-bright"] aside .border-gray-600 { border-color: rgba(33,37,41,0.22) !important; }
+body[data-theme="shine-bright"] aside .hover\:bg-gray-600:hover { background-color: rgba(33,37,41,0.05) !important; }
+body[data-theme="shine-bright"] .bg-blue-600.border-blue-500 {
+  background: radial-gradient(ellipse at center, #3d8bfd 0%, #0D6EFD 55%, #0A58CA 100%) !important;
+  border-color: #0A58CA !important;
+}

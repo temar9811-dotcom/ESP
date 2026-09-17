@@ -8,18 +8,15 @@ const eveConfig = require('./eve/config');
 const eve = require('./eve');
 const windowTray = require('./main/window-tray');
 const accounts = require('./main/accounts');
-const walletMonitor = require('./main/wallet-monitor');
 const ipc = require('./main/ipc');
-const legacyGuard = require('./main/legacy-guard');
 const toastWindow = require('./main/toast-window');
 const notifications = require('./main/notifications');
 const settingsMod = require('./main/settings');
 const logger = require('./main/debug/logger');
 const debugEngine = require('./main/debug/engine');
 const scheduler = require('./main/scheduler');
+const esiStatus = require('./main/esi/status');
 const updater = require('./main/updater'); // FIXED: Path corrected to ./main/updater
-
-let testHarness = null;
 
 function sendToRenderer(channel, payload) {
   const win = windowTray.getWindow();
@@ -44,15 +41,6 @@ function onQueueWarning(payload) {
 function onQueueEmpty(payload) { sendToRenderer('notification:queue-empty', payload || {}); }
 function onRefreshState(state) { sendToRenderer('refresh-state', state); }
 
-function onWalletActivity(payload) {
-  notifications.notifyWalletActivity(payload);
-  sendToRenderer('notification:wallet-activity', payload || {});
-}
-
-function onAccountRemoved(characterId) {
-  walletMonitor.removeBaseline(characterId);
-}
-
 async function bootstrap() {
   app.setAppUserModelId(eveConfig.APP_USER_MODEL_ID);
   const currentSettings = settingsMod.getSettings();
@@ -66,20 +54,10 @@ async function bootstrap() {
 
   accounts.init({
     onBroadcast: onAccountsBroadcast,
-    onSkillCompleted, onQueueWarning, onQueueEmpty, onRefreshState, onAccountRemoved
+    onSkillCompleted, onQueueWarning, onQueueEmpty, onRefreshState
   });
 
-  walletMonitor.init({ onWalletActivity });
   windowTray.setActions({ refreshAll: accounts.refreshAll, addAccount: accounts.addAccount });
-
-  try {
-    testHarness = require('./test/test-main.js');
-    testHarness.init({ getWindow: windowTray.getWindow, getAccounts: accounts.getAccounts, refreshAll: accounts.refreshAll, showWindow: windowTray.showWindow });
-    ipc.setTestHarness(testHarness);
-  } catch (err) {
-    logger.error('MAIN', 'Test harness failed to load', { error: err.message });
-    testHarness = null;
-  }
 
   ipc.registerIpcHandlers();
   windowTray.createWindow();
@@ -100,11 +78,7 @@ async function bootstrap() {
 
   // Start the new V2 scheduler for ESI pullers
   scheduler.start();
-
-  // Legacy syncs commented out while we rewrite the backend
-  // skillsSync.start(); walletSync.start(); assetsSync.start(); assetsNames.start();
-  // setInterval(() => { accounts.refreshAll().catch(console.error); }, eveConfig.REFRESH.intervalMs);
-  walletMonitor.start(eveConfig.WALLET_MONITOR.intervalMs);
+  esiStatus.start();
 
   logger.info('MAIN', 'Bootstrap complete');
 }
@@ -115,7 +89,6 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', () => { windowTray.showWindow(); });
   app.whenReady().then(() => {
-    if (!legacyGuard.ensureLegacyAppClosed()) { app.quit(); return; }
     bootstrap().catch(console.error);
   });
 }
@@ -123,6 +96,6 @@ if (!gotTheLock) {
 app.on('before-quit', () => {
   windowTray.setQuitting(true);
   scheduler.stop();
-  walletMonitor.stop();
+  esiStatus.stop();
 });
 app.on('window-all-closed', () => { /* Keep running in tray. */ });
