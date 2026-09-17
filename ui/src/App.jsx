@@ -26,8 +26,8 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [isDev, setIsDev] = useState(false);
 
-  useEffect(() => { 
-    setIsDev(!window.require?.('electron')?.app?.isPackaged); 
+  useEffect(() => {
+    setIsDev(!window.require?.('electron')?.app?.isPackaged);
   }, []);
 
   useEffect(() => {
@@ -87,16 +87,16 @@ export default function App() {
         <SyncIndicator />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar selectedAccount={selectedAccount} onSelect={setSelectedAccount} />
-          <main className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex border-b border-gray-700 bg-gray-800 shrink-0 tab-bar">
+          <main className="flex-1 flex flex-row md:flex-col overflow-hidden">
+            <div className="flex flex-col md:flex-row border-r md:border-r-0 md:border-b border-gray-700 bg-gray-800 shrink-0 tab-bar w-auto">
               {tabs.map((tab) => (
                 <button 
                   key={tab} 
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
+                  className={`w-auto text-left px-4 py-3 md:py-2 text-sm font-medium capitalize transition-colors border-b border-gray-700 md:border-b-0 md:border-l-2 border-transparent ${
                     activeTab === tab 
-                      ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700' 
-                      : 'text-gray-400 hover:text-gray-200'
+                      ? 'text-blue-400 border-blue-400 bg-gray-700 md:border-l-2' 
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
                   }`}
                 >
                   {tab}
@@ -110,7 +110,6 @@ export default function App() {
         </div>
         <BottomBar />
       </div>
-
       {/* Global UI Elements */}
       <ToastContainer toasts={toasts} />
       <UpdateDialog />
