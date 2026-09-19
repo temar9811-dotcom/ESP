@@ -107,9 +107,16 @@ Windows builds remain available through `npm run dist:win` (or the existing
 Before Apple signing credentials are available, push a tag such as
 `unsigned-v1.2.3` to publish an unsigned macOS DMG and ZIP as a GitHub
 **pre-release**. The unsigned tester workflow needs no secrets. These builds
-are strictly for trusted testers: macOS will show a Gatekeeper warning, and a
-tester may need to Control-click the app in Finder and choose **Open**. Do not
-present an unsigned build as a public production release.
+are strictly for trusted testers.
+
+**XProtect fix:** The `electron-updater` module (which downloads and executes
+remote update binaries) triggers macOS XProtect malware detection in unsigned
+builds. The `main/updater.js` module now auto-detects unsigned builds via a
+`codesign` check on macOS and skips all auto-update functionality — no update
+checks, no download IPC handlers. The changelog still displays normally.
+
+If an unsigned build was previously flagged as malware by XProtect, **delete
+the pre-release and its assets** in GitHub before publishing a rebuilt one.
 
 ### GitHub Actions signing and notarization
 
