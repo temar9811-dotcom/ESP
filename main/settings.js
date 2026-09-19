@@ -18,7 +18,8 @@ const DEFAULT_SETTINGS = {
   walletNotifyThreshold: 0,
   clockLarge: false,
   theme: 'kick-mrchi',
-  biggerText: false
+  biggerText: false,
+  lastSeenVersion: ''
 };
 function getSettingsFile() {
   return path.join(app.getPath('userData'), 'config.json');

@@ -1,6 +1,8 @@
 // main/updater.js
-// VERSION: 1.0
+// VERSION: 1.1
 'use strict';
+const fs = require('fs');
+const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { ipcMain, app } = require('electron');
 const logger = require('./debug/logger');
@@ -31,13 +33,29 @@ function initUpdater(win) {
   checkChangelog();
 }
 
+function readChangelog() {
+  const candidates = [
+    path.join(app.getAppPath(), 'CHANGELOG.md'),
+    path.join(__dirname, '..', 'CHANGELOG.md')
+  ];
+  for (const file of candidates) {
+    try {
+      const text = fs.readFileSync(file, 'utf8');
+      if (text && text.trim()) return text.trim();
+    } catch {
+      // Try the next path.
+    }
+  }
+  return null;
+}
+
 function checkChangelog() {
   const currentVersion = app.getVersion();
   const appSettings = settings.getSettings();
   if (appSettings.lastSeenVersion !== currentVersion) {
     mainWindow.webContents.send('updater:show-changelog', {
       version: currentVersion,
-      notes: pendingNotes || 'Welcome to the new version!'
+      notes: readChangelog() || pendingNotes || 'Welcome to the new version!'
     });
     settings.setSettings({ ...appSettings, lastSeenVersion: currentVersion });
   }

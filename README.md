@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.0- Hotfix)
+## Current Features (v1.2.6)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -39,13 +39,14 @@ Built with Electron and the EVE ESI API.
 - **Granular controls** — per-type toggles, mute sounds, minimum ISK threshold
 
 ### Skill Plans
-- **Clipboard import** of EVE client skill plans
-- **Friendly empty-clipboard message** with Try again when no plan is found
-- **Global or character-specific** plans
-- **SP cost and estimated training time per skill**, with plan totals
-- **Visual indicators** when a plan is already trained or in the queue
+- **In-app Create Plan builder** — browse the full EVE skill catalog in collapsible groups and add levels with one click, then save as a global or character-specific plan
+- **Current skill levels** — the builder shows how far the selected character has trained each skill
+- **Plan detail popup** — click any plan to review its skills and export it to the clipboard (same format as clipboard import)
+- **Clipboard import** — paste a plan copied from the EVE client; malformed lines are reported instead of silently dropped
+- **Character or global scope** per plan, with plans filtered per character
 
-### Settings & System
+### Updates & System
+- **What's-new popup** — the changelog shows once per version on the first launch after an update (tracks the last-seen version)
 - **Start with Windows** and **start minimized to tray**
 - **Hide primary character when a group is collapsed** (optional)
 - **Legacy import** from the old EVE Skill Tray app
@@ -70,21 +71,22 @@ Built with Electron and the EVE ESI API.
 - Two characters side-by-side on wide windows
 - Extra notification settings (bubble duration, max bubbles, refresh interval, position)
 
-### App Capabilities & Polish
-- Create skill plans in-app and export to the game
-- Auto-update feature
-- What's-new popup after updates
-
 ## Updates / Alpha Builds
 
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.0A**
+**Currently tracked version: v1.2.6**
 
 ### Changelog
+- **v1.2.6 (current)** — In-app skill planning: build plans straight from the full EVE skill catalog, showing each skill's current level for the selected character. Click any plan for a detail popup and export it back to the clipboard (same format as clipboard import). A What's-new popup now shows the changelog once per version, tracking the last-seen version so it only appears after an update.
+- **v1.2.5** — Character groups in the new sidebar (custom names, primary star, collapsible sections). Debug tab removed from release builds so it only appears under the dev server. Dotted, readable installer names for updates. Cross-platform native notifications with the Windows toast overlay as a fallback, and the toast assets restored in packaged builds. Skill Plans tab completed: per-character filtering, delete, and clipboard import with a naming and scope dialog.
+- **v1.2.4** — Responsive layout refinements so the interface stays clean and usable on smaller windows.
+- **v1.2.3** — Themes added: switch between color themes with an optional larger-text mode.
+- **v1.2.2** — New debug engine: scriptable diagnostic actions for easier testing and support.
+- **v1.2.1** — Assets section completed: full asset tree with structure names and location hierarchy.
+- **v1.2.0** — New UI backend for smoother, more responsive interaction, plus smarter ESI request throttling.
 - **Hotfix** — sidebar no longer jumps to top when clicking a character.
-- **v1.2.0A** — Interface rebuild: Overview, Skill Queue, Wallet, Skill Plan and Assets are now primary tabs across the top; characters are vertical secondary tabs in a side rail (single-column at narrow widths, two-wide at 1080px+). Skill Queue renamed to Skills: all trained skills listed by group under the queue info, with collapsible groups and a collapse-all toggle; groups flow 1-wide up to 4-wide as the window widens and never shrink below their skill text (characters go 2-wide in the rail first, then the skill groups add columns). The queue stat cards wrap to two lines (Total Queue Time drops under Total Queue SP Cost) as the window narrows, and the window can be resized down to 700x700. ESI activity (skills pulls, sequencer lock) logs to the command prompt while the test module is enabled in test/test-mode.json. Skills ESI pulls are now sequenced (skills first at startup, one section at a time), batched 10 calls at a time to stay under CCP rate limits for 40+ character rosters, saved to a local cache file, and refreshed every 15 minutes. Wallet details are the second sequenced section: journal entries and transactions pull after skills, cache locally, and re-pull every 10 minutes; the Wallet tab shows them as two vertically stacked, scrollable boxes (Journal Entries and Transactions, 10 rows visible each). Skill groups on the Skills tab are collapsed by default.
 - **v1.1.14-beta** — Local clone nicknames: hover any clone to assign a custom name stored locally per jump_clone_id; nickname persists across refreshes.
 - **v1.1.13-beta** — Assets tab: clone locations & implants; diff-based active clone detection; implant slot numbers via dogma attributes; market price valuations; lazy fetch on tab open. Existing users must re-add characters with Full scopes.
 - **v1.1.12-beta** — Cross-character skill search; window remembers size and position; fixed ESI field names for skill levels and SP (queue costs now accurate); fixed notes not saving.
