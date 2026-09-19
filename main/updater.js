@@ -5,12 +5,28 @@ const { autoUpdater } = require('electron-updater');
 const { ipcMain, app } = require('electron');
 const logger = require('./debug/logger');
 const settings = require('./settings');
+const { execSync } = require('child_process');
 
 let mainWindow = null;
 let pendingNotes = '';
 
-function initUpdater(win) {
+function isAppSigned() {
+  if (process.platform !== 'darwin') return true;
+  try {
+    execSync(`codesign -dv "${app.getAppPath()}"`, { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function initUpdater(win, skipUpdates = false) {
   mainWindow = win;
+  if (skipUpdates || !isAppSigned()) {
+    logger.info('UPDATER', 'Update checks disabled for unsigned build');
+    checkChangelog();
+    return;
+  }
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
@@ -44,6 +60,7 @@ function checkChangelog() {
 }
 
 function registerUpdaterIpc() {
+  if (!isAppSigned()) return;
   ipcMain.handle('updater:download', () => { autoUpdater.downloadUpdate(); return { ok: true }; });
   ipcMain.handle('updater:dismiss', () => { logger.info('UPDATER', 'Dismissed'); return { ok: true }; });
   ipcMain.handle('updater:close-changelog', () => { return { ok: true }; });
