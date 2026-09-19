@@ -126,6 +126,17 @@ function getSkillInfo(skillId) {
   return { id: row[0].typeID, name: row[0].typeName, groupName: group?.groupName || 'Unknown Group' };
 }
 
+function getAllSkills() {
+  if (!db) return null;
+  return query(
+    `SELECT t.typeID AS id, t.typeName AS name, g.groupName AS groupName
+     FROM invTypes t
+     JOIN invGroups g ON g.groupID = t.groupID
+     WHERE g.categoryID = 16 AND t.published = 1
+     ORDER BY g.groupName, t.typeName`
+  );
+}
+
 function getPlanetName(planetId) {
   if (MAP_PLANETS_DISABLED) return null;
   const row = query('SELECT planetName FROM mapPlanets WHERE planetID = ?', [planetId]);
@@ -180,4 +191,4 @@ function getSystemInfo(systemId) {
   };
 }
 
-module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getStationName, getPlanetName, getSkillInfo, getLocationHierarchy, getSystemInfo, initDb };
+module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getStationName, getPlanetName, getSkillInfo, getAllSkills, getLocationHierarchy, getSystemInfo, initDb };

@@ -74,7 +74,9 @@ async function bootstrap() {
   }
 
   windowTray.createTray();
-  toastWindow.createToastWindow();
+  if (process.platform === 'win32') {
+    toastWindow.createToastWindow();
+  }
 
   // Start the new V2 scheduler for ESI pullers
   scheduler.start();

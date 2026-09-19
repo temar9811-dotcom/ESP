@@ -15,6 +15,7 @@ import Assets from './components/character/Assets';
 import Clones from './components/character/Clones';
 import Notes from './components/character/Notes';
 import SkillPlans from './components/character/SkillPlans';
+import CreatePlan from './components/character/CreatePlan';
 import UpdateDialog from './components/UpdateDialog';
 import ChangelogDialog from './components/ChangelogDialog';
 import { applyTheme, applyTextScale } from './theme';
@@ -27,7 +28,8 @@ export default function App() {
   const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
-    setIsDev(!window.require?.('electron')?.app?.isPackaged);
+    const host = window.location.hostname;
+    setIsDev(host === 'localhost' || host === '127.0.0.1');
   }, []);
 
   useEffect(() => {
@@ -63,6 +65,7 @@ export default function App() {
   if (isDev) tabs.push('debug');
 
   const renderContent = () => {
+    if (activeTab === 'create-plan') return <CreatePlan account={selectedAccount} onClose={() => setActiveTab('plans')} />;
     if (activeTab === 'settings') return <SettingsTab onClose={() => setActiveTab('overview')} />;
     if (activeTab === 'debug') return <DebugTab />;
     if (!selectedAccount) return <p className="text-gray-500">Select a character from the sidebar.</p>;
@@ -74,7 +77,7 @@ export default function App() {
       case 'assets': return <Assets account={selectedAccount} />;
       case 'clones': return <Clones account={selectedAccount} />;
       case 'notes': return <Notes account={selectedAccount} />;
-      case 'plans': return <SkillPlans account={selectedAccount} />;
+      case 'plans': return <SkillPlans account={selectedAccount} onCreatePlan={() => setActiveTab('create-plan')} />;
       default: return <p className="text-gray-400">Unknown tab.</p>;
     }
   };

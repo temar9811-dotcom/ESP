@@ -1,7 +1,16 @@
 'use strict';
 
 const toastWindow = require('./toast-window');
+const native = require('./native-notifications');
 const settings = require('./settings');
+
+function deliver(title, body, sound) {
+  if (process.platform === 'win32') {
+    toastWindow.showToast(title, body, sound);
+  } else {
+    native.show(title, body, sound);
+  }
+}
 
 function formatIsk(value) {
   return Number(value || 0).toLocaleString('en-US', {
@@ -29,7 +38,7 @@ function notifySkillCompleted(payload) {
   const safe = payload && typeof payload === 'object' ? payload : {};
   const sound = current.muteSounds ? null : 'skill';
 
-  toastWindow.showToast(
+  deliver(
     'Skill complete',
     `${safe.characterName || 'Unknown'}: ${safe.skillName || 'Unknown'} L${safe.level ?? '?'} finished training.`,
     sound
@@ -44,7 +53,7 @@ function notifyQueueWarning(payload) {
   const safe = payload && typeof payload === 'object' ? payload : {};
   const sound = current.muteSounds ? null : 'queue';
 
-  toastWindow.showToast(
+  deliver(
     'Queue running dry',
     `${safe.characterName || 'Unknown'}: skill queue ends in ${formatDuration(safe.remainingMs)}.`,
     sound
@@ -72,7 +81,7 @@ function notifyWalletActivity(payload) {
     const amount = Number(entry.amount || 0);
     const sign = amount >= 0 ? '+' : '-';
 
-    toastWindow.showToast(
+    deliver(
       'Wallet activity',
       `${safe.characterName || 'Unknown'}: ${entry.description || ''} (${sign}${formatIsk(
         Math.abs(amount)
@@ -82,7 +91,7 @@ function notifyWalletActivity(payload) {
   }
 
   if (list.length > shown.length) {
-    toastWindow.showToast(
+    deliver(
       'Wallet activity',
       `${safe.characterName || 'Unknown'}: ${list.length - shown.length} more wallet entries.`,
       sound

@@ -131,6 +131,16 @@ function deletePlan(planId) {
   return true;
 }
 
+function exportPlanToClipboard(planId) {
+  const plan = loadPlans().find((p) => p.id === planId);
+  if (!plan) throw new Error('Plan not found.');
+  const lines = (plan.entries || [])
+    .filter((entry) => entry && entry.name)
+    .map((entry) => `${entry.name} ${Math.min(5, Math.max(1, Number(entry.level) || 1))}`);
+  clipboard.writeText(lines.join('\n'));
+  return { ok: true, lines: lines.length };
+}
+
 function mergePlans(incoming) {
   const plans = loadPlans();
   const existingIds = new Set(plans.map((plan) => plan.id));
@@ -158,5 +168,6 @@ module.exports = {
   readClipboardPlan,
   savePlan,
   deletePlan,
+  exportPlanToClipboard,
   mergePlans
 };

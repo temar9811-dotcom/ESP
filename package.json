@@ -33,6 +33,9 @@
       "target": "nsis",
       "icon": "build/icon.png"
     },
+    "nsis": {
+      "artifactName": "EVE.Status.Perception.Setup.${version}.${ext}"
+    },
     "asarUnpack": [
       "test/**/*",
       "assets/**/*"
@@ -46,6 +49,7 @@
       "eve.js",
       "eve/**/*",
       "main/**/*",
+      "renderer/**/*",
       "ui/dist/**/*",
       "test/**/*",
       "assets/**/*",
