@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   downloadUpdate: invoke('updater:download'),
   dismissUpdate: invoke('updater:dismiss'),
   closeChangelog: invoke('updater:close-changelog'),
+  getChangelog: invoke('updater:get-changelog'),
   listAccounts: invoke('accounts:list'),
   addAccount: invoke('accounts:add'),
   cancelLogin: invoke('accounts:cancelLogin'),

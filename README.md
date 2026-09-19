@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.6)
+## Current Features (v1.2.7)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -76,10 +76,11 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.6**
+**Currently tracked version: v1.2.7**
 
 ### Changelog
-- **v1.2.6 (current)** — In-app skill planning: build plans straight from the full EVE skill catalog, showing each skill's current level for the selected character. Click any plan for a detail popup and export it back to the clipboard (same format as clipboard import). A What's-new popup now shows the changelog once per version, tracking the last-seen version so it only appears after an update.
+- **v1.2.7 (current)** — Fixed the What's-new popup so it reliably appears once per version: the changelog is now requested once the UI is ready instead of being pushed at startup, and the last-seen version is only recorded when the popup is actually shown.
+- **v1.2.6** — In-app skill planning: build plans straight from the full EVE skill catalog, showing each skill's current level for the selected character. Click any plan for a detail popup and export it back to the clipboard (same format as clipboard import). A What's-new popup now shows the changelog once per version, tracking the last-seen version so it only appears after an update.
 - **v1.2.5** — Character groups in the new sidebar (custom names, primary star, collapsible sections). Debug tab removed from release builds so it only appears under the dev server. Dotted, readable installer names for updates. Cross-platform native notifications with the Windows toast overlay as a fallback, and the toast assets restored in packaged builds. Skill Plans tab completed: per-character filtering, delete, and clipboard import with a naming and scope dialog.
 - **v1.2.4** — Responsive layout refinements so the interface stays clean and usable on smaller windows.
 - **v1.2.3** — Themes added: switch between color themes with an optional larger-text mode.

@@ -30,7 +30,6 @@ function initUpdater(win) {
   autoUpdater.on('error', (err) => logger.error('UPDATER', 'Update error', { error: err.message }));
 
   autoUpdater.checkForUpdates();
-  checkChangelog();
 }
 
 function readChangelog() {
@@ -49,22 +48,25 @@ function readChangelog() {
   return null;
 }
 
-function checkChangelog() {
+function getChangelog() {
   const currentVersion = app.getVersion();
   const appSettings = settings.getSettings();
   if (appSettings.lastSeenVersion !== currentVersion) {
-    mainWindow.webContents.send('updater:show-changelog', {
+    settings.setSettings({ ...appSettings, lastSeenVersion: currentVersion });
+    return {
+      show: true,
       version: currentVersion,
       notes: readChangelog() || pendingNotes || 'Welcome to the new version!'
-    });
-    settings.setSettings({ ...appSettings, lastSeenVersion: currentVersion });
+    };
   }
+  return { show: false };
 }
 
 function registerUpdaterIpc() {
   ipcMain.handle('updater:download', () => { autoUpdater.downloadUpdate(); return { ok: true }; });
   ipcMain.handle('updater:dismiss', () => { logger.info('UPDATER', 'Dismissed'); return { ok: true }; });
   ipcMain.handle('updater:close-changelog', () => { return { ok: true }; });
+  ipcMain.handle('updater:get-changelog', () => getChangelog());
 }
 
 module.exports = { initUpdater, registerUpdaterIpc };

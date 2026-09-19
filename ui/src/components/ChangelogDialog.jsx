@@ -1,5 +1,5 @@
 // ui/src/components/ChangelogDialog.jsx
-// VERSION: 1.0
+// VERSION: 1.1
 import React, { useState, useEffect } from 'react';
 
 export default function ChangelogDialog() {
@@ -11,6 +11,12 @@ export default function ChangelogDialog() {
       setData(info);
       setShow(true);
     });
+    window.eveApi.getChangelog?.().then((result) => {
+      if (result?.show) {
+        setData({ version: result.version, notes: result.notes });
+        setShow(true);
+      }
+    }).catch(() => {});
     return unsub;
   }, []);
 

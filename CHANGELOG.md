@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.7
+- Fixed the What's-new popup: it now reliably shows on the first launch after an update. The changelog is requested once the UI is up (instead of being pushed at startup, which could be missed), and the last-seen version is only recorded when the popup is actually shown.
+
 ## 1.2.6
 - In-app skill plan creation: build plans straight from the full EVE skill catalog in collapsible groups, adding levels with a single click, and save as a global or character-specific plan.
 - The Create Plan builder shows each skill's current level for the selected character.
