@@ -1,0 +1,55 @@
+name: unsigned macOS tester release
+
+on:
+  push:
+    tags:
+      - 'unsigned-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-unsigned-tester-release:
+    name: Build unsigned macOS tester release
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # This project does not yet commit a package-lock.json, so npm ci cannot
+      # be used. Commit a lockfile before relying on this as a production build.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build unsigned tester package
+        run: npm run dist:mac:unsigned
+
+      - name: Retain build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-macos-${{ github.ref_name }}
+          path: |
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: error
+
+      - name: Publish unsigned tester release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          name: Unsigned macOS tester build (${{ github.ref_name }})
+          body: |
+            **Testing only — unsigned and not notarized.**
+
+            macOS will show a Gatekeeper warning. Testers must only install this
+            from this official GitHub release and may need to use Finder's
+            Control-click → Open flow to launch it.
+          files: |
+            release/*.dmg
+            release/*.zip

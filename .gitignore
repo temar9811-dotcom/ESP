@@ -4,6 +4,8 @@ release/
 out/
 *.log
 .DS_Store
+build/icon.icns
+build/icon.iconset/
 package-lock.json
 Notes.txt
 config.json

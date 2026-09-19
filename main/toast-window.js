@@ -42,15 +42,18 @@ function createToastWindow() {
     if (toastWin && !toastWin.isDestroyed()) {
       toastWin.show();
 
-      // Force Windows DWM to composite the transparent window.
-      const bounds = toastWin.getBounds();
-      toastWin.setBounds({ ...bounds, height: bounds.height + 1 });
+      // Force Windows DWM to composite the transparent window. macOS uses
+      // Core Animation and does not need (or benefit from) this bounds nudge.
+      if (process.platform === 'win32') {
+        const bounds = toastWin.getBounds();
+        toastWin.setBounds({ ...bounds, height: bounds.height + 1 });
 
-      setTimeout(() => {
-        if (toastWin && !toastWin.isDestroyed()) {
-          toastWin.setBounds(bounds);
-        }
-      }, 50);
+        setTimeout(() => {
+          if (toastWin && !toastWin.isDestroyed()) {
+            toastWin.setBounds(bounds);
+          }
+        }, 50);
+      }
 
       console.log('ESP toast overlay ready.');
     }

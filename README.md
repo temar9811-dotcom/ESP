@@ -82,6 +82,56 @@ This repository tracks the latest development (alpha) code. If you want to run t
 
 **Currently tracked version: v1.2.0A**
 
+## Building for macOS
+
+The app is packaged for macOS as a `.dmg` and a `.zip`. On a Mac with Node.js
+installed, run:
+
+```sh
+npm install
+npm run dist:mac
+```
+
+`dist:mac` creates `build/icon.icns` from `build/icon.png` using Apple's
+`sips` and `iconutil` tools, then writes the release artifacts to `release/`.
+Run it on macOS: Apple signing and notarization are required for a release that
+opens normally on other users' Macs. Once an Apple Developer ID certificate and
+notarization credentials are available, electron-builder will use them during
+the same command.
+
+Windows builds remain available through `npm run dist:win` (or the existing
+`build.bat` helper).
+
+### Unsigned tester builds
+
+Before Apple signing credentials are available, push a tag such as
+`unsigned-v1.2.3` to publish an unsigned macOS DMG and ZIP as a GitHub
+**pre-release**. The unsigned tester workflow needs no secrets. These builds
+are strictly for trusted testers: macOS will show a Gatekeeper warning, and a
+tester may need to Control-click the app in Finder and choose **Open**. Do not
+present an unsigned build as a public production release.
+
+### GitHub Actions signing and notarization
+
+Pushing a version tag such as `v1.2.3` runs the macOS release workflow and
+publishes the signed DMG and ZIP to the matching GitHub release. Before the
+first tagged build, add these repository secrets under **Settings → Secrets and
+variables → Actions**:
+
+| Secret | Value |
+| --- | --- |
+| `MAC_CSC_LINK` | Base64-encoded `.p12` export of the **Developer ID Application** certificate. |
+| `MAC_CSC_KEY_PASSWORD` | Password used to export that `.p12` certificate. |
+| `APPLE_API_KEY_BASE64` | Base64-encoded App Store Connect API-key `.p8` file. |
+| `APPLE_API_KEY_ID` | App Store Connect API key ID. |
+| `APPLE_API_ISSUER` | App Store Connect issuer ID. |
+| `APPLE_TEAM_ID` | Ten-character Apple Developer Team ID. |
+
+Create the API key with the **Developer** role in App Store Connect. On macOS,
+you can encode the certificate and API-key files with `base64 -i file.p12` and
+`base64 -i AuthKey_KEYID.p8`; store each resulting value as the corresponding
+GitHub secret. Never commit either file or its encoded contents.
+
 ### Changelog
 - **Hotfix** — sidebar no longer jumps to top when clicking a character.
 - **v1.2.0A** — Interface rebuild: Overview, Skill Queue, Wallet, Skill Plan and Assets are now primary tabs across the top; characters are vertical secondary tabs in a side rail (single-column at narrow widths, two-wide at 1080px+). Skill Queue renamed to Skills: all trained skills listed by group under the queue info, with collapsible groups and a collapse-all toggle; groups flow 1-wide up to 4-wide as the window widens and never shrink below their skill text (characters go 2-wide in the rail first, then the skill groups add columns). The queue stat cards wrap to two lines (Total Queue Time drops under Total Queue SP Cost) as the window narrows, and the window can be resized down to 700x700. ESI activity (skills pulls, sequencer lock) logs to the command prompt while the test module is enabled in test/test-mode.json. Skills ESI pulls are now sequenced (skills first at startup, one section at a time), batched 10 calls at a time to stay under CCP rate limits for 40+ character rosters, saved to a local cache file, and refreshed every 15 minutes. Wallet details are the second sequenced section: journal entries and transactions pull after skills, cache locally, and re-pull every 10 minutes; the Wallet tab shows them as two vertically stacked, scrollable boxes (Journal Entries and Transactions, 10 rows visible each). Skill groups on the Skills tab are collapsed by default.

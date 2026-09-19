@@ -14,7 +14,11 @@
     "build:ui": "vite build ui",
     "start": "electron .",
     "build": "npm run build:ui && electron-builder",
-    "dist": "npm run build:ui && electron-builder --win"
+    "dist": "npm run dist:win",
+    "dist:win": "npm run build:ui && electron-builder --win",
+    "icon:mac": "node scripts/create-mac-icon.js",
+    "dist:mac": "npm run build:ui && npm run icon:mac && electron-builder --mac",
+    "dist:mac:unsigned": "npm run build:ui && npm run icon:mac && node scripts/build-mac-unsigned.js"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
@@ -29,6 +33,23 @@
   },
   "build": {
     "appId": "com.esp.app",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true,
+      "gatekeeperAssess": false
+    },
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"
