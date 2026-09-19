@@ -1,7 +1,6 @@
 // main/updater.js
 // VERSION: 1.0
 'use strict';
-const { autoUpdater } = require('electron-updater');
 const { ipcMain, app } = require('electron');
 const logger = require('./debug/logger');
 const settings = require('./settings');
@@ -9,6 +8,14 @@ const { execSync } = require('child_process');
 
 let mainWindow = null;
 let pendingNotes = '';
+let autoUpdater = null;
+
+try {
+  const { autoUpdater: updater } = require('electron-updater');
+  autoUpdater = updater;
+} catch {
+  logger.info('UPDATER', 'electron-updater not available');
+}
 
 function isAppSigned() {
   if (process.platform !== 'darwin') return true;
@@ -22,7 +29,7 @@ function isAppSigned() {
 
 function initUpdater(win, skipUpdates = false) {
   mainWindow = win;
-  if (skipUpdates || !isAppSigned()) {
+  if (!autoUpdater || skipUpdates || !isAppSigned()) {
     logger.info('UPDATER', 'Update checks disabled for unsigned build');
     checkChangelog();
     return;
@@ -60,7 +67,7 @@ function checkChangelog() {
 }
 
 function registerUpdaterIpc() {
-  if (!isAppSigned()) return;
+  if (!isAppSigned() || !autoUpdater) return;
   ipcMain.handle('updater:download', () => { autoUpdater.downloadUpdate(); return { ok: true }; });
   ipcMain.handle('updater:dismiss', () => { logger.info('UPDATER', 'Dismissed'); return { ok: true }; });
   ipcMain.handle('updater:close-changelog', () => { return { ok: true }; });

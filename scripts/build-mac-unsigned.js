@@ -18,7 +18,11 @@ const config = {
     identity: null,
     hardenedRuntime: false,
     notarize: false
-  }
+  },
+  files: [
+    ...(baseConfig.files || []),
+    '!node_modules/electron-updater/**/*'
+  ]
 };
 
 build({
