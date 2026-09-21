@@ -1,4 +1,4 @@
-// ui/src/components/character/Overview.jsx | Version: 1.11
+// ui/src/components/character/Overview.jsx | Version: 1.12
 import React, { useState, useEffect } from 'react';
 
 function formatQueueTime(ms) {
@@ -8,6 +8,56 @@ function formatQueueTime(ms) {
   const parts = [];
   if (d > 0) parts.push(`${d}d`); if (h > 0) parts.push(`${h}h`); if (m > 0 || parts.length === 0) parts.push(`${m}m`);
   return parts.join(' ');
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function formatIskAmount(amount) {
+  const n = Math.abs(Number(amount || 0));
+  const sign = Number(amount || 0) >= 0 ? '+' : '-';
+  return `${sign}${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} ISK`;
+}
+
+const TYPE_META = {
+  'skill-complete': { label: 'Skill Complete', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/30' },
+  'queue-warning': { label: 'Queue Warning', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30' },
+  'queue-empty': { label: 'Queue Empty', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30' },
+  'wallet-activity': { label: 'Wallet Activity', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
+};
+const DEFAULT_META = { label: 'Notification', color: 'text-gray-300', bg: 'bg-gray-500/10 border-gray-500/30' };
+
+function NotificationRow({ entry }) {
+  const meta = TYPE_META[entry.type] || DEFAULT_META;
+  const body = entry.message || entry.title || 'Notification';
+  return (
+    <div className={`border rounded-md p-2 ${meta.bg}`}>
+      <div className="flex justify-between gap-2">
+        <span className={`text-xs font-semibold ${meta.color} shrink-0`}>{meta.label}</span>
+        <span className="text-[11px] text-gray-500 shrink-0" title={formatTime(entry.timestamp)}>{timeAgo(entry.timestamp)}</span>
+      </div>
+      <p className="text-xs text-gray-200 mt-0.5 break-words">{
+        entry.type === 'wallet-activity' && entry.amount != null
+          ? `${entry.description || body} (${formatIskAmount(entry.amount)})`
+          : body
+      }</p>
+    </div>
+  );
 }
 
 function calculateSkillProgress(activeSkill) {
@@ -21,7 +71,7 @@ function calculateSkillProgress(activeSkill) {
   return Math.min(100, Math.max(0, ((now - start) / (finish - start)) * 100));
 }
 
-export default function Overview({ account }) {
+export default function Overview({ account, unseenNotifications = [], lastViewedTime = 0 }) {
   const [cData, setCData] = useState(null);
   const [uNames, setUNames] = useState({});
   const [sNames, setSNames] = useState({});
@@ -66,8 +116,34 @@ export default function Overview({ account }) {
   const homeTypeLabel = homeLoc?.location_type === 'structure' ? 'Citadel' : 'Station';
   const jumpClones = clData?.jump_clones?.length || 0;
 
+  const notifs = Array.isArray(unseenNotifications) ? [...unseenNotifications].sort((a, b) => b.timestamp - a.timestamp) : [];
+  const lastViewed = Number(lastViewedTime) || 0;
+
   return (
     <div className="space-y-4">
+      <div className="bg-gray-800 p-4 rounded-lg border border-blue-500/40">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold text-gray-100">Notification History</h2>
+          <span className="text-xs text-gray-500" title={`Last viewed: ${lastViewed ? formatTime(lastViewed) : 'never'}`}>
+            {lastViewed ? `Since ${timeAgo(lastViewed)}` : 'No previous visit'}
+          </span>
+        </div>
+        {notifs.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">
+            No notifications since your last visit.
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-gray-400 mb-2">
+              {notifs.length} notification{notifs.length === 1 ? '' : 's'} since you last checked{lastViewed ? ` (${timeAgo(lastViewed)})` : ''}.
+            </p>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {notifs.map((entry) => <NotificationRow key={entry.id || `${entry.type}-${entry.timestamp}`} entry={entry} />)}
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-2">Active Skill</h2>
         <p className="text-gray-300">{activeSkill ? `${activeSkill.skill_name || activeSkill.skillName} (${progress.toFixed(1)}%)` : 'No active skill'}</p>

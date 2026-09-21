@@ -11,7 +11,7 @@ const sendDebugLog = (level, source, message, data) => {
 
 const matchId = (account, id) => Number(account.characterId) === Number(id);
 
-export default function Sidebar({ selectedAccount, onSelect }) {
+export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }) {
   const accounts = useAccounts();
   const [charData, setCharData] = useState({});
   const [universeNames, setUniverseNames] = useState({});
@@ -98,6 +98,7 @@ export default function Sidebar({ selectedAccount, onSelect }) {
     const corpName = universeNames[cd.corporation_id] || `Corp ${cd.corporation_id || 'Unknown'}`;
     const isPrimary = opts.grouped && matchId(acc, opts.primaryId);
     const groupName = opts.grouped ? opts.groupName : undefined;
+    const unseen = Number(unseenCounts[acc.characterId] || 0);
 
     return (
       <div
@@ -123,6 +124,14 @@ export default function Sidebar({ selectedAccount, onSelect }) {
           <p className="flex-1 min-w-0 text-sm font-medium text-white break-words leading-snug overflow-hidden">
             {acc.characterName}
           </p>
+          {unseen > 0 && (
+            <span
+              title={`${unseen} unseen notification${unseen === 1 ? '' : 's'}`}
+              className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-400 text-gray-900"
+            >
+              {unseen}
+            </span>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); handleRemove(acc.characterId, acc.testPilot); }}
             className="text-gray-400 hover:text-red-400 shrink-0 text-sm px-1"

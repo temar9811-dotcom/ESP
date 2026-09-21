@@ -100,6 +100,7 @@ function notifyWalletActivity(payload) {
 }
 
 module.exports = {
+  formatDuration,
   notifySkillCompleted,
   notifyQueueWarning,
   notifyWalletActivity

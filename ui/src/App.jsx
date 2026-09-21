@@ -26,6 +26,9 @@ export default function App() {
   const mainRef = useRef(null);
   const [toasts, setToasts] = useState([]);
   const [isDev, setIsDev] = useState(false);
+  const [unseenNotifications, setUnseenNotifications] = useState([]);
+  const [unseenCounts, setUnseenCounts] = useState({});
+  const [lastViewedByChar, setLastViewedByChar] = useState({});
 
   useEffect(() => {
     const host = window.location.hostname;
@@ -40,16 +43,82 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
+  const refreshUnseenCounts = () => {
+    if (!window.eveApi?.getAllUnseenCounts) return;
+    window.eveApi.getAllUnseenCounts().then((c) => setUnseenCounts(c || {})).catch(() => {});
+  };
+
+  const handleSelectAccount = async (account) => {
+    setSelectedAccount(account);
+    if (!account?.characterId || !window.eveApi?.getNotifications) return;
+    try {
+      const lastViewed = await window.eveApi.getNotificationLastViewed(account.characterId);
+      setLastViewedByChar(prev => ({ ...prev, [account.characterId]: Number(lastViewed) || 0 }));
+      const unseen = await window.eveApi.getNotifications(account.characterId);
+      setUnseenNotifications(unseen || []);
+      await window.eveApi.markNotificationsSeen(account.characterId);
+      setUnseenCounts(prev => ({ ...prev, [account.characterId]: 0 }));
+    } catch {}
+  };
+
+  const pushNotification = (charId, type, payload) => {
+    const p = payload || {};
+    if (String(selectedAccount?.characterId) === String(charId)) {
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type,
+        timestamp: Date.now(),
+        title: p.title || '',
+        message: p.message || '',
+        skillName: p.skillName || null,
+        level: p.level ?? null,
+        remainingMs: p.remainingMs ?? null,
+        amount: p.amount ?? null,
+        description: p.description || null,
+        characterName: p.characterName || null
+      };
+      setUnseenNotifications(prev => [...prev, entry]);
+      window.eveApi?.markNotificationsSeen?.(charId);
+    } else {
+      setUnseenCounts(prev => {
+        const id = String(charId);
+        const delta = prev[id] == null ? 1 : prev[id] + 1;
+        return { ...prev, [id]: delta };
+      });
+    }
+  };
+
+  const handleLiveSkillCompleted = (p) => {
+    addToast('Skill Complete', p.skillName);
+    pushNotification(p.characterId, 'skill-complete', { ...p, title: 'Skill complete', message: `${p.skillName || 'Unknown'} L${p.level ?? '?'} finished training.` });
+  };
+  const handleLiveWalletActivity = (p) => {
+    addToast('Wallet Activity', `${p.amount} ISK`);
+    pushNotification(p.characterId, 'wallet-activity', { ...p, title: 'Wallet activity', message: `${p.description || ''} (${Number(p.amount) >= 0 ? '+' : ''}${Number(p.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })} ISK)` });
+  };
+  const handleLiveQueueWarning = (p) => {
+    const mins = Math.max(0, Math.round(Number(p.remainingMs || 0) / 60000));
+    const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+    const dur = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+    const msg = `skill queue ends in ${dur}.`;
+    addToast('Queue Warning', msg);
+    pushNotification(p.characterId, 'queue-warning', { ...p, title: 'Queue running dry', message: p.message || msg });
+  };
+  const handleLiveQueueEmpty = (p) => {
+    addToast('Queue Empty', p.characterName);
+    pushNotification(p.characterId, 'queue-empty', { ...p, title: 'Queue empty', message: 'skill queue has no skills left.' });
+  };
+
   useEffect(() => {
     if (!window.eveApi) return;
     const unsubs = [
-      window.eveApi.onSkillCompleted((p) => addToast('Skill Complete', p.skillName)),
-      window.eveApi.onWalletActivity((p) => addToast('Wallet Activity', `${p.amount} ISK`)),
-      window.eveApi.onQueueWarning((p) => addToast('Queue Warning', p.message)),
-      window.eveApi.onQueueEmpty((p) => addToast('Queue Empty', p.characterName)),
+      window.eveApi.onSkillCompleted(handleLiveSkillCompleted),
+      window.eveApi.onWalletActivity(handleLiveWalletActivity),
+      window.eveApi.onQueueWarning(handleLiveQueueWarning),
+      window.eveApi.onQueueEmpty(handleLiveQueueEmpty),
     ];
     return () => unsubs.forEach(u => u());
-  }, []);
+  }, [selectedAccount?.characterId]);
 
   const addToast = (title, body) => {
     const id = Date.now();
@@ -61,6 +130,10 @@ export default function App() {
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [selectedAccount?.characterId, activeTab]);
 
+  useEffect(() => {
+    refreshUnseenCounts();
+  }, []);
+
   const tabs = ['overview', 'skills', 'wallet', 'assets', 'clones', 'notes', 'plans'];
   if (isDev) tabs.push('debug');
 
@@ -71,7 +144,7 @@ export default function App() {
     if (!selectedAccount) return <p className="text-gray-500">Select a character from the sidebar.</p>;
     
     switch (activeTab) {
-      case 'overview': return <Overview account={selectedAccount} />;
+      case 'overview': return <Overview account={selectedAccount} unseenNotifications={unseenNotifications} lastViewedTime={lastViewedByChar[selectedAccount.characterId] || 0} />;
       case 'skills': return <Skills account={selectedAccount} />;
       case 'wallet': return <Wallet account={selectedAccount} />;
       case 'assets': return <Assets account={selectedAccount} />;
@@ -89,7 +162,7 @@ export default function App() {
         <Topbar onOpenSettings={() => setActiveTab('settings')} isSettingsOpen={activeTab === 'settings'} />
         <SyncIndicator />
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar selectedAccount={selectedAccount} onSelect={setSelectedAccount} />
+          <Sidebar selectedAccount={selectedAccount} onSelect={handleSelectAccount} unseenCounts={unseenCounts} />
           <main className="flex-1 flex flex-row md:flex-col overflow-hidden">
             <div className="flex flex-col md:flex-row border-r md:border-r-0 md:border-b border-gray-700 bg-gray-800 shrink-0 tab-bar w-auto">
               {tabs.map((tab) => (

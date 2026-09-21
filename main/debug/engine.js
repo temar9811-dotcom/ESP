@@ -65,6 +65,40 @@ function registerV2Actions() {
     return { ok: false, error: 'Main window not found' };
   });
   registerAction('Check Syncer Queue', 'Returns syncer state', () => syncer.getState());
+  registerAction('Test Skill Complete Notification', 'Records a fake skill-complete history entry and toasts', (p) => {
+    const accounts = require('../accounts');
+    const acc = p.characterId ? accounts.getAccounts().find(a => Number(a.characterId) === Number(p.characterId)) : null;
+    const payload = {
+      characterId: acc ? acc.characterId : (p.characterId || 0),
+      characterName: acc ? acc.characterName : (p.characterName || 'Test Pilot'),
+      skillName: p.skillName || 'Test Skill',
+      level: Number(p.level) || 5,
+      remainingMs: Number(p.remainingMs) || 8 * 3600000
+    };
+    accounts.emitSkillCompleted(payload);
+    return { ok: true, payload };
+  });
+  registerAction('Test Queue Warning Notification', 'Records a fake queue-warning history entry and toasts', (p) => {
+    const accounts = require('../accounts');
+    const acc = p.characterId ? accounts.getAccounts().find(a => Number(a.characterId) === Number(p.characterId)) : null;
+    const payload = {
+      characterId: acc ? acc.characterId : (p.characterId || 0),
+      characterName: acc ? acc.characterName : (p.characterName || 'Test Pilot'),
+      remainingMs: Number(p.remainingMs) || 12 * 3600000
+    };
+    accounts.emitQueueWarning(payload);
+    return { ok: true, payload };
+  });
+  registerAction('Test Queue Empty Notification', 'Records a fake queue-empty history entry and toasts', (p) => {
+    const accounts = require('../accounts');
+    const acc = p.characterId ? accounts.getAccounts().find(a => Number(a.characterId) === Number(p.characterId)) : null;
+    const payload = {
+      characterId: acc ? acc.characterId : (p.characterId || 0),
+      characterName: acc ? acc.characterName : (p.characterName || 'Test Pilot')
+    };
+    accounts.emitQueueEmpty(payload);
+    return { ok: true, payload };
+  });
 }
 function initEngine() { logger.init(); registerV2Actions(); logger.info('ENGINE', 'Debug engine V2 initialized.'); }
 module.exports = { registerAction, getActions, runAction, initEngine };

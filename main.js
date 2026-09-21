@@ -11,6 +11,7 @@ const accounts = require('./main/accounts');
 const ipc = require('./main/ipc');
 const toastWindow = require('./main/toast-window');
 const notifications = require('./main/notifications');
+const notificationHistory = require('./main/notification-history');
 const settingsMod = require('./main/settings');
 const logger = require('./main/debug/logger');
 const debugEngine = require('./main/debug/engine');
@@ -29,16 +30,39 @@ function onAccountsBroadcast(publicAccounts) {
 }
 
 function onSkillCompleted(payload) {
+  const p = payload || {};
+  notificationHistory.record(p.characterId, 'skill-complete', {
+    title: 'Skill complete',
+    message: `${p.skillName || 'Unknown'} L${p.level ?? '?'} finished training.`,
+    skillName: p.skillName,
+    level: p.level,
+    characterName: p.characterName
+  });
   notifications.notifySkillCompleted(payload);
   sendToRenderer('notification:skill-complete', payload || {});
 }
 
 function onQueueWarning(payload) {
+  const p = payload || {};
+  notificationHistory.record(p.characterId, 'queue-warning', {
+    title: 'Queue running dry',
+    message: `skill queue ends in ${notifications.formatDuration(p.remainingMs)}.`,
+    remainingMs: p.remainingMs,
+    characterName: p.characterName
+  });
   notifications.notifyQueueWarning(payload);
   sendToRenderer('notification:queue-warning', payload || {});
 }
 
-function onQueueEmpty(payload) { sendToRenderer('notification:queue-empty', payload || {}); }
+function onQueueEmpty(payload) {
+  const p = payload || {};
+  notificationHistory.record(p.characterId, 'queue-empty', {
+    title: 'Queue empty',
+    message: 'skill queue has no skills left.',
+    characterName: p.characterName
+  });
+  sendToRenderer('notification:queue-empty', payload || {});
+}
 function onRefreshState(state) { sendToRenderer('refresh-state', state); }
 
 async function bootstrap() {
