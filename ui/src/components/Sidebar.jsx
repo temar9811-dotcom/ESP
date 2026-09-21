@@ -1,5 +1,5 @@
 // ui/src/components/Sidebar.jsx
-// VERSION: 2.2
+// VERSION: 2.3
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAccounts, eveApi } from '../hooks/useEveApi';
 
@@ -99,17 +99,18 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
     const isPrimary = opts.grouped && matchId(acc, opts.primaryId);
     const groupName = opts.grouped ? opts.groupName : undefined;
     const unseen = Number(unseenCounts[acc.characterId] || 0);
+    const compact = Boolean(opts.compact);
 
     return (
       <div
         key={acc.characterId}
         onClick={() => onSelect(acc)}
         title={acc.characterName}
-        className={`min-w-0 w-full p-3 rounded-lg cursor-pointer flex flex-col overflow-hidden border ${
+        className={`min-w-0 w-full rounded-lg cursor-pointer flex flex-col overflow-hidden border ${
           selectedAccount?.characterId === acc.characterId
             ? 'bg-blue-600 border-blue-500'
             : 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-        }`}
+        } ${compact ? 'p-2' : 'p-3'}`}
       >
         <div className="flex justify-between items-start gap-2 min-w-0">
           {opts.grouped && (
@@ -140,18 +141,22 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
             ✕
           </button>
         </div>
-        <p className="text-xs text-gray-400 break-words mt-1 leading-snug min-w-0 overflow-hidden">{corpName}</p>
         <p className="text-xs text-gray-300 break-words mt-1 leading-snug min-w-0 overflow-hidden">{systemName}</p>
-        <p className="text-xs text-gray-300 break-words mt-1 leading-snug min-w-0 overflow-hidden" title={acc.activeSkill?.skillName || 'Idle'}>
-          {acc.activeSkill ? acc.activeSkill.skillName : 'Idle'}
-        </p>
-        <button
-          onClick={(e) => { e.stopPropagation(); handleSetGroup(acc.characterId, groupName); }}
-          title="Set account group for this character"
-          className="mt-2 max-w-full w-fit truncate text-xs px-1.5 py-0.5 rounded border border-gray-600 bg-gray-800 text-gray-400 hover:text-blue-300 hover:border-blue-500"
-        >
-          Group: {groupName || 'None'}
-        </button>
+        {!compact && (
+          <>
+            <p className="text-xs text-gray-400 break-words mt-1 leading-snug min-w-0 overflow-hidden">{corpName}</p>
+            <p className="text-xs text-gray-300 break-words mt-1 leading-snug min-w-0 overflow-hidden" title={acc.activeSkill?.skillName || 'Idle'}>
+              {acc.activeSkill ? acc.activeSkill.skillName : 'Idle'}
+            </p>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleSetGroup(acc.characterId, groupName); }}
+              title="Set account group for this character"
+              className="mt-2 max-w-full w-fit truncate text-xs px-1.5 py-0.5 rounded border border-gray-600 bg-gray-800 text-gray-400 hover:text-blue-300 hover:border-blue-500"
+            >
+              Group: {groupName || 'None'}
+            </button>
+          </>
+        )}
       </div>
     );
   };
@@ -203,7 +208,8 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
         characterCard(account, {
           grouped: true,
           groupName,
-          primaryId: primary.characterId
+          primaryId: primary.characterId,
+          compact: Boolean(group.collapsed)
         })
       );
       renderedIds.add(Number(account.characterId));
@@ -215,12 +221,24 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
   );
 
   if (ungrouped.length) {
+    const ungroupedCollapsed = Boolean(groups['__ungrouped__']?.collapsed);
+
     if (rows.length) {
-      rows.push(groupHeader('Ungrouped', ungrouped.length, false, null, 'group-__ungrouped__'));
+      rows.push(
+        groupHeader(
+          'Ungrouped',
+          ungrouped.length,
+          ungroupedCollapsed,
+          () => handleToggleGroup('__ungrouped__'),
+          'group-__ungrouped__'
+        )
+      );
     }
 
-    for (const account of ungrouped) {
-      rows.push(characterCard(account, { grouped: false }));
+    if (!ungroupedCollapsed) {
+      for (const account of ungrouped) {
+        rows.push(characterCard(account, { grouped: false }));
+      }
     }
   }
 

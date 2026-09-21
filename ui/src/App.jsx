@@ -93,8 +93,18 @@ export default function App() {
     pushNotification(p.characterId, 'skill-complete', { ...p, title: 'Skill complete', message: `${p.skillName || 'Unknown'} L${p.level ?? '?'} finished training.` });
   };
   const handleLiveWalletActivity = (p) => {
-    addToast('Wallet Activity', `${p.amount} ISK`);
-    pushNotification(p.characterId, 'wallet-activity', { ...p, title: 'Wallet activity', message: `${p.description || ''} (${Number(p.amount) >= 0 ? '+' : ''}${Number(p.amount || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })} ISK)` });
+    const entries = Array.isArray(p.entries) && p.entries.length ? p.entries : [p];
+    for (const entry of entries.slice(0, 5)) {
+      const amount = Number(entry.amount || 0);
+      const sign = amount >= 0 ? '+' : '';
+      const isk = amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      const desc = entry.description || 'Wallet activity';
+      addToast('Wallet Activity', `${desc} (${sign}${isk} ISK)`);
+      pushNotification(p.characterId, 'wallet-activity', { ...entry, characterName: p.characterName, title: 'Wallet activity', message: `${desc} (${sign}${isk} ISK)` });
+    }
+    if (entries.length > 5) {
+      pushNotification(p.characterId, 'wallet-activity', { characterName: p.characterName, title: 'Wallet activity', message: `${entries.length - 5} more wallet entries.` });
+    }
   };
   const handleLiveQueueWarning = (p) => {
     const mins = Math.max(0, Math.round(Number(p.remainingMs || 0) / 60000));

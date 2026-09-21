@@ -14,7 +14,7 @@ let refreshInProgress = false;
 let rateLimitedUntil = 0;
 let callbacks = {
   onBroadcast: () => {}, onSkillCompleted: () => {}, onQueueWarning: () => {},
-  onQueueEmpty: () => {}, onRefreshState: () => {}, onAccountRemoved: () => {}
+  onQueueEmpty: () => {}, onWalletActivity: () => {}, onRefreshState: () => {}, onAccountRemoved: () => {}
 };
 
 function init(newCallbacks) { callbacks = { ...callbacks, ...(newCallbacks || {}) }; }
@@ -62,6 +62,7 @@ const setRateLimitedUntil = (val) => { rateLimitedUntil = val; };
 const emitSkillCompleted = (p) => callbacks.onSkillCompleted(p);
 const emitQueueEmpty = (p) => callbacks.onQueueEmpty(p);
 const emitQueueWarning = (p) => callbacks.onQueueWarning(p);
+const emitWalletActivity = (p) => callbacks.onWalletActivity(p);
 
 function enterRateLimit(seconds) {
   const until = Date.now() + Math.max(5, Number(seconds) || 60) * 1000;
@@ -269,7 +270,7 @@ function removeAccount(characterId) {
 module.exports = {
   init, loadAccounts, getAccounts, getPublicAccounts, getRefreshState, emitRefreshState,
   isRefreshing, setRefreshing, getRateLimitedUntil, setRateLimitedUntil,
-  emitSkillCompleted, emitQueueEmpty, emitQueueWarning,
+  emitSkillCompleted, emitQueueEmpty, emitQueueWarning, emitWalletActivity,
   enterRateLimit, waitRateLimit, waitErrorBudget, saveAccounts, broadcastAccounts,
   getValidAccessToken, refreshCharacter, refreshAll, addAccount, cancelLogin, removeAccount,
   ensureScopes, scopesFromAccessToken, addTestPilot, removeTestPilots

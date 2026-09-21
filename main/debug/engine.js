@@ -99,6 +99,23 @@ function registerV2Actions() {
     accounts.emitQueueEmpty(payload);
     return { ok: true, payload };
   });
+  registerAction('Test Wallet Activity Notification', 'Records a fake wallet-activity history entry and toasts', (p) => {
+    const accounts = require('../accounts');
+    const acc = p.characterId ? accounts.getAccounts().find(a => Number(a.characterId) === Number(p.characterId)) : null;
+    const amount = Number(p.amount || 0) || 2500000;
+    const qty = Math.max(1, Number(p.quantity) || 3);
+    const payload = {
+      characterId: acc ? acc.characterId : (p.characterId || 0),
+      characterName: acc ? acc.characterName : (p.characterName || 'Test Pilot'),
+      entries: [
+        { amount: -Math.abs(amount), description: `Bought ${qty} × ${p.item || 'Test Module'}`, date: new Date().toISOString() },
+        { amount: Math.abs(amount) * 1.2, description: `Sold ${qty} × ${p.item || 'Test Module'}`, date: new Date().toISOString() },
+        { amount: 500000, description: 'Bounty reward received', date: new Date().toISOString() }
+      ]
+    };
+    accounts.emitWalletActivity(payload);
+    return { ok: true, payload };
+  });
 }
 function initEngine() { logger.init(); registerV2Actions(); logger.info('ENGINE', 'Debug engine V2 initialized.'); }
 module.exports = { registerAction, getActions, runAction, initEngine };

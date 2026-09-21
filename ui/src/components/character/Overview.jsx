@@ -78,9 +78,24 @@ export default function Overview({ account, unseenNotifications = [], lastViewed
   const [skData, setSkData] = useState(null);
   const [wData, setWData] = useState(null);
   const [clData, setClData] = useState(null);
+  const [finishedSkills, setFinishedSkills] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
+    const fetchFinishedSkills = async () => {
+      try {
+        const id = account.characterId;
+        const all = await window.eveApi.getAllNotifications(id);
+        if (!all) return;
+        const skills = all
+          .filter(e => e.type === 'skill-complete')
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 5);
+        if (isMounted) setFinishedSkills(skills);
+      } catch {}
+    };
+    if (account?.characterId) fetchFinishedSkills();
+
     const fetchAll = async () => {
       try {
         const id = account.characterId;
@@ -121,29 +136,6 @@ export default function Overview({ account, unseenNotifications = [], lastViewed
 
   return (
     <div className="space-y-4">
-      <div className="bg-gray-800 p-4 rounded-lg border border-blue-500/40">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold text-gray-100">Notification History</h2>
-          <span className="text-xs text-gray-500" title={`Last viewed: ${lastViewed ? formatTime(lastViewed) : 'never'}`}>
-            {lastViewed ? `Since ${timeAgo(lastViewed)}` : 'No previous visit'}
-          </span>
-        </div>
-        {notifs.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">
-            No notifications since your last visit.
-          </p>
-        ) : (
-          <>
-            <p className="text-xs text-gray-400 mb-2">
-              {notifs.length} notification{notifs.length === 1 ? '' : 's'} since you last checked{lastViewed ? ` (${timeAgo(lastViewed)})` : ''}.
-            </p>
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {notifs.map((entry) => <NotificationRow key={entry.id || `${entry.type}-${entry.timestamp}`} entry={entry} />)}
-            </div>
-          </>
-        )}
-      </div>
-
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-2">Active Skill</h2>
         <p className="text-gray-300">{activeSkill ? `${activeSkill.skill_name || activeSkill.skillName} (${progress.toFixed(1)}%)` : 'No active skill'}</p>
@@ -176,6 +168,48 @@ export default function Overview({ account, unseenNotifications = [], lastViewed
           <p className="text-gray-300">Home: {homeTypeLabel} - {homeName}</p>
           <p className="text-sm text-gray-400 mt-1">Jump Clones: {jumpClones}</p>
         </div>
+      </div>
+
+      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-100 mb-2">Recently Finished Skills</h2>
+        {finishedSkills.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">No skills finished yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {finishedSkills.map((entry) => (
+              <div key={entry.id || `${entry.type}-${entry.timestamp}`} className="flex justify-between gap-2 items-baseline border-b border-gray-700 pb-1.5">
+                <span className="text-sm text-gray-300 truncate" title={entry.message || ''}>
+                  {entry.skillName || entry.message || 'Skill'}
+                  {entry.level != null && <span className="text-gray-500 ml-1">(L{entry.level})</span>}
+                </span>
+                <span className="text-[11px] text-gray-500 shrink-0" title={formatTime(entry.timestamp)}>{timeAgo(entry.timestamp)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-gray-800 p-4 rounded-lg border border-blue-500/40">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold text-gray-100">Notification History</h2>
+          <span className="text-xs text-gray-500" title={`Last viewed: ${lastViewed ? formatTime(lastViewed) : 'never'}`}>
+            {lastViewed ? `Since ${timeAgo(lastViewed)}` : 'No previous visit'}
+          </span>
+        </div>
+        {notifs.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">
+            No notifications since your last visit.
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-gray-400 mb-2">
+              {notifs.length} notification{notifs.length === 1 ? '' : 's'} since you last checked{lastViewed ? ` (${timeAgo(lastViewed)})` : ''}.
+            </p>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {notifs.map((entry) => <NotificationRow key={entry.id || `${entry.type}-${entry.timestamp}`} entry={entry} />)}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

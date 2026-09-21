@@ -1,4 +1,4 @@
-// main/pullers/wallet-data.js | Version: 1.2
+// main/pullers/wallet-data.js | Version: 1.3
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -21,6 +21,39 @@ function loadCache() {
 
 function saveCache() {
   try { fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2)); } catch (e) { logger.error('WALLET-DATA', 'Save failed', { error: e.message }); }
+}
+
+function formatRefType(ref) {
+  return String(ref || '').split('_').map((p) => (!p ? '' : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
+}
+
+function detectNewEntries(prev, journal, transactions) {
+  const seenJ = new Set((prev?.journal || []).map((e) => Number(e.id)));
+  const seenT = new Set((prev?.transactions || []).map((e) => Number(e.transaction_id)));
+  const entries = [];
+
+  for (const j of journal || []) {
+    if (seenJ.has(Number(j.id))) continue;
+    entries.push({
+      kind: 'journal',
+      amount: Number(j.amount || 0),
+      description: j.description || formatRefType(j.ref_type) || 'Wallet entry',
+      date: j.date
+    });
+  }
+  for (const t of transactions || []) {
+    if (seenT.has(Number(t.transaction_id))) continue;
+    const gross = Number(t.unit_price || 0) * Number(t.quantity || 0);
+    const amount = t.is_buy ? -gross : gross;
+    entries.push({
+      kind: 'transaction',
+      amount,
+      description: `${t.is_buy ? 'Bought' : 'Sold'} ${t.quantity || 0} × ${t.type_name || `Type ${t.type_id}`}`,
+      date: t.date
+    });
+  }
+
+  return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 async function pullCharacter(account, priority) {
@@ -55,6 +88,20 @@ async function pullCharacter(account, priority) {
     ...t,
     type_name: staticDb.getTypeName(t.type_id) || `Type ${t.type_id}`
   }));
+
+  // Notify only for entries new since the previous pull. The first-ever pull
+  // for a character establishes the baseline silently, so adding a character
+  // with a long wallet history doesn't spam notifications.
+  const prev = cache[account.characterId] || null;
+  const newEntries = prev ? detectNewEntries(prev, jourRes.data, enrichedTrans) : [];
+  if (newEntries.length) {
+    logger.info('WALLET-DATA', `New wallet activity for ${account.characterName}: ${newEntries.length} entries`);
+    accounts.emitWalletActivity({
+      characterId: account.characterId,
+      characterName: account.characterName || 'Unknown',
+      entries: newEntries
+    });
+  }
 
   const data = {
     balance: balRes.data,

@@ -60,17 +60,25 @@ function notifyQueueWarning(payload) {
   );
 }
 
+function filterWalletEntries(payload) {
+  const current = settings.getSettings();
+  const threshold = Math.max(0, Number(current.walletNotifyThreshold || 0));
+  const safe = payload && typeof payload === 'object' ? payload : {};
+  return {
+    enabled: current.notifyWallet !== false,
+    threshold,
+    entries: (Array.isArray(safe.entries) ? safe.entries : []).filter(
+      (entry) => Math.abs(Number(entry.amount || 0)) >= threshold
+    )
+  };
+}
+
 function notifyWalletActivity(payload) {
   const current = settings.getSettings();
 
   if (current.notifyWallet === false) return;
 
-  const threshold = Math.max(0, Number(current.walletNotifyThreshold || 0));
-  const safe = payload && typeof payload === 'object' ? payload : {};
-
-  const list = (Array.isArray(safe.entries) ? safe.entries : []).filter(
-    (entry) => Math.abs(Number(entry.amount || 0)) >= threshold
-  );
+  const { entries: list } = filterWalletEntries(payload);
 
   if (!list.length) return;
 
@@ -83,7 +91,7 @@ function notifyWalletActivity(payload) {
 
     deliver(
       'Wallet activity',
-      `${safe.characterName || 'Unknown'}: ${entry.description || ''} (${sign}${formatIsk(
+      `${payload?.characterName || 'Unknown'}: ${entry.description || ''} (${sign}${formatIsk(
         Math.abs(amount)
       )} ISK)`,
       sound
@@ -93,7 +101,7 @@ function notifyWalletActivity(payload) {
   if (list.length > shown.length) {
     deliver(
       'Wallet activity',
-      `${safe.characterName || 'Unknown'}: ${list.length - shown.length} more wallet entries.`,
+      `${payload?.characterName || 'Unknown'}: ${list.length - shown.length} more wallet entries.`,
       sound
     );
   }
@@ -101,6 +109,7 @@ function notifyWalletActivity(payload) {
 
 module.exports = {
   formatDuration,
+  filterWalletEntries,
   notifySkillCompleted,
   notifyQueueWarning,
   notifyWalletActivity

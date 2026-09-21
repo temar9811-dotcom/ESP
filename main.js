@@ -63,6 +63,27 @@ function onQueueEmpty(payload) {
   });
   sendToRenderer('notification:queue-empty', payload || {});
 }
+
+function onWalletActivity(payload) {
+  const p = payload || {};
+  const { enabled, entries } = notifications.filterWalletEntries(payload);
+  const filtered = [...entries];
+
+  if (filtered.length) {
+    notificationHistory.record(p.characterId, 'wallet-activity', {
+      title: 'Wallet activity',
+      message: filtered.length === 1
+        ? (filtered[0].description || 'New wallet entry')
+        : `${filtered[0].description || 'New wallet entry'} (+${filtered.length - 1} more)`,
+      amount: filtered[0].amount ?? null,
+      description: filtered[0].description || null,
+      characterName: p.characterName
+    });
+  }
+
+  if (enabled) notifications.notifyWalletActivity({ ...p, entries: filtered });
+  if (filtered.length) sendToRenderer('notification:wallet-activity', { ...p, entries: filtered });
+}
 function onRefreshState(state) { sendToRenderer('refresh-state', state); }
 
 async function bootstrap() {
@@ -78,7 +99,7 @@ async function bootstrap() {
 
   accounts.init({
     onBroadcast: onAccountsBroadcast,
-    onSkillCompleted, onQueueWarning, onQueueEmpty, onRefreshState
+    onSkillCompleted, onQueueWarning, onQueueEmpty, onWalletActivity, onRefreshState
   });
 
   windowTray.setActions({ refreshAll: accounts.refreshAll, addAccount: accounts.addAccount });
