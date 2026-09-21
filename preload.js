@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   markNotificationsSeen: invoke('notifications:markSeen'),
   getNotificationLastViewed: invoke('notifications:getLastViewed'),
   getAllUnseenCounts: invoke('notifications:getAllUnseenCounts'),
+  getAllUnseenLevels: invoke('notifications:getAllUnseenLevels'),
   forcePull: invoke('scheduler:forcePull'),
   debugGetLogs: invoke('debug:getLogs'),
   debugGetActions: invoke('debug:getActions'),

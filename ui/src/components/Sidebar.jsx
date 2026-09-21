@@ -1,5 +1,5 @@
 // ui/src/components/Sidebar.jsx
-// VERSION: 2.3
+// VERSION: 2.4
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAccounts, eveApi } from '../hooks/useEveApi';
 
@@ -16,6 +16,16 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
   const [charData, setCharData] = useState({});
   const [universeNames, setUniverseNames] = useState({});
   const [groups, setGroups] = useState({});
+  const [alertLevels, setAlertLevels] = useState({});
+
+  const loadAlertLevels = useCallback(async () => {
+    if (!eveApi.getAllUnseenLevels) return;
+    try {
+      setAlertLevels((await eveApi.getAllUnseenLevels()) || {});
+    } catch (err) {
+      sendDebugLog('ERROR', 'SIDEBAR', 'Failed to load alert levels', { error: err?.message });
+    }
+  }, []);
 
   const loadGroups = useCallback(async () => {
     if (!eveApi.getGroups) return;
@@ -30,6 +40,10 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
   useEffect(() => {
     loadGroups();
   }, [loadGroups, accounts]);
+
+  useEffect(() => {
+    loadAlertLevels();
+  }, [loadAlertLevels, accounts, unseenCounts]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,6 +114,8 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
     const groupName = opts.grouped ? opts.groupName : undefined;
     const unseen = Number(unseenCounts[acc.characterId] || 0);
     const compact = Boolean(opts.compact);
+    const level = Number(alertLevels[acc.characterId] || 0);
+    const levelClass = level >= 1 && level <= 3 ? `alert-level-${level}` : '';
 
     return (
       <div
@@ -110,7 +126,7 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
           selectedAccount?.characterId === acc.characterId
             ? 'bg-blue-600 border-blue-500'
             : 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-        } ${compact ? 'p-2' : 'p-3'}`}
+        } ${levelClass} ${compact ? 'p-2' : 'p-3'}`}
       >
         <div className="flex justify-between items-start gap-2 min-w-0">
           {opts.grouped && (
@@ -161,22 +177,25 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
     );
   };
 
-  const groupHeader = (name, count, collapsed, onClick, key) => (
-    <div
-      key={key}
-      onClick={onClick}
-      className={`col-span-full flex justify-between items-center mt-2 mb-1 px-3 py-1.5 rounded-md select-none ${
-        onClick
-          ? 'cursor-pointer bg-blue-900/40 border border-blue-800/50 hover:bg-blue-900/60'
-          : 'bg-gray-800/60 border border-gray-700'
-      }`}
-    >
-      <span className="text-xs font-bold uppercase text-blue-300">{name}</span>
-      <span className="text-xs font-normal text-gray-400">
-        {count} character{count === 1 ? '' : 's'} {collapsed ? '▸' : '▾'}
-      </span>
-    </div>
-  );
+const groupHeader = (name, count, collapsed, onClick, key, groupLevel = 0) => {
+    const levelClass = collapsed && groupLevel >= 1 && groupLevel <= 3 ? `alert-level-${groupLevel}` : '';
+    return (
+      <div
+        key={key}
+        onClick={onClick}
+        className={`col-span-full flex justify-between items-center mt-2 mb-1 px-3 py-1.5 rounded-md select-none border ${
+          onClick
+            ? 'cursor-pointer bg-blue-900/40 border-blue-800/50 hover:bg-blue-900/60'
+            : 'bg-gray-800/60 border-gray-700'
+        } ${levelClass}`}
+      >
+        <span className="text-xs font-bold uppercase text-blue-300">{name}</span>
+        <span className="text-xs font-normal text-gray-400">
+          {count} character{count === 1 ? '' : 's'} {collapsed ? '▸' : '▾'}
+        </span>
+      </div>
+    );
+  };
 
   const byId = new Map(accounts.map((acc) => [Number(acc.characterId), acc]));
   const renderedIds = new Set();
@@ -192,6 +211,14 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
     const primary =
       members.find((member) => matchId(member, group.primaryCharacterId)) || members[0];
     const shown = group.collapsed ? [primary] : members;
+    const groupLevel = members.reduce(
+      (best, member) => {
+        const lvl = Number(alertLevels[member.characterId] || 0);
+        if (lvl >= 1 && (best === 0 || lvl < best)) return lvl;
+        return best;
+      },
+      0
+    );
 
     rows.push(
       groupHeader(
@@ -199,7 +226,8 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
         members.length,
         Boolean(group.collapsed),
         () => handleToggleGroup(groupName),
-        `group-${groupName}`
+        `group-${groupName}`,
+        groupLevel
       )
     );
 
@@ -222,6 +250,14 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
 
   if (ungrouped.length) {
     const ungroupedCollapsed = Boolean(groups['__ungrouped__']?.collapsed);
+    const ungroupedLevel = ungrouped.reduce(
+      (best, account) => {
+        const lvl = Number(alertLevels[account.characterId] || 0);
+        if (lvl >= 1 && (best === 0 || lvl < best)) return lvl;
+        return best;
+      },
+      0
+    );
 
     if (rows.length) {
       rows.push(
@@ -230,7 +266,8 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
           ungrouped.length,
           ungroupedCollapsed,
           () => handleToggleGroup('__ungrouped__'),
-          'group-__ungrouped__'
+          'group-__ungrouped__',
+          ungroupedLevel
         )
       );
     }

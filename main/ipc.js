@@ -68,6 +68,25 @@ handle('notifications:getAll', (_e, id) => notificationHistory.getAll(id));
 handle('notifications:markSeen', (_e, id) => notificationHistory.markSeen(id));
 handle('notifications:getLastViewed', (_e, id) => notificationHistory.getLastViewed(id));
 handle('notifications:getAllUnseenCounts', () => notificationHistory.getAllUnseenCounts());
+  handle('notifications:getAllUnseenLevels', () => {
+    const warnHours = Number(settings.getSettings().queueWarnHours ?? 24) || 24;
+    const warnMs = warnHours * 60 * 60 * 1000;
+    const levels = {};
+    for (const acc of accounts.getAccounts()) {
+      if (acc.testPilot) continue;
+      const unseen = notificationHistory.getUnseen(acc.characterId);
+      const types = new Set(unseen.map((e) => e.type));
+      const remaining = Number(acc.queueRemainingMs || 0);
+      const hasTraining = Boolean(acc.activeSkill) || (Array.isArray(acc.queue) && acc.queue.length > 0);
+
+      let level = 0;
+      if (types.has('queue-empty') && !hasTraining) level = 1;
+      else if (hasTraining && remaining > 0 && remaining <= warnMs) level = 2;
+      else if (unseen.length > 0) level = 3;
+      levels[String(acc.characterId)] = level;
+    }
+    return levels;
+  });
 handle('plans:readClipboard', () => plans.readClipboardPlan());
 handle('plans:list', () => plans.loadPlans());
 handle('plans:save', (_e, p) => plans.savePlan(p));
