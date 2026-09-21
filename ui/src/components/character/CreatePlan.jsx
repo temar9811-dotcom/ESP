@@ -1,15 +1,29 @@
-// File: ui/src/components/character/CreatePlan.jsx | Version: 1.2
+// File: ui/src/components/character/CreatePlan.jsx | Version: 1.3
 import React, { useState, useEffect, useMemo } from 'react';
 
 const MAX_LEVEL = 5;
 
-export default function CreatePlan({ account, onClose }) {
+const entriesFromPlan = (plan) => {
+  const map = new Map();
+  (Array.isArray(plan?.entries) ? plan.entries : []).forEach((entry) => {
+    const level = Math.min(MAX_LEVEL, Math.max(1, Number(entry?.level) || 1));
+    map.set(entry?.skillId ?? `__name__${entry?.name ?? ''}`, {
+      skillId: entry?.skillId ?? null,
+      name: entry?.name || 'Unknown',
+      level
+    });
+  });
+  return map;
+};
+
+export default function CreatePlan({ account, onClose, editingPlan }) {
+  const isEditing = Boolean(editingPlan);
   const [catalog, setCatalog] = useState(null);
   const [catalogError, setCatalogError] = useState('');
   const [skillLevels, setSkillLevels] = useState({});
-  const [name, setName] = useState('');
-  const [scope, setScope] = useState('global');
-  const [entries, setEntries] = useState(new Map());
+  const [name, setName] = useState(isEditing ? editingPlan.name || '' : '');
+  const [scope, setScope] = useState(isEditing && editingPlan.scope === 'character' ? 'character' : 'global');
+  const [entries, setEntries] = useState(() => entriesFromPlan(editingPlan));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -89,6 +103,7 @@ export default function CreatePlan({ account, onClose }) {
     setSaveError('');
     try {
       await window.eveApi.savePlan({
+        id: isEditing ? editingPlan.id : undefined,
         name: name.trim(),
         scope,
         characterId: scope === 'character' ? Number(account?.characterId) : null,
@@ -106,7 +121,7 @@ export default function CreatePlan({ account, onClose }) {
   return (
     <div className="space-y-4 max-w-5xl">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-100">Create Skill Plan</h2>
+        <h2 className="text-xl font-bold text-gray-100">{isEditing ? 'Edit Skill Plan' : 'Create Skill Plan'}</h2>
         <button
           onClick={handleSave}
           disabled={saving || !name.trim() || entryList.length === 0}

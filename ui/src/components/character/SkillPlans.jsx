@@ -1,9 +1,9 @@
-// File: ui/src/components/character/SkillPlans.jsx | Version: 2.3
+// File: ui/src/components/character/SkillPlans.jsx | Version: 2.4
 import React, { useState, useEffect } from 'react';
 import SkillPlanModal from '../modals/SkillPlanModal';
 import PlanDetailModal from '../modals/PlanDetailModal';
 
-export default function SkillPlans({ account, onCreatePlan }) {
+export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
   const characterId = account?.characterId;
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
@@ -127,12 +127,20 @@ export default function SkillPlans({ account, onCreatePlan }) {
                     {plan.scope === 'global' ? 'All characters' : 'Character-specific'} · {plan.entries?.length || 0} skills
                   </p>
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(plan.id); }}
-                  className="text-red-400 hover:text-red-300 text-sm"
-                >
-                  Delete
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEditPlan && onEditPlan(plan); }}
+                    className="text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(plan.id); }}
+                    className="text-red-400 hover:text-red-300 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

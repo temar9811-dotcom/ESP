@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.7)
+## Current Features (v1.2.8)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -15,6 +15,8 @@ Built with Electron and the EVE ESI API.
 - **Active skill training** with live progress bar and completion countdown
 - **Full skill queue table** — positions, SP costs, start/finish times and totals
 - **Recently completed skills** — collapsible last-7-days list on each Overview (auto-collapsed above 5 entries)
+- **Recently Finished Skills** — the last five skills that finished training shown on each Overview
+- **Notification history** — a per-character panel on the Overview listing everything that happened since you last checked, color-coded by type
 - **Wallet tracking** — balance plus a 7-day wallet journal with ISK in/out summary
 - **Clone locations & implants** — Assets tab shows active clone detection, standby clones with expandable implant lists, implant slot numbers and ISK valuations, local clone nicknames
 - **Location & ship** shown directly on each character row
@@ -24,6 +26,8 @@ Built with Electron and the EVE ESI API.
 - **Account groups** with custom names (e.g. "Main account", "Industry alts")
 - **Primary character star** — collapsed groups show the primary; expanded groups sort it to the top
 - **Collapsible groups** and a collapsible Ungrouped section
+- **Compact collapsed cards** — a collapsed group shows its primary character with just name and location
+- **Alert pulses** — sidebar cards pulse green for unseen notifications, orange when the queue is almost dry, red when training stopped; collapsed group headers pulse with the highest-priority alert in the group
 - **Per-character tabs** — Overview, Skill Queue, Wallet, Skill Plans, Assets
 - **Per-character notes** — editable Notes tab on each character sheet, saved locally
 - **Cross-character skill search** — search box in topbar, autocomplete dropdown, popup showing all characters' levels for a skill, with minimize to a pill
@@ -41,6 +45,7 @@ Built with Electron and the EVE ESI API.
 ### Skill Plans
 - **In-app Create Plan builder** — browse the full EVE skill catalog in collapsible groups and add levels with one click, then save as a global or character-specific plan
 - **Current skill levels** — the builder shows how far the selected character has trained each skill
+- **Edit plans** — any plan can be reopened in the builder with its skills pre-loaded and saved back to the same plan
 - **Plan detail popup** — click any plan to review its skills and export it to the clipboard (same format as clipboard import)
 - **Clipboard import** — paste a plan copied from the EVE client; malformed lines are reported instead of silently dropped
 - **Character or global scope** per plan, with plans filtered per character
@@ -76,10 +81,11 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.7**
+**Currently tracked version: v1.2.8**
 
 ### Changelog
-- **v1.2.7 (current)** — Fixed the What's-new popup so it reliably appears once per version: the changelog is now requested once the UI is ready instead of being pushed at startup, and the last-seen version is only recorded when the popup is actually shown.
+- **v1.2.8 (current)** — Notification history on each character (everything that happened since you last checked, color-coded, at the bottom of the Overview) plus a Recently Finished Skills panel (last five). Sidebar alert pulses: green for unseen notifications, orange when the queue is almost dry, red when training stopped, with collapsed group headers showing the highest-priority color. Collapsed groups now show the primary compactly (name + location) and the Ungrouped section is collapsible. New tab bar position lock (vertical or horizontal, mutually exclusive). Skill plans can be edited: Edit reopens the builder with existing skills pre-loaded and saves back to the same plan.
+- **v1.2.7** — Fixed the What's-new popup so it reliably appears once per version: the changelog is now requested once the UI is ready instead of being pushed at startup, and the last-seen version is only recorded when the popup is actually shown.
 - **v1.2.6** — In-app skill planning: build plans straight from the full EVE skill catalog, showing each skill's current level for the selected character. Click any plan for a detail popup and export it back to the clipboard (same format as clipboard import). A What's-new popup now shows the changelog once per version, tracking the last-seen version so it only appears after an update.
 - **v1.2.5** — Character groups in the new sidebar (custom names, primary star, collapsible sections). Debug tab removed from release builds so it only appears under the dev server. Dotted, readable installer names for updates. Cross-platform native notifications with the Windows toast overlay as a fallback, and the toast assets restored in packaged builds. Skill Plans tab completed: per-character filtering, delete, and clipboard import with a naming and scope dialog.
 - **v1.2.4** — Responsive layout refinements so the interface stays clean and usable on smaller windows.

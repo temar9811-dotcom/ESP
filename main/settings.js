@@ -19,6 +19,8 @@ const DEFAULT_SETTINGS = {
   clockLarge: false,
   theme: 'kick-mrchi',
   biggerText: false,
+  tabsVerticalLock: false,
+  tabsHorizontalLock: false,
   lastSeenVersion: ''
 };
 function getSettingsFile() {

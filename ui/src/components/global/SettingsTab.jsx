@@ -1,8 +1,8 @@
-// File: ui/src/components/global/SettingsTab.jsx | Version: 1.1
+// File: ui/src/components/global/SettingsTab.jsx | Version: 1.2
 import React, { useState, useEffect } from 'react';
 import { THEME_OPTIONS, applyTheme, applyTextScale } from '../../theme';
 
-export default function SettingsTab({ onClose }) {
+export default function SettingsTab({ onClose, onSettingsChange }) {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +34,18 @@ export default function SettingsTab({ onClose }) {
     setSettings(prev => ({ ...prev, [key]: next }));
     if (key === 'theme') applyTheme(value);
     if (key === 'biggerText') applyTextScale(next);
+  };
+
+  const handleTabLock = (which, checked) => {
+    const patch = { ...settings };
+    if (checked) {
+      patch[which] = true;
+      patch[which === 'tabsVerticalLock' ? 'tabsHorizontalLock' : 'tabsVerticalLock'] = false;
+    } else {
+      patch[which] = false;
+    }
+    setSettings(patch);
+    if (onSettingsChange) onSettingsChange(patch);
   };
 
   if (loading || !settings) return <div className="p-4 text-gray-400">Loading settings...</div>;
@@ -103,6 +115,17 @@ export default function SettingsTab({ onClose }) {
           <span>Larger text (+20%)</span>
           <input type="checkbox" checked={!!settings.biggerText} onChange={(e) => updateSetting('biggerText', e.target.checked)} className="w-4 h-4" />
         </label>
+        <div className="pt-2 border-t border-gray-700 space-y-2">
+          <p className="text-xs text-gray-500">Tab bar position (choose one, or none to keep responsive)</p>
+          <label className="flex items-center justify-between text-gray-300">
+            <span>Lock tabs vertical</span>
+            <input type="checkbox" checked={!!settings.tabsVerticalLock} onChange={(e) => handleTabLock('tabsVerticalLock', e.target.checked)} className="w-4 h-4" />
+          </label>
+          <label className="flex items-center justify-between text-gray-300">
+            <span>Lock tabs horizontal</span>
+            <input type="checkbox" checked={!!settings.tabsHorizontalLock} onChange={(e) => handleTabLock('tabsHorizontalLock', e.target.checked)} className="w-4 h-4" />
+          </label>
+        </div>
       </div>
       <div className="flex justify-end">
         <button onClick={handleSave} className="px-6 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">

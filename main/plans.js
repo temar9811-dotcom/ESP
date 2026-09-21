@@ -105,17 +105,33 @@ function savePlan(payload) {
     throw new Error('Select a character for this plan.');
   }
 
+  const nextEntries = entries.map((entry) => ({
+    name: String(entry.name || ''),
+    level: Math.min(5, Math.max(1, Number(entry.level || 1))),
+    skillId: entry.skillId ? Number(entry.skillId) : null
+  }));
+
+  const existingId = payload?.id || payload?.planId || null;
+  if (existingId) {
+    const existing = plans.find((plan) => plan.id === existingId);
+    if (!existing) {
+      throw new Error('Plan not found.');
+    }
+    existing.name = name;
+    existing.scope = scope;
+    existing.characterId = characterId;
+    existing.entries = nextEntries;
+    savePlansFile(plans);
+    return existing;
+  }
+
   const plan = {
     id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name,
     scope,
     characterId,
     createdAt: new Date().toISOString(),
-    entries: entries.map((entry) => ({
-      name: String(entry.name || ''),
-      level: Number(entry.level || 1),
-      skillId: entry.skillId ? Number(entry.skillId) : null
-    }))
+    entries: nextEntries
   };
 
   plans.push(plan);

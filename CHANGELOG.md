@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.8
+- Notification history panel on each character's Overview: lists every notification that arrived since you last checked that character, color-coded by type, with a "since X ago" label. It lives at the bottom of the Overview.
+- Recently Finished Skills panel on the Overview — the last five skills that finished training, with completion times.
+- Sidebar alert pulses: character cards pulse green when they have unseen notifications, orange when the skill queue has less than the configured warning lead time left, and red when a character's training ran out. Collapsed group headers pulse with the highest-priority color among their members.
+- Collapsed groups now show the primary character compactly (name + location only), and the Ungrouped section is now collapsible like named groups.
+- Tab bar position lock: new Appearance settings let you pin the tabs vertical or horizontal (mutually exclusive); leave both off for the usual responsive behavior.
+- Skill plan editing: every plan now has an Edit button that reopens the plan builder with the plan's skills pre-loaded, saving back to the same plan.
+
 ## 1.2.7
 - Fixed the What's-new popup: it now reliably shows on the first launch after an update. The changelog is requested once the UI is up (instead of being pushed at startup, which could be missed), and the last-seen version is only recorded when the popup is actually shown.
 

@@ -29,6 +29,8 @@ export default function App() {
   const [unseenNotifications, setUnseenNotifications] = useState([]);
   const [unseenCounts, setUnseenCounts] = useState({});
   const [lastViewedByChar, setLastViewedByChar] = useState({});
+  const [settings, setSettings] = useState(null);
+  const [editingPlan, setEditingPlan] = useState(null);
 
   useEffect(() => {
     const host = window.location.hostname;
@@ -38,6 +40,7 @@ export default function App() {
   useEffect(() => {
     if (!window.eveApi?.getSettings) return;
     window.eveApi.getSettings().then((s) => {
+      setSettings(s);
       if (s?.theme) applyTheme(s.theme);
       applyTextScale(!!s?.biggerText);
     }).catch(() => {});
@@ -147,9 +150,36 @@ export default function App() {
   const tabs = ['overview', 'skills', 'wallet', 'assets', 'clones', 'notes', 'plans'];
   if (isDev) tabs.push('debug');
 
+  const tabLock = settings?.tabsVerticalLock ? 'vertical' : settings?.tabsHorizontalLock ? 'horizontal' : 'auto';
+  const tabShellLayout = tabLock === 'vertical'
+    ? 'flex-1 flex flex-row overflow-hidden'
+    : tabLock === 'horizontal'
+      ? 'flex-1 flex flex-col overflow-hidden'
+      : 'flex-1 flex flex-row md:flex-col overflow-hidden';
+  const tabBarLayout = tabLock === 'vertical'
+    ? 'flex flex-col border-r border-gray-700 bg-gray-800 shrink-0 tab-bar w-auto'
+    : tabLock === 'horizontal'
+      ? 'flex flex-row border-b border-gray-700 bg-gray-800 shrink-0 tab-bar w-auto'
+      : 'flex flex-col md:flex-row border-r md:border-r-0 md:border-b border-gray-700 bg-gray-800 shrink-0 tab-bar w-auto';
+  const tabBtnClass = (active) => {
+    if (tabLock === 'vertical') {
+      return `w-auto text-left px-4 py-3 text-sm font-medium capitalize transition-colors border-b border-gray-700 border-transparent ${
+        active ? 'text-blue-400 border-b-2 border-blue-400 bg-gray-700' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+      }`;
+    }
+    if (tabLock === 'horizontal') {
+      return `w-auto text-left px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 border-transparent ${
+        active ? 'text-blue-400 border-blue-400 bg-gray-700' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+      }`;
+    }
+    return `w-auto text-left px-4 py-3 md:py-2 text-sm font-medium capitalize transition-colors border-b border-gray-700 md:border-b-0 md:border-l-2 border-transparent ${
+      active ? 'text-blue-400 border-blue-400 bg-gray-700 md:border-l-2' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+    }`;
+  };
+
   const renderContent = () => {
-    if (activeTab === 'create-plan') return <CreatePlan account={selectedAccount} onClose={() => setActiveTab('plans')} />;
-    if (activeTab === 'settings') return <SettingsTab onClose={() => setActiveTab('overview')} />;
+    if (activeTab === 'create-plan') return <CreatePlan account={selectedAccount} onClose={() => setActiveTab('plans')} editingPlan={editingPlan} />;
+    if (activeTab === 'settings') return <SettingsTab onClose={() => setActiveTab('overview')} onSettingsChange={setSettings} />;
     if (activeTab === 'debug') return <DebugTab />;
     if (!selectedAccount) return <p className="text-gray-500">Select a character from the sidebar.</p>;
     
@@ -160,7 +190,7 @@ export default function App() {
       case 'assets': return <Assets account={selectedAccount} />;
       case 'clones': return <Clones account={selectedAccount} />;
       case 'notes': return <Notes account={selectedAccount} />;
-      case 'plans': return <SkillPlans account={selectedAccount} onCreatePlan={() => setActiveTab('create-plan')} />;
+      case 'plans': return <SkillPlans account={selectedAccount} onCreatePlan={() => { setEditingPlan(null); setActiveTab('create-plan'); }} onEditPlan={(plan) => { setEditingPlan(plan); setActiveTab('create-plan'); }} />;
       default: return <p className="text-gray-400">Unknown tab.</p>;
     }
   };
@@ -173,17 +203,13 @@ export default function App() {
         <SyncIndicator />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar selectedAccount={selectedAccount} onSelect={handleSelectAccount} unseenCounts={unseenCounts} />
-          <main className="flex-1 flex flex-row md:flex-col overflow-hidden">
-            <div className="flex flex-col md:flex-row border-r md:border-r-0 md:border-b border-gray-700 bg-gray-800 shrink-0 tab-bar w-auto">
+          <main className={tabShellLayout}>
+            <div className={tabBarLayout}>
               {tabs.map((tab) => (
                 <button 
                   key={tab} 
                   onClick={() => setActiveTab(tab)}
-                  className={`w-auto text-left px-4 py-3 md:py-2 text-sm font-medium capitalize transition-colors border-b border-gray-700 md:border-b-0 md:border-l-2 border-transparent ${
-                    activeTab === tab 
-                      ? 'text-blue-400 border-blue-400 bg-gray-700 md:border-l-2' 
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                  }`}
+                  className={tabBtnClass(activeTab === tab)}
                 >
                   {tab}
                 </button>
