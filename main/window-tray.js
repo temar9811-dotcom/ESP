@@ -9,6 +9,7 @@ nativeImage
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./debug/logger');
 const { VERSION } = require('../version');
 const eveConfig = require('../eve/config');
 const TRAY_ICON_DATA =
@@ -194,17 +195,17 @@ if (tray) return;
 tray = new Tray(getTrayIcon());
 tray.setToolTip(`${eveConfig.APP_NAME} v${VERSION}\nNo characters added`);
 const menu = Menu.buildFromTemplate([
-{ label: 'Open', click: () => showWindow() },
-{
-label: 'Refresh now',
-click: () => { actions.refreshAll().catch(console.error); }
-},
-{
-label: 'Add character',
-click: () => { actions.addAccount().then(() => showWindow()).catch((err) => { console.error(err); showWindow(); }); }
-},
-{ type: 'separator' },
-{ label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
+  { label: 'Open', click: () => showWindow() },
+  {
+    label: 'Refresh now',
+    click: () => { actions.refreshAll().catch((err) => logger.error('TRAY', 'Refresh now failed', { error: err.message })); }
+  },
+  {
+    label: 'Add character',
+    click: () => { actions.addAccount().then(() => showWindow()).catch((err) => { logger.error('TRAY', 'Add character failed', { error: err.message }); showWindow(); }); }
+  },
+  { type: 'separator' },
+  { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
 ]);
 tray.setContextMenu(menu);
 tray.on('double-click', () => { showWindow(); });

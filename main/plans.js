@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 const eve = require('../eve');
+const logger = require('./debug/logger');
 
 function getPlansFile() {
   return path.join(app.getPath('userData'), 'skillPlans.json');
@@ -122,6 +123,7 @@ function savePlan(payload) {
     existing.characterId = characterId;
     existing.entries = nextEntries;
     savePlansFile(plans);
+    logger.info('PLANS', `Updated plan: ${name} (${existingId})`, { scope, characterId, entries: nextEntries.length });
     return existing;
   }
 
@@ -136,14 +138,17 @@ function savePlan(payload) {
 
   plans.push(plan);
   savePlansFile(plans);
+  logger.info('PLANS', `Created plan: ${plan.name} (${plan.id})`, { scope, characterId, entries: nextEntries.length });
 
   return plan;
 }
 
 function deletePlan(planId) {
-  let plans = loadPlans();
-  plans = plans.filter((plan) => plan.id !== planId);
-  savePlansFile(plans);
+  const plans = loadPlans();
+  const filtered = plans.filter((plan) => plan.id !== planId);
+  const removed = plans.length !== filtered.length;
+  savePlansFile(filtered);
+  logger.info('PLANS', `Deleted plan: ${planId}`, { removed });
   return true;
 }
 
@@ -154,6 +159,7 @@ function exportPlanToClipboard(planId) {
     .filter((entry) => entry && entry.name)
     .map((entry) => `${entry.name} ${Math.min(5, Math.max(1, Number(entry.level) || 1))}`);
   clipboard.writeText(lines.join('\n'));
+  logger.info('PLANS', `Exported plan to clipboard: ${plan.name}`, { lines: lines.length });
   return { ok: true, lines: lines.length };
 }
 
@@ -175,6 +181,8 @@ function mergePlans(incoming) {
   if (imported > 0) {
     savePlansFile(plans);
   }
+
+  logger.info('PLANS', `Merged plans: ${imported} imported of ${Array.isArray(incoming) ? incoming.length : 0}`);
 
   return imported;
 }

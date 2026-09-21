@@ -116,6 +116,75 @@ function registerV2Actions() {
     accounts.emitWalletActivity(payload);
     return { ok: true, payload };
   });
+  registerAction('Force Refresh All', 'Runs accounts.refreshAll immediately', async () => {
+    const accounts = require('../accounts');
+    await accounts.refreshAll();
+    return { ok: true };
+  });
+  registerAction('Force ESI Status Check', 'Runs a live ESI status check and logs it', async () => {
+    const esiStatus = require('../esi/status');
+    const status = await esiStatus.check();
+    logger.info('ENGINE', 'ESI status check result', status);
+    return { ok: true, status };
+  });
+  registerAction('Add Test Pilot', 'Adds a fake characterId/name test pilot', (p) => {
+    const accounts = require('../accounts');
+    const id = Math.floor(Math.random() * 900000000) + 100000000;
+    const name = p.characterName || 'Test Pilot';
+    accounts.addTestPilot(id, name);
+    return { ok: true, characterId: id, characterName: name };
+  });
+  registerAction('Remove Test Pilots', 'Removes all testPilot accounts', () => {
+    const accounts = require('../accounts');
+    const before = accounts.getAccounts().filter(a => a.testPilot).length;
+    accounts.removeTestPilots();
+    return { ok: true, removed: before };
+  });
+  registerAction('Show Scheduler State', 'Dumps next-run timers and interval info for all pullers', () => {
+    const nextRuns = scheduler.getNextRuns();
+    logger.info('ENGINE', 'Scheduler state', nextRuns);
+    return { ok: true, nextRuns };
+  });
+  registerAction('Clear Notification History', 'Wipes all recorded notification history entries', () => {
+    const nh = require('../notification-history');
+    nh.clearAll();
+    return { ok: true };
+  });
+  registerAction('Inspect Notification History', 'Logs a per-character summary of the notification history store', () => {
+    const nh = require('../notification-history');
+    const summary = nh.getSummary();
+    logger.info('ENGINE', 'Notification history summary', summary);
+    return { ok: true, summary };
+  });
+  registerAction('Clear Character Groups', 'Resets all character group assignments', () => {
+    const groups = require('../groups');
+    groups.clearGroups();
+    return { ok: true };
+  });
+  registerAction('Test Direct Toast', 'Shows a manual toast via toast-window (Windows only)', (p) => {
+    const toastWindow = require('../toast-window');
+    if (process.platform !== 'win32') return { ok: false, error: 'Toast overlay is Windows-only' };
+    toastWindow.showToast(p.title || 'Debug Toast', p.body || 'Direct toast from debug engine', 'debug');
+    return { ok: true };
+  });
+  registerAction('Reset Settings to Defaults', 'Restores all settings to factory defaults', () => {
+    const settings = require('../settings');
+    const defaults = settings.resetSettings();
+    return { ok: true, defaults };
+  });
+  registerAction('Force Sync State Snapshot', 'Logs current sync/cache state for all pullers', () => {
+    const pull = (name) => { try { return { characters: Object.keys(require(`../pullers/${name}`).getCache() || {}).length }; } catch { return { characters: 0 }; } };
+    const state = {
+      skills: pull('skills-data'),
+      wallet: pull('wallet-data'),
+      assets: pull('assets-data'),
+      charData: pull('char-data'),
+      clones: pull('clones-data'),
+      syncer: require('../esi/syncer').getState()
+    };
+    logger.info('ENGINE', 'Sync state', state);
+    return { ok: true, state };
+  });
 }
 function initEngine() { logger.init(); registerV2Actions(); logger.info('ENGINE', 'Debug engine V2 initialized.'); }
 module.exports = { registerAction, getActions, runAction, initEngine };

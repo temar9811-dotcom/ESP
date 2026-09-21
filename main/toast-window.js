@@ -2,6 +2,7 @@
 
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
+const logger = require('./debug/logger');
 
 const TOAST_WIDTH = 380;
 const TOAST_HEIGHT = 340;
@@ -52,7 +53,7 @@ function createToastWindow() {
         }
       }, 50);
 
-      console.log('ESP toast overlay ready.');
+      logger.info('TOAST-WIN', 'ESP toast overlay ready');
     }
   });
 
@@ -74,7 +75,7 @@ function showToast(title, body, sound) {
 
   const deliver = () => {
     if (toastWin && !toastWin.isDestroyed()) {
-      console.log('ESP toast delivered:', payload.title);
+      logger.debug('TOAST-WIN', 'Delivered toast', payload);
       toastWin.webContents.send('toast:show', payload);
 
       try {

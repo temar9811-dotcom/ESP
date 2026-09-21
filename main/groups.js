@@ -3,6 +3,7 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./debug/logger');
 
 const UNGROUPED_KEY = '__ungrouped__';
 
@@ -91,6 +92,7 @@ function setGroup(characterId, name) {
   }
 
   saveData();
+  logger.info('GROUPS', `Set group: ${id} -> ${clean || '(none)'}`, { from: current || null });
   return getGroups();
 }
 
@@ -103,6 +105,7 @@ function setPrimary(characterId) {
   if (name) {
     data[name].primaryCharacterId = id;
     saveData();
+    logger.info('GROUPS', `Set primary: ${id} in ${name}`);
   }
 
   return getGroups();
@@ -122,6 +125,15 @@ function toggleCollapsed(groupName) {
 
   data[groupName].collapsed = !data[groupName].collapsed;
   saveData();
+  logger.info('GROUPS', `Toggle collapsed: ${groupName} -> ${data[groupName].collapsed}`);
+  return getGroups();
+}
+
+function clearGroups() {
+  loadData();
+  data = {};
+  saveData();
+  logger.info('GROUPS', 'Cleared all character groups');
   return getGroups();
 }
 
@@ -130,5 +142,6 @@ module.exports = {
   setGroup,
   setPrimary,
   toggleCollapsed,
+  clearGroups,
   UNGROUPED_KEY
 };

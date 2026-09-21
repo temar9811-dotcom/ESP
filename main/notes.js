@@ -3,6 +3,7 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./debug/logger');
 
 let notes = null;
 
@@ -49,8 +50,10 @@ function setNote(characterId, text) {
 
   if (clean === '') {
     delete data[key];
+    logger.info('NOTES', `Cleared note for ${characterId}`);
   } else {
     data[key] = { text: clean, updatedAt: new Date().toISOString() };
+    logger.info('NOTES', `Saved note for ${characterId}`, { length: clean.length });
   }
 
   save();

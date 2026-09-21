@@ -1,6 +1,7 @@
 'use strict';
 
 const ESI_BASE = 'https://esi.evetech.net/latest';
+const logger = require('./debug/logger');
 
 const cache = new Map();
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -23,6 +24,7 @@ async function getCorpAlliance(characterId) {
   const cached = cache.get(id);
 
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    logger.debug('CORP-INFO', `Cache hit for character ${id}`);
     return cached.value;
   }
 
@@ -35,8 +37,8 @@ async function getCorpAlliance(characterId) {
       try {
         const corp = await esiGet(`/corporations/${character.corporation_id}/`);
         value.corporation = (corp && corp.name) || null;
-      } catch {
-        // Ignore corp lookup failures.
+      } catch (err) {
+        logger.warn('CORP-INFO', `Corp lookup failed for ${id}`, { error: err.message });
       }
     }
 
@@ -44,15 +46,16 @@ async function getCorpAlliance(characterId) {
       try {
         const alliance = await esiGet(`/alliances/${character.alliance_id}/`);
         value.alliance = (alliance && alliance.name) || null;
-      } catch {
-        // Ignore alliance lookup failures.
+      } catch (err) {
+        logger.warn('CORP-INFO', `Alliance lookup failed for ${id}`, { error: err.message });
       }
     }
-  } catch {
-    // Ignore character lookup failures.
+  } catch (err) {
+    logger.warn('CORP-INFO', `Character lookup failed for ${id}`, { error: err.message });
   }
 
   cache.set(id, { value, fetchedAt: Date.now() });
+  logger.debug('CORP-INFO', `Fetched corp/alliance for ${id}`, value);
   return value;
 }
 

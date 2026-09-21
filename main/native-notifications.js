@@ -3,6 +3,7 @@
 'use strict';
 
 const { Notification } = require('electron');
+const logger = require('./debug/logger');
 
 // Wrapper around Electron's built-in Notification API so the app can
 // surface OS-level alerts on every platform:
@@ -13,7 +14,10 @@ const { Notification } = require('electron');
 // everything else routes here.
 
 function show(title, body, sound) {
-  if (!Notification.isSupported()) return false;
+  if (!Notification.isSupported()) {
+    logger.warn('NATIVE-NOTIFY', 'Notification API not supported; dropped notification', { title });
+    return false;
+  }
 
   const notification = new Notification({
     title: String(title || ''),
@@ -24,6 +28,7 @@ function show(title, body, sound) {
   });
 
   notification.show();
+  logger.debug('NATIVE-NOTIFY', 'Shown', { title, body });
   return true;
 }
 

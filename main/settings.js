@@ -4,6 +4,7 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./debug/logger');
 const DEFAULT_SETTINGS = {
   importEnabled: true,
   hidePrimaryWhenCollapsed: false,
@@ -50,8 +51,10 @@ function setSettings(patch) {
   const current = getSettings();
   const next = { ...current, ...(patch || {}) };
   const safe = {};
+  const changed = {};
   for (const key of Object.keys(DEFAULT_SETTINGS)) {
     safe[key] = next[key];
+    if (safe[key] !== current[key]) changed[key] = safe[key];
   }
   fs.mkdirSync(path.dirname(getSettingsFile()), { recursive: true });
   fs.writeFileSync(
@@ -59,9 +62,26 @@ function setSettings(patch) {
     JSON.stringify(safe, null, 2),
     'utf8'
   );
+  const changedKeys = Object.keys(changed);
+  if (changedKeys.length) {
+    logger.info('SETTINGS', 'Settings updated', { changed });
+  }
   return safe;
+}
+
+function resetSettings() {
+  const defaults = { ...DEFAULT_SETTINGS };
+  fs.mkdirSync(path.dirname(getSettingsFile()), { recursive: true });
+  fs.writeFileSync(
+    getSettingsFile(),
+    JSON.stringify(defaults, null, 2),
+    'utf8'
+  );
+  logger.info('SETTINGS', 'Settings reset to defaults');
+  return defaults;
 }
 module.exports = {
   getSettings,
-  setSettings
+  setSettings,
+  resetSettings
 };

@@ -3,11 +3,14 @@
 const toastWindow = require('./toast-window');
 const native = require('./native-notifications');
 const settings = require('./settings');
+const logger = require('./debug/logger');
 
 function deliver(title, body, sound) {
   if (process.platform === 'win32') {
+    logger.debug('NOTIFY', `Toast: ${title}`, { body, sound });
     toastWindow.showToast(title, body, sound);
   } else {
+    logger.debug('NOTIFY', `Native: ${title}`, { body, sound });
     native.show(title, body, sound);
   }
 }
@@ -33,7 +36,10 @@ function formatDuration(ms) {
 function notifySkillCompleted(payload) {
   const current = settings.getSettings();
 
-  if (current.notifySkill === false) return;
+  if (current.notifySkill === false) {
+    logger.debug('NOTIFY', 'Skill notification skipped: notifySkill disabled');
+    return;
+  }
 
   const safe = payload && typeof payload === 'object' ? payload : {};
   const sound = current.muteSounds ? null : 'skill';
@@ -48,7 +54,10 @@ function notifySkillCompleted(payload) {
 function notifyQueueWarning(payload) {
   const current = settings.getSettings();
 
-  if (current.notifyQueueEmpty === false) return;
+  if (current.notifyQueueEmpty === false) {
+    logger.debug('NOTIFY', 'Queue warning skipped: notifyQueueEmpty disabled');
+    return;
+  }
 
   const safe = payload && typeof payload === 'object' ? payload : {};
   const sound = current.muteSounds ? null : 'queue';
@@ -76,11 +85,17 @@ function filterWalletEntries(payload) {
 function notifyWalletActivity(payload) {
   const current = settings.getSettings();
 
-  if (current.notifyWallet === false) return;
+  if (current.notifyWallet === false) {
+    logger.debug('NOTIFY', 'Wallet notification skipped: notifyWallet disabled');
+    return;
+  }
 
   const { entries: list } = filterWalletEntries(payload);
 
-  if (!list.length) return;
+  if (!list.length) {
+    logger.debug('NOTIFY', 'Wallet notification skipped: no entries above threshold');
+    return;
+  }
 
   const shown = list.slice(0, 5);
   const sound = current.muteSounds ? null : 'wallet';

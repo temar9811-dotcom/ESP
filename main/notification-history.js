@@ -108,6 +108,29 @@ function getAllUnseenCounts() {
   return counts;
 }
 
+function clearAll() {
+  load();
+  store = { notifications: {}, lastViewed: {} };
+  save();
+  logger.info('NOTIF-HISTORY', 'Cleared all notification history');
+}
+
+function getSummary() {
+  load();
+  const out = {};
+  const now = Date.now();
+  for (const [id, events] of Object.entries(store.notifications)) {
+    const lastViewed = store.lastViewed[id] || 0;
+    out[id] = {
+      total: events.length,
+      unseen: events.filter((e) => e.timestamp > lastViewed).length,
+      lastViewed,
+      types: events.reduce((acc, e) => { acc[e.type] = (acc[e.type] || 0) + 1; return acc; }, {})
+    };
+  }
+  return out;
+}
+
 module.exports = {
   record,
   getUnseen,
@@ -116,4 +139,6 @@ module.exports = {
   getLastViewed,
   getUnseenCount,
   getAllUnseenCounts,
+  clearAll,
+  getSummary,
 };
