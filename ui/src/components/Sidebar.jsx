@@ -211,6 +211,7 @@ const groupHeader = (name, count, collapsed, onClick, key, groupLevel = 0) => {
     const primary =
       members.find((member) => matchId(member, group.primaryCharacterId)) || members[0];
     const shown = group.collapsed ? [primary] : members;
+    for (const member of members) renderedIds.add(Number(member.characterId));
     const groupLevel = members.reduce(
       (best, member) => {
         const lvl = Number(alertLevels[member.characterId] || 0);
@@ -240,7 +241,6 @@ const groupHeader = (name, count, collapsed, onClick, key, groupLevel = 0) => {
           compact: Boolean(group.collapsed)
         })
       );
-      renderedIds.add(Number(account.characterId));
     }
   }
 
