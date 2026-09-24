@@ -1,4 +1,4 @@
-// File: eve/dashboard-helpers.js | Version: 1.1
+// File: eve/dashboard-helpers.js | Version: 1.2
 'use strict';
 const { esiFetch, publicFetch, publicPost } = require('./http');
 const logger = require('../main/debug/logger');
@@ -92,4 +92,26 @@ function getQueueTimes(queue) {
   }
   return { totalDurationMs, remainingMs: last ? Math.max(0, last - Date.now()) : 0, lastFinish: last };
 }
-module.exports = { getTypeNames, getSkillIdsFromNames, getActiveSkill, getNextSkill, resolveLocationName, enrichQueueWithSpCost, getQueueTimes };
+function calcSkillProgress(skill, now = Date.now()) {
+  if (!skill) return 0;
+  const start = skill.start_date ? new Date(skill.start_date).getTime() : 0;
+  const finish = skill.finish_date ? new Date(skill.finish_date).getTime() : 0;
+  if (!start || !finish || finish <= start) return 0;
+  if (now >= finish) return 100;
+  if (now <= start) return 0;
+
+  // SP-based progress within the target level when SP fields are present.
+  // Handles injected SP (e.g. training starts at 80% of the level).
+  const levelStart = Number(skill.level_start_sp);
+  const levelEnd = Number(skill.level_end_sp);
+  const trainingStart = Number(skill.training_start_sp);
+  if (Number.isFinite(levelStart) && Number.isFinite(levelEnd) && Number.isFinite(trainingStart) && levelEnd > levelStart) {
+    const frac = Math.min(1, Math.max(0, (now - start) / (finish - start)));
+    const currentSp = trainingStart + frac * (levelEnd - trainingStart);
+    return Math.min(100, Math.max(0, ((currentSp - levelStart) / (levelEnd - levelStart)) * 100));
+  }
+
+  // Fallback (D9): time interpolation between constellation dates.
+  return Math.min(100, Math.max(0, ((now - start) / (finish - start)) * 100));
+}
+module.exports = { getTypeNames, getSkillIdsFromNames, getActiveSkill, getNextSkill, resolveLocationName, enrichQueueWithSpCost, getQueueTimes, calcSkillProgress };

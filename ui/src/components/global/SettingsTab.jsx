@@ -1,6 +1,7 @@
-// File: ui/src/components/global/SettingsTab.jsx | Version: 1.2
+// File: ui/src/components/global/SettingsTab.jsx | Version: 1.3
 import React, { useState, useEffect } from 'react';
 import { THEME_OPTIONS, applyTheme, applyTextScale } from '../../theme';
+import { USER_TABS, TAB_LABELS, DEFAULT_ENABLED_TABS } from '../../tabs';
 
 export default function SettingsTab({ onClose, onSettingsChange }) {
   const [settings, setSettings] = useState(null);
@@ -44,6 +45,18 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
     } else {
       patch[which] = false;
     }
+    setSettings(patch);
+    if (onSettingsChange) onSettingsChange(patch);
+  };
+
+  const handleToggleTab = (tab, checked) => {
+    const enabled = Array.isArray(settings.enabledTabs) ? [...settings.enabledTabs] : [...DEFAULT_ENABLED_TABS];
+    const patch = {
+      ...settings,
+      enabledTabs: checked
+        ? (enabled.includes(tab) ? enabled : [...enabled, tab])
+        : enabled.filter((t) => t !== tab)
+    };
     setSettings(patch);
     if (onSettingsChange) onSettingsChange(patch);
   };
@@ -125,6 +138,23 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
             <span>Lock tabs horizontal</span>
             <input type="checkbox" checked={!!settings.tabsHorizontalLock} onChange={(e) => handleTabLock('tabsHorizontalLock', e.target.checked)} className="w-4 h-4" />
           </label>
+        </div>
+      </div>
+      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
+        <h3 className="text-md font-semibold text-gray-200">Tab Activation</h3>
+        <p className="text-xs text-gray-500">Uncheck a tab to hide it from the tab bar.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {USER_TABS.map((tab) => (
+            <label key={tab} className="flex items-center justify-between text-gray-300">
+              <span>{TAB_LABELS[tab] || tab}</span>
+              <input
+                type="checkbox"
+                checked={!Array.isArray(settings.enabledTabs) || settings.enabledTabs.includes(tab)}
+                onChange={(e) => handleToggleTab(tab, e.target.checked)}
+                className="w-4 h-4"
+              />
+            </label>
+          ))}
         </div>
       </div>
       <div className="flex justify-end">

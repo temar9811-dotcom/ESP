@@ -43,10 +43,15 @@ function notifySkillCompleted(payload) {
 
   const safe = payload && typeof payload === 'object' ? payload : {};
   const sound = current.muteSounds ? null : 'skill';
+  const isCorrected = Boolean(safe.corrected);
+  const correctedNote = isCorrected && safe.correctedFinish
+    ? ` Actual finish: ${new Date(safe.correctedFinish).toLocaleString()}.`
+    : '';
+  const provisionalNote = safe.provisional && !isCorrected ? ' (timing unconfirmed)' : '';
 
   deliver(
-    'Skill complete',
-    `${safe.characterName || 'Unknown'}: ${safe.skillName || 'Unknown'} L${safe.level ?? '?'} finished training.`,
+    isCorrected ? 'Skill completion corrected' : 'Skill complete',
+    `${safe.characterName || 'Unknown'}: ${safe.skillName || 'Unknown'} L${safe.level ?? '?'} finished training.${correctedNote}${provisionalNote}`,
     sound
   );
 }

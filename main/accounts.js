@@ -1,4 +1,4 @@
-// File: main/accounts.js | Version: 1.0
+// File: main/accounts.js | Version: 1.1
 'use strict';
 const storage = require('../storage');
 const eve = require('../eve');
@@ -147,39 +147,6 @@ function applyDashboard(account, dashboard) {
   debugLogger.debug('ACCOUNTS', `Applied dashboard for ${account.characterName}: wallet=${dashboard.wallet?.balance}, queue=${dashboard.queue?.length || 0}`);
 }
 
-function checkSkillCompletion(account, dashboard) {
-  const currentActive = dashboard.active || null;
-  const now = Date.now();
-  if (account.lastSeenActiveSkill) {
-    const lastSkill = account.lastSeenActiveSkill;
-    const lastFinishTime = new Date(lastSkill.finish_date).getTime();
-    if (!Number.isNaN(lastFinishTime) && lastFinishTime <= now) {
-      const lastKey = `${lastSkill.skill_id}-${lastSkill.finished_level}-${lastSkill.finish_date}`;
-      const currentKey = currentActive ? `${currentActive.skill_id}-${currentActive.finished_level}-${currentActive.finish_date}` : 'none';
-      if (lastKey !== currentKey) {
-        callbacks.onSkillCompleted({ characterId: account.characterId, characterName: account.characterName || 'Unknown', skillName: lastSkill.skillName || 'Unknown skill', level: lastSkill.finished_level || '?' });
-        if (!currentActive) callbacks.onQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
-      }
-    }
-  }
-  account.lastSeenActiveSkill = currentActive ? { ...currentActive } : null;
-}
-
-function checkQueueWarning(account, dashboard) {
-  const current = settings.getSettings() || {};
-  if (current.notifyQueueEmpty === false) return;
-  const warnHours = Number(current.queueWarnHours ?? 24) || 24;
-  const warnMs = warnHours * 60 * 60 * 1000;
-  const remaining = Number(dashboard.queueRemainingMs || 0);
-  const hasQueue = Boolean(dashboard.active) || (Array.isArray(dashboard.queue) && dashboard.queue.length > 0);
-  if (!hasQueue || remaining <= 0 || remaining > warnMs) { account.lastQueueWarnKey = null; return; }
-  const lastEntry = (Array.isArray(dashboard.queue) && dashboard.queue.length ? dashboard.queue[dashboard.queue.length - 1] : dashboard.active) || {};
-  const key = `${lastEntry.finish_date || 'active'}:${warnHours}`;
-  if (account.lastQueueWarnKey === key) return;
-  account.lastQueueWarnKey = key;
-  callbacks.onQueueWarning({ characterId: account.characterId, characterName: account.characterName || 'Unknown', remainingMs: remaining });
-}
-
 async function refreshCharacter(account) {
   debugLogger.info('ACCOUNTS', `Refreshing character: ${account.characterName || account.characterId}`);
   try {
@@ -194,8 +161,6 @@ async function refreshCharacter(account) {
       } else throw err;
     }
     applyDashboard(account, dashboard);
-    checkSkillCompletion(account, dashboard);
-    checkQueueWarning(account, dashboard);
     debugLogger.info('ACCOUNTS', `Refresh complete for ${account.characterName}`);
   } catch (err) {
     account.lastError = err?.message || String(err);

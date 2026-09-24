@@ -1,5 +1,5 @@
 // FILE: main/settings.js
-// VERSION: 1.1.17-beta
+// VERSION: 1.1.18-beta
 'use strict';
 const { app } = require('electron');
 const path = require('path');
@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS = {
   biggerText: false,
   tabsVerticalLock: false,
   tabsHorizontalLock: false,
+  enabledTabs: ['overview', 'skills', 'wallet', 'assets', 'clones', 'notifications', 'notes', 'plans'],
   lastSeenVersion: ''
 };
 function getSettingsFile() {

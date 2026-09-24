@@ -1,5 +1,5 @@
-// ui/src/components/character/Overview.jsx | Version: 1.14
-import React from 'react';
+// ui/src/components/character/Overview.jsx | Version: 1.15
+import React, { useEffect, useState } from 'react';
 import { useCharacterSnapshot } from '../../hooks/useEveApi';
 import { formatQueueTime, formatTime, timeAgo, formatIskAmount } from '../../utils/format';
 
@@ -10,6 +10,49 @@ const TYPE_META = {
   'wallet-activity': { label: 'Wallet Activity', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
 };
 const DEFAULT_META = { label: 'Notification', color: 'text-gray-300', bg: 'bg-gray-500/10 border-gray-500/30' };
+
+function remainingSpFor(activeSkill, now) {
+  if (!activeSkill) return null;
+  const levelStart = Number(activeSkill.level_start_sp);
+  const levelEnd = Number(activeSkill.level_end_sp);
+  const trainingStart = Number(activeSkill.training_start_sp);
+  const start = activeSkill.start_date ? new Date(activeSkill.start_date).getTime() : 0;
+  const finish = activeSkill.finish_date ? new Date(activeSkill.finish_date).getTime() : 0;
+  if (!Number.isFinite(levelStart) || !Number.isFinite(levelEnd) || !Number.isFinite(trainingStart)) return null;
+  if (levelEnd <= levelStart || levelEnd <= trainingStart) return null;
+  if (now >= finish) return 0;
+  const frac = Math.min(1, Math.max(0, (now - start) / (finish - start)));
+  const currentSp = trainingStart + frac * (levelEnd - trainingStart);
+  return Math.max(0, Math.round(levelEnd - currentSp));
+}
+
+function SkillBar({ activeSkill, progress }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!activeSkill) return undefined;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [activeSkill]);
+
+  const finish = activeSkill ? new Date(activeSkill.finish_date).getTime() : 0;
+  const remaining = activeSkill && Number.isFinite(finish) ? Math.max(0, finish - now) : 0;
+  const remainingSp = remainingSpFor(activeSkill, now);
+  const pct = Math.min(100, Math.max(0, Number(progress) || 0));
+
+  return (
+    <div className="relative pt-4 pb-4 mt-2">
+      <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+        <div className="bg-green-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+      </div>
+      <span className="absolute top-0 right-0 text-[11px] font-mono text-gray-300">
+        {remaining > 0 ? formatQueueTime(remaining) : 'Done'}
+      </span>
+      <span className="absolute bottom-0 right-0 text-[11px] font-mono text-gray-400">
+        {remainingSp != null ? `${remainingSp.toLocaleString()} SP left` : ''}
+      </span>
+    </div>
+  );
+}
 
 function NotificationRow({ entry }) {
   const meta = TYPE_META[entry.type] || DEFAULT_META;
@@ -49,9 +92,7 @@ export default function Overview({ account, unseenNotifications = [], lastViewed
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-2">Active Skill</h2>
         <p className="text-gray-300">{activeSkill ? `${activeSkill.skill_name || activeSkill.skillName} (L${activeSkill.finished_level ?? '?'} • ${progress.toFixed(1)}%)` : 'No active skill'}</p>
-        <div className="w-full bg-gray-700 rounded-full h-2.5 mt-3 overflow-hidden">
-          <div className="bg-green-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
-        </div>
+        <SkillBar activeSkill={activeSkill} progress={progress} />
         <p className="text-xs text-gray-400 mt-1">Queue: {ov.queueLength} skills {ov.queueRemainingMs > 0 && `• ${formatQueueTime(ov.queueRemainingMs)}`}</p>
       </div>
 

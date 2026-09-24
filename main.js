@@ -1,5 +1,5 @@
 // main.js
-// VERSION: 1.4
+// VERSION: 1.6
 'use strict';
 const { app } = require('electron');
 app.disableHardwareAcceleration();
@@ -18,6 +18,7 @@ const debugEngine = require('./main/debug/engine');
 const scheduler = require('./main/scheduler');
 const esiStatus = require('./main/esi/status');
 const updater = require('./main/updater'); // FIXED: Path corrected to ./main/updater
+const completions = require('./main/completions');
 
 function sendToRenderer(channel, payload) {
   const win = windowTray.getWindow();
@@ -31,14 +32,24 @@ function onAccountsBroadcast(publicAccounts) {
 
 function onSkillCompleted(payload) {
   const p = payload || {};
+  const isCorrected = Boolean(p.corrected);
+  const isProvisional = Boolean(p.provisional);
+  const correctedNote = isCorrected && p.correctedFinish
+    ? ` Actual finish: ${new Date(p.correctedFinish).toLocaleString()}.`
+    : '';
+  const provisionalNote = isProvisional ? ' (timing unconfirmed)' : '';
+  const title = isCorrected ? 'Skill completion corrected' : 'Skill complete';
   notificationHistory.record(p.characterId, 'skill-complete', {
-    title: 'Skill complete',
-    message: `${p.skillName || 'Unknown'} L${p.level ?? '?'} finished training.`,
+    title,
+    message: `${p.skillName || 'Unknown'} L${p.level ?? '?'} finished training.${correctedNote}${provisionalNote}`,
     skillName: p.skillName,
     level: p.level,
-    characterName: p.characterName
+    characterName: p.characterName,
+    provisional: isProvisional,
+    corrected: isCorrected,
+    correctedFinish: isCorrected ? p.correctedFinish : null
   });
-  notifications.notifySkillCompleted(payload);
+  notifications.notifySkillCompleted({ ...p, corrected: isCorrected, correctedFinish: isCorrected ? p.correctedFinish : undefined });
   sendToRenderer('notification:skill-complete', payload || {});
   require('./main/snapshots').broadcastSnapshot(p.characterId);
 }
@@ -97,6 +108,7 @@ async function bootstrap() {
 
   accounts.loadAccounts();
   eve.loadImplantSlotCache();
+  notificationHistory.importLegacySkillHistory({ includeIds: accounts.getAccounts().map((a) => a.characterId) });
 
   accounts.init({
     onBroadcast: onAccountsBroadcast,
@@ -127,6 +139,7 @@ async function bootstrap() {
   // Start the new V2 scheduler for ESI pullers
   scheduler.start();
   esiStatus.start();
+  completions.start();
 
   logger.info('MAIN', 'Bootstrap complete');
 }
@@ -145,6 +158,7 @@ app.on('before-quit', () => {
   windowTray.setQuitting(true);
   scheduler.stop();
   esiStatus.stop();
+  completions.stop();
   require('./main/snapshots').shutdown();
 });
 app.on('window-all-closed', () => { /* Keep running in tray. */ });

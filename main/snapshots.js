@@ -1,9 +1,10 @@
 // main/snapshots.js
-// VERSION: 1.0
+// VERSION: 1.1
 'use strict';
 const logger = require('./debug/logger');
 const windowTray = require('./window-tray');
 const notificationHistory = require('./notification-history');
+const { getActiveSkill, calcSkillProgress } = require('../eve/dashboard-helpers');
 
 const CHANNEL = 'data:updated';
 const DEBOUNCE_MS = 2000;
@@ -46,17 +47,6 @@ function hashSnapshot(snapshot) {
   return (h >>> 0).toString(36);
 }
 
-function calcProgress(activeSkill) {
-  if (!activeSkill) return 0;
-  const now = Date.now();
-  const start = activeSkill.start_date ? new Date(activeSkill.start_date).getTime() : 0;
-  const finish = activeSkill.finish_date ? new Date(activeSkill.finish_date).getTime() : 0;
-  if (!start || !finish || finish <= start) return 0;
-  if (now >= finish) return 100;
-  if (now <= start) return 0;
-  return Math.min(100, Math.max(0, ((now - start) / (finish - start)) * 100));
-}
-
 function senderKind(type) {
   if (type === 'corporation') return 'Corp';
   if (type === 'alliance') return 'Alliance';
@@ -91,8 +81,8 @@ function buildSnapshot(characterId) {
   const account = accounts.getAccounts().find((a) => Number(a.characterId) === Number(id)) || null;
 
   const queue = skillsData?.queue || account?.queue || [];
-  const activeSkill = queue[0] || account?.activeSkill || null;
-  const progress = calcProgress(activeSkill);
+  const activeSkill = getActiveSkill(queue) || account?.activeSkill || null;
+  const progress = calcSkillProgress(activeSkill);
   const walletBalance = Number(walletData?.balance ?? account?.wallet ?? 0);
 
   const corpName = names[charData?.corporation_id] || (charData?.corporation_id ? `Corp ${charData.corporation_id}` : 'Unknown');

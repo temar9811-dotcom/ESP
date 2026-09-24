@@ -1,5 +1,5 @@
 // main/pullers/skills-data.js
-// VERSION: 1.1
+// VERSION: 1.2
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -31,6 +31,7 @@ async function pullCharacter(account) {
   const baseUrl = 'https://esi.evetech.net/latest';
   const skillsUrl = `${baseUrl}/characters/${account.characterId}/skills/?datasource=tranquility`;
   const queueUrl = `${baseUrl}/characters/${account.characterId}/skillqueue/?datasource=tranquility`;
+  const attributesUrl = `${baseUrl}/characters/${account.characterId}/attributes/?datasource=tranquility`;
 
   let token = await accounts.getValidAccessToken(account, false);
 
@@ -46,11 +47,31 @@ async function pullCharacter(account) {
     }
   }
 
-  const skillsRes = await makeRequest(skillsUrl);
-  const queueRes = await makeRequest(queueUrl);
+  const [skillsRes, queueRes, attributesRes] = await Promise.allSettled([
+    makeRequest(skillsUrl), makeRequest(queueUrl), makeRequest(attributesUrl)
+  ]);
+
+  if (skillsRes.status !== 'fulfilled' || queueRes.status !== 'fulfilled') {
+    const skillsErr = skillsRes.status === 'fulfilled' ? null : skillsRes.reason;
+    const queueErr = queueRes.status === 'fulfilled' ? null : queueRes.reason;
+    const err = skillsErr || queueErr;
+    throw err;
+  }
+
+  const skillsDataRaw = skillsRes.value.data;
+  const queueRaw = queueRes.value.data;
+
+  // Attributes are cached purely for future features (D4); a failure here
+  // must not fail the whole skills pull.
+  const attributes = attributesRes.status === 'fulfilled'
+    ? (attributesRes.value?.data || null)
+    : (() => {
+        logger.warn('SKILLS-DATA', 'Attributes fetch failed', { id: account.characterId, error: attributesRes.reason?.message });
+        return null;
+      })();
 
   // Enrich skills with names and groups from Static DB
-  const enrichedSkills = skillsRes.data.skills.map(s => {
+  const enrichedSkills = skillsDataRaw.skills.map(s => {
     const info = staticDb.getSkillInfo(s.skill_id);
     return {
       ...s,
@@ -60,16 +81,17 @@ async function pullCharacter(account) {
   });
 
   // Enrich queue with skill names
-  const enrichedQueue = queueRes.data.map(q => {
+  const enrichedQueue = queueRaw.map(q => {
     const info = staticDb.getSkillInfo(q.skill_id);
     return { ...q, skill_name: info?.name || `Skill ${q.skill_id}` };
   });
 
   const data = {
-    total_sp: skillsRes.data.total_sp,
-    unallocated_sp: skillsRes.data.unallocated_sp,
+    total_sp: skillsDataRaw.total_sp,
+    unallocated_sp: skillsDataRaw.unallocated_sp,
     skills: enrichedSkills,
     queue: enrichedQueue,
+    attributes,
     fetchedAt: Date.now()
   };
   
@@ -77,6 +99,7 @@ async function pullCharacter(account) {
   saveCache();
   require('../snapshots').broadcastSnapshot(account.characterId);
   logger.info('SKILLS-DATA', `Updated skills for ${account.characterName}`, { id: account.characterId, total_sp: data.total_sp, queue_len: data.queue.length });
+  try { require('../completions').onPulled(account); } catch (e) { logger.error('SKILLS-DATA', 'completions.onPulled failed', { id: account.characterId, error: e.message }); }
   return data;
 }
 
