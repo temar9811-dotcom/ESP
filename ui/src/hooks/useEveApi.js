@@ -1,4 +1,4 @@
-// File: ui/src/hooks/useEveApi.js | Version: 1.4
+// File: ui/src/hooks/useEveApi.js | Version: 1.5
 import { useEffect, useState } from 'react';
 
 const sendDebugLog = (level, source, message, data) => {
@@ -80,6 +80,49 @@ export function useVersion() {
   }, []);
 
   return version;
+}
+
+export function useCharacterSnapshot(characterId) {
+  const [snapshot, setSnapshot] = useState(null);
+
+  useEffect(() => {
+    if (!characterId) { setSnapshot(null); return undefined; }
+
+    let isMounted = true;
+    let latestTs = 0;
+
+    const applyIfNewer = (next) => {
+      if (!next || typeof next.characterId === 'undefined') return;
+      if (String(next.characterId) !== String(characterId)) return;
+      const ts = Number(next.ts || 0);
+      if (ts < latestTs) return;
+      latestTs = ts;
+      if (isMounted) setSnapshot(next);
+    };
+
+    if (api.getCharacterSnapshot) {
+      api.getCharacterSnapshot(characterId).then((next) => {
+        if (isMounted) applyIfNewer(next);
+      }).catch(() => {});
+    } else {
+      log('USE-EVE-API', 'getCharacterSnapshot unavailable, no snapshot path');
+      if (isMounted) setSnapshot(null);
+    }
+
+    let unsub = null;
+    if (api.onDataUpdated) {
+      unsub = api.onDataUpdated((next) => {
+        if (isMounted) applyIfNewer(next);
+      });
+    }
+
+    return () => {
+      isMounted = false;
+      if (unsub) unsub();
+    };
+  }, [characterId]);
+
+  return snapshot;
 }
 
 export const eveApi = api;

@@ -18,6 +18,7 @@ try { cache = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), CACH
 }
 function saveCache() {
 try { fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2)); } catch (e) { logger.error('UNIVERSE-NAMES', 'Save failed', { error: e.message }); }
+require('../snapshots').broadcastAll();
 }
 async function resolveBatch(ids) {
 loadCache();

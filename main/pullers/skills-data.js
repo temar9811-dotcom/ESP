@@ -75,6 +75,7 @@ async function pullCharacter(account) {
   
   cache[account.characterId] = data;
   saveCache();
+  require('../snapshots').broadcastSnapshot(account.characterId);
   logger.info('SKILLS-DATA', `Updated skills for ${account.characterName}`, { id: account.characterId, total_sp: data.total_sp, queue_len: data.queue.length });
   return data;
 }

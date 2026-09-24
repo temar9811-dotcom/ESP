@@ -28,7 +28,9 @@ if (changed) save();
 } catch { cache = {}; }
 }
 function save() {
-try { fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2)); } catch {}
+	try { fs.writeFileSync(path.join(app.getPath('userData'), CACHE_FILE), JSON.stringify(cache, null, 2)); }
+	catch { return; }
+	try { require('../snapshots').broadcastAll(); } catch {}
 }
 function getScopedAccount() {
 for (const acc of accounts.getAccounts()) {

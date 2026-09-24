@@ -66,6 +66,7 @@ async function pullCharacter(account, priority) {
   
   const idsToResolve = [data.corporation_id, data.alliance_id].filter(Boolean);
   universeNames.queueResolution(idsToResolve, priority); // Updated call
+  require('../snapshots').broadcastSnapshot(account.characterId);
 
   logger.info('CHAR-DATA', `Updated ${data.name}`, { id: account.characterId, system: systemName });
   return data;

@@ -71,6 +71,7 @@ async function pullCharacter(account, priority) {
     fetchedAt: Date.now()
   };
   saveCache();
+  require('../snapshots').broadcastSnapshot(account.characterId);
   logger.info('CLONES-DATA', `Updated clones for ${account.characterName}`, { id: account.characterId, jump_clones: jumpClones.length });
   return data;
 }

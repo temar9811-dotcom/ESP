@@ -81,6 +81,8 @@ async function pullCharacter(account, priority) {
   const senderIds = [...new Set(raw.map((n) => n.sender_id).filter((id) => typeof id === 'number' && id > 0))];
   if (senderIds.length > 0) universeNames.queueResolution(senderIds, priority);
 
+  require('../snapshots').broadcastSnapshot(account.characterId);
+
   return data;
 }
 

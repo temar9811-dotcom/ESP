@@ -1,5 +1,5 @@
 // main/ipc.js
-// VERSION: 1.16
+// VERSION: 1.17
 'use strict';
 const { ipcMain, app } = require('electron');
 const { VERSION } = require('../version');
@@ -39,11 +39,8 @@ handle('app:getSyncState', () => {
 });
 handle('app:getSequencerState', () => { const s = require('./esi/syncer').getState(); return { ...s, locked: false }; });
 handle('app:getCharData', (_e, id) => require('./pullers/char-data').getCache()[id] || null);
-handle('app:getWalletData', (_e, id) => require('./pullers/wallet-data').getCache()[id] || null);
 handle('app:getSkillsData', (_e, id) => require('./pullers/skills-data').getCache()[id] || null);
-handle('app:getClonesData', (_e, id) => require('./pullers/clones-data').getCache()[id] || null);
-handle('app:getAssetsData', (_e, id) => require('./pullers/assets-data').getCache()[id] || null);
-handle('app:getNotificationsData', (_e, id) => require('./pullers/notifications-data').getCache()[id] || null);
+handle('app:getCharacterSnapshot', (_e, id) => require('./snapshots').buildSnapshot(id) || null);
 handle('app:getStructureNames', () => require('./pullers/structure-names').getCache());
 handle('app:getUniverseNames', () => require('./pullers/universe-names').getCache());
 handle('app:getLocationHierarchy', (_e, id) => require('./esi/static-db').getLocationHierarchy(id));
@@ -106,9 +103,11 @@ handle('esi:timers', () => scheduler.getNextRuns());
 const CF = { skills: 'skills-cache.json', wallet: 'wallet-cache.json', assets: 'assets-raw-cache.json', assetsNames: 'assets-names-cache.json', structures: 'structure-names.json', universe: 'universe-cache.json', charData: 'char-data-cache.json', walletData: 'wallet-data-cache.json', skillsData: 'skills-data-cache.json', clonesData: 'clones-data-cache.json', universeNames: 'universe-names-cache.json', structureNames: 'structure-names.json', assetsData: 'assets-data-cache.json', notificationsData: 'notifications-data-cache.json' };
 const clear = (n) => { try { require('fs').unlinkSync(require('path').join(app.getPath('userData'), n)); return true; } catch { return false; } };
 handle('cache:clear', (_e, w) => {
-if (w === 'all') return { cleared: [...Object.values(CF)].filter(clear) };
+if (w === 'all') { const r = { cleared: [...Object.values(CF)].filter(clear) }; require('./snapshots').invalidateCache(); return r; }
 const f = CF[w]; if (!f) return { cleared: [], error: `Unknown: ${w}` };
-return { cleared: clear(f) ? [f] : [] };
+const r = { cleared: clear(f) ? [f] : [] };
+require('./snapshots').invalidateCache();
+return r;
 });
 ipcAssetsV2.registerAssetsV2Ipc();
 ipcDebug.registerDebugIpc();

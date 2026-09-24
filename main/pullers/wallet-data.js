@@ -112,6 +112,7 @@ async function pullCharacter(account, priority) {
   
   cache[account.characterId] = data;
   saveCache();
+  require('../snapshots').broadcastSnapshot(account.characterId);
   logger.info('WALLET-DATA', `Updated wallet for ${account.characterName}`, { id: account.characterId, balance: data.balance });
   return data;
 }

@@ -40,6 +40,7 @@ function onSkillCompleted(payload) {
   });
   notifications.notifySkillCompleted(payload);
   sendToRenderer('notification:skill-complete', payload || {});
+  require('./main/snapshots').broadcastSnapshot(p.characterId);
 }
 
 function onQueueWarning(payload) {
@@ -144,5 +145,6 @@ app.on('before-quit', () => {
   windowTray.setQuitting(true);
   scheduler.stop();
   esiStatus.stop();
+  require('./main/snapshots').shutdown();
 });
 app.on('window-all-closed', () => { /* Keep running in tray. */ });
