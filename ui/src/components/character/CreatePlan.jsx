@@ -60,6 +60,15 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
   const [name, setName] = useState(isEditing ? editingPlan.name || '' : '');
   const [scope, setScope] = useState('character');
   const [entries, setEntries] = useState(() => entriesFromPlan(editingPlan));
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const toggleCollapsed = (skillId) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(skillId)) next.delete(skillId);
+      else next.add(skillId);
+      return next;
+    });
+  };
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -354,11 +363,20 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
                       className="bg-gray-700 p-2 rounded"
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-200">
-                          {entry.name} <span className="text-xs text-gray-400">L{entry.level}</span>
-                          <span className="ml-2 text-xs text-gray-500" title="SP remaining to reach this level">
-                            {formatSP(spAtLevel(rank, entry.level) - spAtLevel(rank, charLevel))} SP
+                        <button
+                          onClick={() => toggleCollapsed(entry.skillId)}
+                          disabled={below.length === 0}
+                          className="flex items-center gap-1 text-sm text-gray-200 disabled:cursor-default"
+                        >
+                          <span className={`text-xs text-gray-500 w-4 text-left transition-transform ${collapsed.has(entry.skillId) ? '' : 'rotate-90'}`}>
+                            ▶
                           </span>
+                          <span>
+                            {entry.name} <span className="text-xs text-gray-400">L{entry.level}</span>
+                          </span>
+                        </button>
+                        <span className="text-xs text-gray-500" title="SP remaining to reach this level">
+                          {formatSP(spAtLevel(rank, entry.level) - spAtLevel(rank, charLevel))} SP
                         </span>
                         <div className="flex items-center gap-1">
                           <button
@@ -378,8 +396,8 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
                           </button>
                         </div>
                       </div>
-                      {below.length > 0 && (
-                        <div className="mt-1 ml-4 space-y-0.5 border-l border-gray-600 pl-3">
+                      {below.length > 0 && !collapsed.has(entry.skillId) && (
+                        <div className="mt-1 ml-6 space-y-0.5 border-l border-gray-600 pl-3">
                           {below.map((l) => (
                             <div key={l} className="flex items-center justify-between text-xs">
                               <span className="text-gray-400">├─ {entry.name} L{l}</span>

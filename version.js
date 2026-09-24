@@ -1,7 +1,7 @@
 // version.js
 // Centralized version management for EVE Status Perception (ESP)
 
-const VERSION = '1.2.8';
+const VERSION = '1.2.9';
 
 /**
  * Calculates the next semantic version bump.
