@@ -7,3 +7,25 @@ out/
 package-lock.json
 Notes.txt
 config.json
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Editor / IDE config
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Windows junk
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Build / tool caches
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.parcel-cache/
