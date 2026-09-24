@@ -1,4 +1,4 @@
-// File: ui/src/components/modals/PlanDetailModal.jsx | Version: 1.0
+// File: ui/src/components/modals/PlanDetailModal.jsx | Version: 1.1
 import React, { useState } from 'react';
 
 export default function PlanDetailModal({ plan, onClose }) {
@@ -16,6 +16,11 @@ export default function PlanDetailModal({ plan, onClose }) {
     }
   };
 
+  const isChildPlan = Boolean(plan?.parentId);
+  const scopeLabel = isChildPlan
+    ? (plan.diverged ? 'This character (customized)' : 'All characters (shared)')
+    : (plan.scope === 'global' ? 'All characters' : 'Character-specific');
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -27,7 +32,7 @@ export default function PlanDetailModal({ plan, onClose }) {
       >
         <h2 className="text-xl font-bold text-gray-100 mb-1">{plan.name || 'Unnamed Plan'}</h2>
         <p className="text-sm text-gray-400 mb-4">
-          {plan.scope === 'global' ? 'All characters' : 'Character-specific'} ·{' '}
+          {scopeLabel} ·{' '}
           {plan.entries?.length || 0} skills
         </p>
 

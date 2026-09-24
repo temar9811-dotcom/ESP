@@ -1,4 +1,4 @@
-// File: ui/src/components/character/SkillPlans.jsx | Version: 2.4
+// File: ui/src/components/character/SkillPlans.jsx | Version: 2.5
 import React, { useState, useEffect } from 'react';
 import SkillPlanModal from '../modals/SkillPlanModal';
 import PlanDetailModal from '../modals/PlanDetailModal';
@@ -26,8 +26,22 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
     return () => { isMounted = false; };
   }, [characterId]);
 
-  const appliesToAccount = (plan) =>
-    plan?.scope === 'global' || Number(plan?.characterId) === Number(characterId);
+  const isChildPlan = (plan) => Boolean(plan?.parentId);
+
+  const appliesToAccount = (plan) => {
+    if (plan?.scope === 'global' && !isChildPlan(plan)) {
+      const hasChildCopy = plans.some((p) => p.parentId === plan.id && Number(p.characterId) === Number(characterId));
+      return !hasChildCopy;
+    }
+    return Number(plan?.characterId) === Number(characterId);
+  };
+
+  const planLabel = (plan) => {
+    if (isChildPlan(plan)) {
+      return plan.diverged ? 'This character only (customized)' : 'All characters (shared)';
+    }
+    return plan.scope === 'global' ? 'All characters' : 'Character-specific';
+  };
 
   const applicablePlans = plans.filter(appliesToAccount);
 
@@ -62,7 +76,7 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
   const handleDelete = async (planId) => {
     try {
       await window.eveApi.deletePlan(planId);
-      setPlans((prev) => prev.filter((p) => p.id !== planId));
+      await fetchPlans();
     } catch (err) {
       console.error('Failed to delete plan:', err);
     }
@@ -124,7 +138,7 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
                 <div>
                   <p className="text-sm font-medium text-gray-200">{plan.name || 'Unnamed Plan'}</p>
                   <p className="text-xs text-gray-400">
-                    {plan.scope === 'global' ? 'All characters' : 'Character-specific'} · {plan.entries?.length || 0} skills
+                    {planLabel(plan)} · {plan.entries?.length || 0} skills
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

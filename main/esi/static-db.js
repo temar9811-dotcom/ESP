@@ -129,9 +129,15 @@ function getSkillInfo(skillId) {
 function getAllSkills() {
   if (!db) return null;
   return query(
-    `SELECT t.typeID AS id, t.typeName AS name, g.groupName AS groupName
+    `SELECT t.typeID AS id, t.typeName AS name, g.groupName AS groupName,
+            COALESCE(r.valueFloat, r.valueInt) AS rank,
+            COALESCE(pa.valueFloat, pa.valueInt) AS primaryAttr,
+            COALESCE(sa.valueFloat, sa.valueInt) AS secondaryAttr
      FROM invTypes t
      JOIN invGroups g ON g.groupID = t.groupID
+     LEFT JOIN dgmTypeAttributes r ON r.typeID = t.typeID AND r.attributeID = 275
+     LEFT JOIN dgmTypeAttributes pa ON pa.typeID = t.typeID AND pa.attributeID = 180
+     LEFT JOIN dgmTypeAttributes sa ON sa.typeID = t.typeID AND sa.attributeID = 181
      WHERE g.categoryID = 16 AND t.published = 1
      ORDER BY g.groupName, t.typeName`
   );

@@ -11,11 +11,69 @@ function getPlansFile() {
   return path.join(app.getPath('userData'), 'skillPlans.json');
 }
 
+const clone = (v) => JSON.parse(JSON.stringify(v));
+
+function newPlanId() {
+  return `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getRealAccounts() {
+  try { return require('./accounts').getAccounts(); } catch { return []; }
+}
+
+// A global plan is a template: one parent record plus one child copy per real
+// (non-test-pilot) account. Children remember parentId so they can be edited
+// per character or re-synced globally when the "Applies to" scope is flipped
+// back to "All characters".
+function makeChildPlan(parent, characterId) {
+  return {
+    id: newPlanId(),
+    name: parent.name,
+    scope: 'character',
+    characterId: Number(characterId),
+    parentId: parent.id,
+    diverged: false,
+    createdAt: new Date().toISOString(),
+    entries: clone(parent.entries || [])
+  };
+}
+
+function ensureGlobalChildren(plans) {
+  let changed = false;
+  const accounts = getRealAccounts();
+  for (const plan of plans) {
+    if (!plan || plan.scope !== 'global' || plan.parentId) continue;
+    for (const acc of accounts) {
+      if (!acc || acc.testPilot) continue;
+      const charId = Number(acc.characterId);
+      if (!Number.isInteger(charId)) continue;
+      const hasChild = plans.some((p) => p.parentId === plan.id && Number(p.characterId) === charId);
+      if (!hasChild) {
+        plans.push(makeChildPlan(plan, charId));
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+function syncChildren(plans, parentId, name, entries) {
+  for (const p of plans) {
+    if (p.parentId === parentId) {
+      p.name = name;
+      p.entries = clone(entries);
+      p.diverged = false;
+    }
+  }
+}
+
 function loadPlans() {
   try {
     const raw = fs.readFileSync(getPlansFile(), 'utf8');
     const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
+    const plans = Array.isArray(data) ? data : [];
+    if (ensureGlobalChildren(plans)) savePlansFile(plans);
+    return plans;
   } catch {
     return [];
   }
@@ -113,24 +171,86 @@ function savePlan(payload) {
   }));
 
   const existingId = payload?.id || payload?.planId || null;
+
   if (existingId) {
     const existing = plans.find((plan) => plan.id === existingId);
     if (!existing) {
       throw new Error('Plan not found.');
     }
+
+    // A child (per-character copy of a global plan) exists when parentId is set.
+    const isChild = Boolean(existing.parentId);
+
+    if (scope === 'global') {
+      const parentId = isChild ? existing.parentId : existing.id;
+      const parent = plans.find((plan) => plan.id === parentId);
+      if (!parent) {
+        throw new Error('Parent plan not found.');
+      }
+      parent.name = name;
+      parent.scope = 'global';
+      parent.characterId = null;
+      parent.entries = nextEntries;
+      // Re-sync every matching child including the one being edited.
+      syncChildren(plans, parentId, name, nextEntries);
+      ensureGlobalChildren(plans);
+      savePlansFile(plans);
+      logger.info('PLANS', isChild
+        ? `Plan updated globally via child: ${name} (${parentId})`
+        : `Updated plan: ${name} (${existingId})`, { scope: 'global', entries: nextEntries.length });
+      return parent;
+    }
+
+    // scope === 'character'
+    if (isChild) {
+      // Detach from the shared parent: this plan is now a per-character edit.
+      existing.name = name;
+      existing.characterId = characterId;
+      existing.entries = nextEntries;
+      existing.diverged = true;
+      savePlansFile(plans);
+      logger.info('PLANS', `Per-character edit of shared plan: ${name} (${existingId})`, { characterId, entries: nextEntries.length });
+      return existing;
+    }
+
+    if (existing.scope === 'global' && !existing.parentId) {
+      // A global plan was narrowed down to one character. To avoid leaving
+      // stale shared children around, convert all children into standalone
+      // plans first, then keep this one as the per-character plan.
+      for (const p of plans) {
+        if (p.parentId === existing.id) p.parentId = null;
+      }
+    }
+
     existing.name = name;
-    existing.scope = scope;
+    existing.scope = 'character';
     existing.characterId = characterId;
     existing.entries = nextEntries;
     savePlansFile(plans);
-    logger.info('PLANS', `Updated plan: ${name} (${existingId})`, { scope, characterId, entries: nextEntries.length });
+    logger.info('PLANS', `Updated plan: ${name} (${existingId})`, { scope: 'character', characterId, entries: nextEntries.length });
     return existing;
   }
 
+  if (scope === 'global') {
+    const parent = {
+      id: newPlanId(),
+      name,
+      scope: 'global',
+      characterId: null,
+      createdAt: new Date().toISOString(),
+      entries: nextEntries
+    };
+    plans.push(parent);
+    ensureGlobalChildren(plans);
+    savePlansFile(plans);
+    logger.info('PLANS', `Created global plan: ${name} (${parent.id})`, { scope: 'global', entries: nextEntries.length });
+    return parent;
+  }
+
   const plan = {
-    id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: newPlanId(),
     name,
-    scope,
+    scope: 'character',
     characterId,
     createdAt: new Date().toISOString(),
     entries: nextEntries
@@ -138,17 +258,28 @@ function savePlan(payload) {
 
   plans.push(plan);
   savePlansFile(plans);
-  logger.info('PLANS', `Created plan: ${plan.name} (${plan.id})`, { scope, characterId, entries: nextEntries.length });
+  logger.info('PLANS', `Created plan: ${plan.name} (${plan.id})`, { scope: 'character', characterId, entries: nextEntries.length });
 
   return plan;
 }
 
 function deletePlan(planId) {
   const plans = loadPlans();
-  const filtered = plans.filter((plan) => plan.id !== planId);
-  const removed = plans.length !== filtered.length;
+  const target = plans.find((plan) => plan.id === planId);
+  if (!target) {
+    savePlansFile(plans);
+    return true;
+  }
+  const idsToDelete = new Set([planId]);
+  if (target.scope === 'global' && !target.parentId) {
+    for (const p of plans) {
+      if (p.parentId === planId) idsToDelete.add(p.id);
+    }
+  }
+  const filtered = plans.filter((plan) => !idsToDelete.has(plan.id));
+  const removed = filtered.length !== plans.length;
   savePlansFile(filtered);
-  logger.info('PLANS', `Deleted plan: ${planId}`, { removed });
+  logger.info('PLANS', `Deleted plan: ${planId}`, { removed, cascade: idsToDelete.size > 1 });
   return true;
 }
 

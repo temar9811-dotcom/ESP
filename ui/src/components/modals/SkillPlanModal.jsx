@@ -1,9 +1,9 @@
-// File: ui/src/components/modals/SkillPlanModal.jsx | Version: 2.0
+// File: ui/src/components/modals/SkillPlanModal.jsx | Version: 2.1
 import React, { useState } from 'react';
 
 export default function SkillPlanModal({ draft, account, onClose, onSave }) {
   const [name, setName] = useState('');
-  const [scope, setScope] = useState('global');
+  const [scope, setScope] = useState('character');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
