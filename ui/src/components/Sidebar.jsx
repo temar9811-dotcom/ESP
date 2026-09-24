@@ -1,7 +1,8 @@
 // ui/src/components/Sidebar.jsx
-// VERSION: 2.4
+// VERSION: 2.5
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAccounts, eveApi } from '../hooks/useEveApi';
+import GroupSelect from './GroupSelect';
 
 const sendDebugLog = (level, source, message, data) => {
   try {
@@ -42,6 +43,13 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
   }, [loadGroups, accounts]);
 
   useEffect(() => {
+    if (!eveApi.onGroupsUpdated) return;
+    return eveApi.onGroupsUpdated((next) => {
+      if (next) setGroups(next);
+    });
+  }, []);
+
+  useEffect(() => {
     loadAlertLevels();
   }, [loadAlertLevels, accounts, unseenCounts]);
 
@@ -73,15 +81,9 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
     }
   };
 
-  const handleSetGroup = async (id, current) => {
-    const name = window.prompt(
-      'Account group name for this character (leave empty to ungroup):',
-      current || ''
-    );
-    if (name === null) return;
-
+  const handleSetGroup = async (id, name) => {
     try {
-      await eveApi.setGroup(id, name);
+      await eveApi.setGroup(id, name || '');
       await loadGroups();
     } catch (err) {
       sendDebugLog('ERROR', 'SIDEBAR', 'Failed to set group', { error: err?.message });
@@ -164,13 +166,11 @@ export default function Sidebar({ selectedAccount, onSelect, unseenCounts = {} }
             <p className="text-xs text-gray-300 break-words mt-1 leading-snug min-w-0 overflow-hidden" title={acc.activeSkill?.skillName || 'Idle'}>
               {acc.activeSkill ? acc.activeSkill.skillName : 'Idle'}
             </p>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleSetGroup(acc.characterId, groupName); }}
-              title="Set account group for this character"
-              className="mt-2 max-w-full w-fit truncate text-xs px-1.5 py-0.5 rounded border border-gray-600 bg-gray-800 text-gray-400 hover:text-blue-300 hover:border-blue-500"
-            >
-              Group: {groupName || 'None'}
-            </button>
+            <GroupSelect
+              groups={groupNames}
+              value={opts.grouped ? opts.groupName : undefined}
+              onAssign={(name) => handleSetGroup(acc.characterId, name)}
+            />
           </>
         )}
       </div>
@@ -200,17 +200,20 @@ const groupHeader = (name, count, collapsed, onClick, key, groupLevel = 0) => {
   const byId = new Map(accounts.map((acc) => [Number(acc.characterId), acc]));
   const renderedIds = new Set();
   const rows = [];
+  const groupNames = Object.keys(groups)
+    .filter((name) => name !== '__ungrouped__')
+    .sort((a, b) => a.localeCompare(b));
 
   for (const [groupName, group] of Object.entries(groups)) {
+    if (groupName === '__ungrouped__') continue;
+
     const members = (group.members || [])
       .map((memberId) => byId.get(Number(memberId)))
       .filter(Boolean);
 
-    if (!members.length) continue;
-
     const primary =
       members.find((member) => matchId(member, group.primaryCharacterId)) || members[0];
-    const shown = group.collapsed ? [primary] : members;
+    const shown = members.length && group.collapsed ? [primary] : members;
     for (const member of members) renderedIds.add(Number(member.characterId));
     const groupLevel = members.reduce(
       (best, member) => {

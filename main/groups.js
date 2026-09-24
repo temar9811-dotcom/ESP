@@ -4,8 +4,10 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const logger = require('./debug/logger');
+const windowTray = require('./window-tray');
 
 const UNGROUPED_KEY = '__ungrouped__';
+const UPDATED_CHANNEL = 'groups-updated';
 
 let data = null;
 
@@ -36,6 +38,18 @@ function saveData() {
     JSON.stringify(data || {}, null, 2),
     'utf8'
   );
+  broadcastUpdated();
+}
+
+function broadcastUpdated() {
+  try {
+    const win = windowTray.getWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(UPDATED_CHANNEL, getGroups());
+    }
+  } catch {
+    // Window not ready yet; renderer reloads groups on demand.
+  }
 }
 
 function getGroups() {
@@ -68,7 +82,7 @@ function setGroup(characterId, name) {
     group.members = (group.members || []).filter((m) => m !== id);
 
     if (!group.members.length) {
-      delete data[current];
+      group.primaryCharacterId = null;
     } else if (group.primaryCharacterId === id) {
       group.primaryCharacterId = group.members[0];
     }
@@ -93,6 +107,26 @@ function setGroup(characterId, name) {
 
   saveData();
   logger.info('GROUPS', `Set group: ${id} -> ${clean || '(none)'}`, { from: current || null });
+  return getGroups();
+}
+
+function createGroup(name) {
+  loadData();
+
+  const clean = String(name || '').trim();
+  if (clean && clean !== UNGROUPED_KEY && !data[clean]) {
+    data[clean] = {
+      name: clean,
+      primaryCharacterId: null,
+      collapsed: false,
+      members: []
+    };
+    saveData();
+    logger.info('GROUPS', `Created group: ${clean}`);
+  } else if (clean) {
+    logger.info('GROUPS', `Group already exists: ${clean}`);
+  }
+
   return getGroups();
 }
 
@@ -140,6 +174,7 @@ function clearGroups() {
 module.exports = {
   getGroups,
   setGroup,
+  createGroup,
   setPrimary,
   toggleCollapsed,
   clearGroups,

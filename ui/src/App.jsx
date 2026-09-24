@@ -1,4 +1,4 @@
-// ui/src/App.jsx | Version: 2.0
+// ui/src/App.jsx | Version: 2.1
 import React, { useState, useEffect, useRef } from 'react';
 import Topbar from './components/Topbar';
 import Sidebar from './components/Sidebar';
@@ -13,6 +13,7 @@ import Skills from './components/character/Skills';
 import Wallet from './components/character/Wallet';
 import Assets from './components/character/Assets';
 import Clones from './components/character/Clones';
+import Notifications from './components/character/Notifications';
 import Notes from './components/character/Notes';
 import SkillPlans from './components/character/SkillPlans';
 import CreatePlan from './components/character/CreatePlan';
@@ -147,7 +148,7 @@ export default function App() {
     refreshUnseenCounts();
   }, []);
 
-  const tabs = ['overview', 'skills', 'wallet', 'assets', 'clones', 'notes', 'plans'];
+  const tabs = ['overview', 'skills', 'wallet', 'assets', 'clones', 'notifications', 'notes', 'plans'];
   if (isDev) tabs.push('debug');
 
   const tabLock = settings?.tabsVerticalLock ? 'vertical' : settings?.tabsHorizontalLock ? 'horizontal' : 'auto';
@@ -189,6 +190,7 @@ export default function App() {
       case 'wallet': return <Wallet account={selectedAccount} />;
       case 'assets': return <Assets account={selectedAccount} />;
       case 'clones': return <Clones account={selectedAccount} />;
+      case 'notifications': return <Notifications account={selectedAccount} />;
       case 'notes': return <Notes account={selectedAccount} />;
       case 'plans': return <SkillPlans account={selectedAccount} onCreatePlan={() => { setEditingPlan(null); setActiveTab('create-plan'); }} onEditPlan={(plan) => { setEditingPlan(plan); setActiveTab('create-plan'); }} />;
       default: return <p className="text-gray-400">Unknown tab.</p>;

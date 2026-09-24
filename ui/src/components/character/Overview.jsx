@@ -1,4 +1,4 @@
-// ui/src/components/character/Overview.jsx | Version: 1.12
+// ui/src/components/character/Overview.jsx | Version: 1.13
 import React, { useState, useEffect } from 'react';
 
 function formatQueueTime(ms) {
@@ -138,7 +138,7 @@ export default function Overview({ account, unseenNotifications = [], lastViewed
     <div className="space-y-4">
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-2">Active Skill</h2>
-        <p className="text-gray-300">{activeSkill ? `${activeSkill.skill_name || activeSkill.skillName} (${progress.toFixed(1)}%)` : 'No active skill'}</p>
+        <p className="text-gray-300">{activeSkill ? `${activeSkill.skill_name || activeSkill.skillName} (L${activeSkill.finished_level ?? '?'} • ${progress.toFixed(1)}%)` : 'No active skill'}</p>
         <div className="w-full bg-gray-700 rounded-full h-2.5 mt-3 overflow-hidden">
           <div className="bg-green-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
         </div>

@@ -1,4 +1,4 @@
-// preload.js | Version: 1.14
+// preload.js | Version: 1.16
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 const on = (ch) => (cb) => {
@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   getSkillsData: invoke('app:getSkillsData'),
   getClonesData: invoke('app:getClonesData'),
   getAssetsData: invoke('app:getAssetsData'),
+  getNotificationsData: invoke('app:getNotificationsData'),
   getAssetTree: invoke('assets-v2:getTree'),
   getStructureNames: invoke('app:getStructureNames'),
   getUniverseNames: invoke('app:getUniverseNames'),
@@ -34,9 +35,11 @@ contextBridge.exposeInMainWorld('eveApi', {
   refreshAll: invoke('accounts:refresh'),
   getCorpInfo: invoke('accounts:getCorpInfo'),
   getGroups: invoke('groups:get'),
+  createGroup: invoke('groups:create'),
   setGroup: invoke('groups:set'),
   setGroupPrimary: invoke('groups:setPrimary'),
   toggleGroup: invoke('groups:toggle'),
+  onGroupsUpdated: on('groups-updated'),
   getCharacterSkills: invoke('skills:getCharacter'),
   getAllSkills: invoke('skills:all'),
   clearCache: invoke('cache:clear'),

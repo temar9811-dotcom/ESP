@@ -18,7 +18,9 @@ const api = window.eveApi || {
   getRefreshState: async () => { log('USE-EVE-API', 'fallback getRefreshState'); return { refreshing: false, rateLimitedUntil: 0 }; },
   getVersion: async () => { log('USE-EVE-API', 'fallback getVersion'); return 'dev'; },
   onAccountsUpdated: () => () => {},
+  onGroupsUpdated: () => () => {},
   onRefreshState: () => () => {},
+  createGroup: async () => { log('USE-EVE-API', 'fallback createGroup'); },
   refreshAll: async () => log('USE-EVE-API', 'fallback refreshAll'),
   addAccount: async () => log('USE-EVE-API', 'fallback addAccount'),
   removeAccount: async () => log('USE-EVE-API', 'fallback removeAccount')

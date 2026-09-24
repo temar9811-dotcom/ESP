@@ -30,6 +30,7 @@ function registerV2Actions() {
   registerAction('Force Skills Data Pull', 'Priority 2 pull for skills', () => { scheduler.forcePull('skills-data'); return { ok: true }; });
   registerAction('Force Clones Data Pull', 'Priority 2 pull for clones', () => { scheduler.forcePull('clones-data'); return { ok: true }; });
   registerAction('Force Assets Data Pull', 'Priority 2 pull for assets', () => { scheduler.forcePull('assets-data'); return { ok: true }; });
+  registerAction('Force Notifications Data Pull', 'Priority 2 pull for notifications', () => { scheduler.forcePull('notifications-data'); return { ok: true }; });
   registerAction('Download Static DB', 'Downloads Fuzzwork SQLite DB', async () => {
     const db = require('../esi/static-db'); await db.downloadAndExtract(); await db.initDb(); return { ok: true };
   });
@@ -38,6 +39,7 @@ function registerV2Actions() {
   registerAction('Clear Skills Data Cache', 'Deletes skills-data-cache.json', () => clearFile('skills-data-cache.json'));
   registerAction('Clear Clones Data Cache', 'Deletes clones-data-cache.json', () => clearFile('clones-data-cache.json'));
   registerAction('Clear Assets Data Cache', 'Deletes assets-data-cache.json', () => clearFile('assets-data-cache.json'));
+  registerAction('Clear Notifications Data Cache', 'Deletes notifications-data-cache.json', () => clearFile('notifications-data-cache.json'));
   registerAction('Clear Universe Names Cache', 'Deletes universe-names-cache.json', () => clearFile('universe-names-cache.json'));
   registerAction('Inspect Universe Names', 'Dumps resolved names to help debug structures', () => {
     const cache = require('../pullers/universe-names').getCache();
@@ -180,6 +182,7 @@ function registerV2Actions() {
       assets: pull('assets-data'),
       charData: pull('char-data'),
       clones: pull('clones-data'),
+      notifications: pull('notifications-data'),
       syncer: require('../esi/syncer').getState()
     };
     logger.info('ENGINE', 'Sync state', state);

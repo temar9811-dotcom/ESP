@@ -1,5 +1,5 @@
 // main/ipc.js
-// VERSION: 1.15
+// VERSION: 1.16
 'use strict';
 const { ipcMain, app } = require('electron');
 const { VERSION } = require('../version');
@@ -33,6 +33,7 @@ handle('app:getSyncState', () => {
     assets: pull('assets-data'),
     charData: pull('char-data'),
     clones: pull('clones-data'),
+    notifications: pull('notifications-data'),
     syncer: require('./esi/syncer').getState()
   };
 });
@@ -42,6 +43,7 @@ handle('app:getWalletData', (_e, id) => require('./pullers/wallet-data').getCach
 handle('app:getSkillsData', (_e, id) => require('./pullers/skills-data').getCache()[id] || null);
 handle('app:getClonesData', (_e, id) => require('./pullers/clones-data').getCache()[id] || null);
 handle('app:getAssetsData', (_e, id) => require('./pullers/assets-data').getCache()[id] || null);
+handle('app:getNotificationsData', (_e, id) => require('./pullers/notifications-data').getCache()[id] || null);
 handle('app:getStructureNames', () => require('./pullers/structure-names').getCache());
 handle('app:getUniverseNames', () => require('./pullers/universe-names').getCache());
 handle('app:getLocationHierarchy', (_e, id) => require('./esi/static-db').getLocationHierarchy(id));
@@ -52,6 +54,7 @@ handle('accounts:remove', (_e, id) => { accounts.removeAccount(id); return accou
 handle('accounts:refresh', async () => { await accounts.refreshAll(); return { accounts: accounts.getPublicAccounts() }; });
 handle('accounts:getCorpInfo', (_e, id) => corpInfo.getCorpAlliance(id));
 handle('groups:get', () => groups.getGroups());
+handle('groups:create', (_e, n) => groups.createGroup(n));
 handle('groups:set', (_e, id, n) => groups.setGroup(id, n));
 handle('groups:setPrimary', (_e, id) => groups.setPrimary(id));
 handle('groups:toggle', (_e, n) => groups.toggleCollapsed(n));
@@ -100,7 +103,7 @@ handle('test:enabled', () => testHarness ? testHarness.testEnabled() : false);
 handle('scheduler:forcePull', (_e, n) => scheduler.forcePull(n));
 handle('esi:status', () => esiStatus.getStatus());
 handle('esi:timers', () => scheduler.getNextRuns());
-const CF = { skills: 'skills-cache.json', wallet: 'wallet-cache.json', assets: 'assets-raw-cache.json', assetsNames: 'assets-names-cache.json', structures: 'structure-names.json', universe: 'universe-cache.json', charData: 'char-data-cache.json', walletData: 'wallet-data-cache.json', skillsData: 'skills-data-cache.json', clonesData: 'clones-data-cache.json', universeNames: 'universe-names-cache.json', structureNames: 'structure-names.json', assetsData: 'assets-data-cache.json' };
+const CF = { skills: 'skills-cache.json', wallet: 'wallet-cache.json', assets: 'assets-raw-cache.json', assetsNames: 'assets-names-cache.json', structures: 'structure-names.json', universe: 'universe-cache.json', charData: 'char-data-cache.json', walletData: 'wallet-data-cache.json', skillsData: 'skills-data-cache.json', clonesData: 'clones-data-cache.json', universeNames: 'universe-names-cache.json', structureNames: 'structure-names.json', assetsData: 'assets-data-cache.json', notificationsData: 'notifications-data-cache.json' };
 const clear = (n) => { try { require('fs').unlinkSync(require('path').join(app.getPath('userData'), n)); return true; } catch { return false; } };
 handle('cache:clear', (_e, w) => {
 if (w === 'all') return { cleared: [...Object.values(CF)].filter(clear) };

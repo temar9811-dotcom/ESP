@@ -1,4 +1,4 @@
-// File: ui/src/components/Topbar.jsx | Version: 1.1
+// File: ui/src/components/Topbar.jsx | Version: 1.2
 import React, { useState } from 'react';
 import { useVersion, useRefreshState, eveApi } from '../hooks/useEveApi';
 import AddCharacterModal from './modals/AddCharacterModal';
@@ -9,6 +9,17 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
   const [showAdd, setShowAdd] = useState(false);
 
   const handleRefresh = () => eveApi.refreshAll().catch(console.error);
+
+  const handleNewGroup = async () => {
+    const name = window.prompt('New group name:');
+    const clean = (name || '').trim();
+    if (!clean) return;
+    try {
+      await eveApi.createGroup(clean);
+    } catch (err) {
+      console.error('createGroup failed:', err);
+    }
+  };
 
   return (
     <header className="flex items-center justify-between border-b border-gray-700 bg-gray-800 px-4 py-3">
@@ -23,6 +34,13 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
           className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
         >
           {refreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
+        <button
+          onClick={handleNewGroup}
+          className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-500"
+          title="Create a new character group"
+        >
+          New Group
         </button>
         <button
           onClick={() => setShowAdd(true)}
