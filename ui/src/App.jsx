@@ -1,4 +1,4 @@
-// ui/src/App.jsx | Version: 2.1
+// ui/src/App.jsx | Version: 2.2
 import React, { useState, useEffect, useRef } from 'react';
 import Topbar from './components/Topbar';
 import Sidebar from './components/Sidebar';
@@ -20,6 +20,7 @@ import CreatePlan from './components/character/CreatePlan';
 import UpdateDialog from './components/UpdateDialog';
 import ChangelogDialog from './components/ChangelogDialog';
 import { applyTheme, applyTextScale } from './theme';
+import { USER_TABS } from './tabs';
 
 export default function App() {
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -148,8 +149,16 @@ export default function App() {
     refreshUnseenCounts();
   }, []);
 
-  const tabs = ['overview', 'skills', 'wallet', 'assets', 'clones', 'notifications', 'notes', 'plans'];
+  const tabs = USER_TABS.filter((t) => !Array.isArray(settings?.enabledTabs) || settings.enabledTabs.includes(t));
   if (isDev) tabs.push('debug');
+
+  useEffect(() => {
+    if (!Array.isArray(settings?.enabledTabs)) return;
+    if (USER_TABS.includes(activeTab) && !settings.enabledTabs.includes(activeTab)) {
+      const fallback = USER_TABS.find((t) => settings.enabledTabs.includes(t)) || 'overview';
+      setActiveTab(fallback);
+    }
+  }, [settings?.enabledTabs, activeTab]);
 
   const tabLock = settings?.tabsVerticalLock ? 'vertical' : settings?.tabsHorizontalLock ? 'horizontal' : 'auto';
   const tabShellLayout = tabLock === 'vertical'
