@@ -22,6 +22,12 @@
         gap: 10px;
       }
 
+      #toast-stack.top {
+        bottom: auto;
+        top: 0;
+        flex-direction: column-reverse;
+      }
+
       .toast-bubble {
         width: 340px;
         background: rgba(20, 26, 34, 0.95);
@@ -44,6 +50,41 @@
         word-break: break-word;
       }
 
+      #move-handle {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(40, 80, 130, 0.95);
+        border: 2px dashed rgba(140, 190, 240, 0.9);
+        border-radius: 10px;
+        color: #dcecff;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        cursor: grab;
+        user-select: none;
+        z-index: 20;
+        -webkit-app-region: drag;
+        animation: toast-in 0.2s ease-out;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+      }
+
+      #move-handle.hidden {
+        display: none;
+      }
+
+      body.stack-top #move-handle {
+        top: auto;
+        bottom: 8px;
+        animation: toast-in-down 0.2s ease-out;
+      }
+
       @keyframes toast-in {
         from {
           transform: translateY(12px);
@@ -54,14 +95,41 @@
           opacity: 1;
         }
       }
+
+      @keyframes toast-in-down {
+        from {
+          transform: translateY(-12px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
     </style>
   </head>
   <body>
+    <div id="move-handle" class="hidden">🖱 Drag the toast box to a new spot, then click "Save position" in Settings</div>
     <div id="toast-stack"></div>
 
     <script>
       const stack = document.getElementById('toast-stack');
+      const moveHandle = document.getElementById('move-handle');
       let audioCtx = null;
+      let maxVisible = 5;
+      let durationMs = 8000;
+      let stackTop = false;
+
+      function applyStackMode() {
+        stack.classList.toggle('top', stackTop);
+        document.body.classList.toggle('stack-top', stackTop);
+      }
+
+      function pruneStack() {
+        while (stack.children.length > maxVisible) {
+          stack.removeChild(stack.firstChild);
+        }
+      }
 
       function playChime(kind) {
         try {
@@ -121,6 +189,17 @@
             playChime(payload.sound);
           }
 
+          if (Number.isInteger(payload.maxVisible) && payload.maxVisible >= 1) {
+            maxVisible = payload.maxVisible;
+          }
+          if (Number.isInteger(payload.durationMs) && payload.durationMs >= 500) {
+            durationMs = payload.durationMs;
+          }
+          if (typeof payload.stackTop === 'boolean') {
+            stackTop = payload.stackTop;
+            applyStackMode();
+          }
+
           const bubble = document.createElement('div');
           bubble.className = 'toast-bubble';
 
@@ -136,13 +215,31 @@
           bubble.appendChild(body);
           stack.appendChild(bubble);
 
-          while (stack.children.length > 5) {
-            stack.removeChild(stack.firstChild);
-          }
+          pruneStack();
 
           setTimeout(() => {
             bubble.remove();
-          }, 8000);
+          }, durationMs);
+        });
+
+        window.toastApi.onMoveMode((active) => {
+          console.log('overlay: move mode', active);
+          moveHandle.classList.toggle('hidden', !active);
+        });
+
+        window.toastApi.onConfig((config) => {
+          console.log('overlay: config', config);
+          if (config && Number.isInteger(config.maxVisible) && config.maxVisible >= 1) {
+            maxVisible = config.maxVisible;
+            pruneStack();
+          }
+          if (config && Number.isInteger(config.durationMs) && config.durationMs >= 500) {
+            durationMs = config.durationMs;
+          }
+          if (config && typeof config.stackTop === 'boolean') {
+            stackTop = config.stackTop;
+            applyStackMode();
+          }
         });
       }
     </script>

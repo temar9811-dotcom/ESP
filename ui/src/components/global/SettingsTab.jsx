@@ -1,4 +1,4 @@
-// File: ui/src/components/global/SettingsTab.jsx | Version: 1.3
+// File: ui/src/components/global/SettingsTab.jsx | Version: 1.4
 import React, { useState, useEffect } from 'react';
 import { THEME_OPTIONS, applyTheme, applyTextScale } from '../../theme';
 import { USER_TABS, TAB_LABELS, DEFAULT_ENABLED_TABS } from '../../tabs';
@@ -6,6 +6,8 @@ import { USER_TABS, TAB_LABELS, DEFAULT_ENABLED_TABS } from '../../tabs';
 export default function SettingsTab({ onClose, onSettingsChange }) {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [moveActive, setMoveActive] = useState(false);
+  const [moveFeedback, setMoveFeedback] = useState('');
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -59,6 +61,42 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
     };
     setSettings(patch);
     if (onSettingsChange) onSettingsChange(patch);
+  };
+
+  const handleToastMove = async () => {
+    if (!moveActive) {
+      try {
+        await window.eveApi.startToastMove();
+        setMoveActive(true);
+        setMoveFeedback('Move mode active — drag the toast box, then click "Save position".');
+      } catch (err) {
+        setMoveFeedback(err?.message || 'Could not start move mode.');
+      }
+      return;
+    }
+    try {
+      const res = await window.eveApi.endToastMove();
+      setMoveActive(false);
+      setMoveFeedback(
+        res && res.ok
+          ? `Toast position saved (${res.x}, ${res.y}).`
+          : (res?.error || 'Toast position saved.')
+      );
+    } catch (err) {
+      setMoveFeedback(err?.message || 'Could not save position.');
+    }
+  };
+
+  const handleCancelMove = () => {
+    setMoveActive(false);
+    setMoveFeedback('Move cancelled — position unchanged.');
+  };
+
+  const handleTestToast = () => {
+    window.eveApi.showToast(
+      'ESP Test Toast',
+      `This is a sample notification.\nMax visible: ${settings.toastMaxVisible}, duration: ${settings.toastDurationMs / 1000}s.`
+    );
   };
 
   if (loading || !settings) return <div className="p-4 text-gray-400">Loading settings...</div>;
@@ -138,6 +176,64 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
             <span>Lock tabs horizontal</span>
             <input type="checkbox" checked={!!settings.tabsHorizontalLock} onChange={(e) => handleTabLock('tabsHorizontalLock', e.target.checked)} className="w-4 h-4" />
           </label>
+        </div>
+      </div>
+      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
+        <h3 className="text-md font-semibold text-gray-200">Toast Notifications</h3>
+        <p className="text-xs text-gray-500">The toast box shows notification bubbles over your taskbar (Windows).</p>
+        <label className="flex items-center justify-between text-gray-300">
+          <span>Number of toasts shown at once</span>
+          <input type="number" min="1" max="10" value={settings.toastMaxVisible} onChange={(e) => updateSetting('toastMaxVisible', Math.max(1, Math.min(10, Number(e.target.value) || 5)))} className="w-16 bg-gray-700 text-gray-200 px-2 py-1 rounded border border-gray-600 text-right" />
+        </label>
+        <label className="flex items-center justify-between text-gray-300">
+          <span>Time toasts stay on screen (seconds)</span>
+          <input type="number" min="2" max="30" value={Math.round((settings.toastDurationMs ?? 8000) / 1000)} onChange={(e) => updateSetting('toastDurationMs', Math.max(2000, Math.min(30000, (Number(e.target.value) || 8) * 1000)))} className="w-16 bg-gray-700 text-gray-200 px-2 py-1 rounded border border-gray-600 text-right" />
+        </label>
+        <label className="flex items-center justify-between text-gray-300">
+          <span>New toasts on top</span>
+          <input type="checkbox" checked={!!settings.toastStackTop} onChange={(e) => updateSetting('toastStackTop', e.target.checked)} className="w-4 h-4" />
+        </label>
+        <div className="pt-2 border-t border-gray-700 space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-gray-300">Toast box position</span>
+            <div className="flex gap-2">
+              {moveActive ? (
+                <>
+                  <button
+                    onClick={handleToastMove}
+                    className="px-3 py-1 text-sm bg-green-600 hover:bg-green-500 text-white rounded"
+                  >
+                    Save position
+                  </button>
+                  <button
+                    onClick={handleCancelMove}
+                    className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleToastMove}
+                  className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded"
+                >
+                  Move toast box
+                </button>
+              )}
+            </div>
+          </div>
+          {moveActive && (
+            <p className="text-xs text-blue-300">Drag the highlighted toast box to a new spot on screen.</p>
+          )}
+          {moveFeedback && <p className="text-xs text-gray-400">{moveFeedback}</p>}
+        </div>
+        <div className="pt-2 border-t border-gray-700">
+          <button
+            onClick={handleTestToast}
+            className="px-3 py-1 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded"
+          >
+            Show test toast
+          </button>
         </div>
       </div>
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">

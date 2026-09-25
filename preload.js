@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('eveApi', {
   getSettings: invoke('settings:get'),
   setSettings: invoke('settings:set'),
   showToast: invoke('toast:show'),
+  startToastMove: invoke('toast:startMove'),
+  endToastMove: invoke('toast:endMove'),
   testEnabled: invoke('test:enabled'),
   testRun: invoke('test:run'),
   getNotes: invoke('notes:get'),

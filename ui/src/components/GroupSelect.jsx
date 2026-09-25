@@ -48,7 +48,7 @@ export default function GroupSelect({ value, groups, onAssign }) {
         ref={btnRef}
         onClick={toggle}
         title="Set account group for this character"
-        className="mt-2 max-w-full w-fit truncate text-xs px-1.5 py-0.5 rounded border border-gray-600 bg-gray-800 text-gray-400 hover:text-blue-300 hover:border-blue-500"
+        className="group-select-btn mt-2 max-w-full w-fit truncate text-xs px-1.5 py-0.5 rounded border border-gray-600 bg-gray-800 text-gray-400 hover:text-blue-300 hover:border-blue-500"
       >
         Group: {value || 'None'} ▾
       </button>
@@ -58,7 +58,7 @@ export default function GroupSelect({ value, groups, onAssign }) {
       )}
       {open && pos && createPortal(
         <div
-          className="fixed z-50 max-h-72 overflow-y-auto rounded-md border border-gray-600 bg-gray-800 py-1 shadow-xl"
+          className="fixed z-50 max-h-72 overflow-y-auto rounded-md border border-gray-600 bg-gray-800 py-1 shadow-xl group-select-menu"
           style={{ top: pos.top, left: pos.left, minWidth: pos.width }}
           onClick={(e) => e.stopPropagation()}
         >

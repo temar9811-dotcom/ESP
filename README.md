@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.9)
+## Current Features (v1.2.10)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -39,6 +39,7 @@ Built with Electron and the EVE ESI API.
 
 ### Notifications & Alerts
 - **Click-through toast bubbles** that appear above the taskbar
+- **Customizable toast box** — move the toast overlay anywhere on screen, choose how many toasts show at once and how long they stay, list them from the top or up from the bottom, and preview with a test toast
 - **Skill complete alerts** with an ascending chime
 - **Wallet activity alerts** with a double-blip chime (new activity only)
 - **Queue-running-dry warning** with its own descending chime — toggle and lead time configurable in Settings
@@ -83,42 +84,19 @@ Built with Electron and the EVE ESI API.
 - Copy debug log button for tester reports
 - ESI status badge
 - Two characters side-by-side on wide windows
-- Extra notification settings (bubble duration, max bubbles, refresh interval, position)
+- Toast refresh interval settings
 
 ## Updates / Alpha Builds
 
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.9**
+**Currently tracked version: v1.2.10**
 
 ### Changelog
-- **v1.2.9 (current)** — Skill plans for all characters now act per character: each character gets its own editable copy that remembers its shared parent, so switching "Applies to" back to All characters pushes your edits to everyone. Plan skills render as collapsible trees showing every level (target on top, lower levels beneath) with per-level SP, and the builder now shows the selected character's attributes, total remaining SP, and an estimated training time based on them; the catalog lists each skill's total SP for all five levels and hides fully-trained skills. "Applies to" defaults to the selected character. Fixed skill completion notifications and skill history. New Settings option to hide the tabs, the active-skill watcher now shows time left and SP left, and a Notifications tab has been scaffolded (framework only for now).
+- **v1.2.10 (current)** — Toast notifications are now customizable: a new Toast Notifications section in Settings lets you move the toast box anywhere on screen (with a drag mode and saved position), set how many toasts show at once and how long they stay, and list toasts from the top or up from the bottom ("new toasts on top" is now the default); a test toast button previews it all instantly. Kick MRCHI theme: the group selection button text is now black and the group picker shows groups in black with the selected one in red; corporation, location and clone-home context in the Overview now match the character name color. Hotfix: the Add Group button now opens a proper dialog instead of silently doing nothing in the packaged app.
+- **v1.2.9** — Skill plans for all characters now act per character: each character gets its own editable copy that remembers its shared parent, so switching "Applies to" back to All characters pushes your edits to everyone. Plan skills render as collapsible trees showing every level (target on top, lower levels beneath) with per-level SP, and the builder now shows the selected character's attributes, total remaining SP, and an estimated training time based on them; the catalog lists each skill's total SP for all five levels and hides fully-trained skills. "Applies to" defaults to the selected character. Fixed skill completion notifications and skill history. New Settings option to hide the tabs, the active-skill watcher now shows time left and SP left, and a Notifications tab has been scaffolded (framework only for now).
 - **v1.2.8** — Notification history on each character (everything that happened since you last checked, color-coded, at the bottom of the Overview) plus a Recently Finished Skills panel (last five). Sidebar alert pulses: green for unseen notifications, orange when the queue is almost dry, red when training stopped, with collapsed group headers showing the highest-priority color. Collapsed groups now show the primary compactly (name + location) and the Ungrouped section is collapsible. New tab bar position lock (vertical or horizontal, mutually exclusive). Skill plans can be edited: Edit reopens the builder with existing skills pre-loaded and saves back to the same plan.
-- **v1.2.7** — Fixed the What's-new popup so it reliably appears once per version: the changelog is now requested once the UI is ready instead of being pushed at startup, and the last-seen version is only recorded when the popup is actually shown.
-- **v1.2.6** — In-app skill planning: build plans straight from the full EVE skill catalog, showing each skill's current level for the selected character. Click any plan for a detail popup and export it back to the clipboard (same format as clipboard import). A What's-new popup now shows the changelog once per version, tracking the last-seen version so it only appears after an update.
-- **v1.2.5** — Character groups in the new sidebar (custom names, primary star, collapsible sections). Debug tab removed from release builds so it only appears under the dev server. Dotted, readable installer names for updates. Cross-platform native notifications with the Windows toast overlay as a fallback, and the toast assets restored in packaged builds. Skill Plans tab completed: per-character filtering, delete, and clipboard import with a naming and scope dialog.
-- **v1.2.4** — Responsive layout refinements so the interface stays clean and usable on smaller windows.
-- **v1.2.3** — Themes added: switch between color themes with an optional larger-text mode.
-- **v1.2.2** — New debug engine: scriptable diagnostic actions for easier testing and support.
-- **v1.2.1** — Assets section completed: full asset tree with structure names and location hierarchy.
-- **v1.2.0** — New UI backend for smoother, more responsive interaction, plus smarter ESI request throttling.
-- **Hotfix** — sidebar no longer jumps to top when clicking a character.
-- **v1.1.14-beta** — Local clone nicknames: hover any clone to assign a custom name stored locally per jump_clone_id; nickname persists across refreshes.
-- **v1.1.13-beta** — Assets tab: clone locations & implants; diff-based active clone detection; implant slot numbers via dogma attributes; market price valuations; lazy fetch on tab open. Existing users must re-add characters with Full scopes.
-- **v1.1.12-beta** — Cross-character skill search; window remembers size and position; fixed ESI field names for skill levels and SP (queue costs now accurate); fixed notes not saving.
-- **v1.1.11-beta** — Per-character notes: editable Notes tab on each character sheet, saved locally per character.
-- **v1.1.10-beta** — Recently completed skills list (last 7 days) on the Overview; collapsible with auto-collapse above 5 entries; Will only list skills completed after character is added to the app
-- **v1.1.9-beta** — Overview next-skill detection fixed for queues where ESI removes completed entries without renumbering.
-- **v1.1.8-beta** — Batched character refresh plus ESI rate-limit cooldown with automatic back-off; Refresh button locks during refreshes and cooldowns.
-- **v1.1.7-beta** — Queue-running-dry warning with configurable lead time and its own descending chime; expanded self-test suite; first beta build.
-- **v1.1.6** — Add-character modal with scope choice (Essential vs. future-proof Full access); SSO scope list cleaned and split.
-- **v1.1.5** — SP cost + estimated training time in skill plans; fixed skill rank lookup via ESI dogma attributes.
-- **v1.1.4** — Friendly "No skill plan found" clipboard message with Try again.
-- **v1.1.3** — Notification settings (mute, per-type toggles, minimum ISK threshold); start minimized to tray.
-- **v1.1.2** — Hide primary in collapsed groups; start with Windows.
-- **v1.1.1** — Renderer code split into modules.
-- **v1.1.0** — First tester build.
 
 ---
 

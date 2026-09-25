@@ -23,6 +23,11 @@ const DEFAULT_SETTINGS = {
   tabsVerticalLock: false,
   tabsHorizontalLock: false,
   enabledTabs: ['overview', 'skills', 'wallet', 'assets', 'clones', 'notifications', 'notes', 'plans'],
+  toastX: null,
+  toastY: null,
+  toastMaxVisible: 5,
+  toastDurationMs: 8000,
+  toastStackTop: true,
   lastSeenVersion: ''
 };
 function getSettingsFile() {

@@ -95,6 +95,8 @@ handle('plans:delete', (_e, id) => plans.deletePlan(id));
 handle('settings:get', () => settings.getSettings());
 handle('settings:set', (_e, p) => { const u = settings.setSettings(p); if (p && typeof p.openAtLogin === 'boolean') app.setLoginItemSettings({ openAtLogin: p.openAtLogin }); return u; });
 handle('toast:show', (_e, t, b) => { if (process.platform === 'win32') { toastWindow.showToast(t, b); } else { require('./native-notifications').show(t, b, null); } return true; });
+handle('toast:startMove', () => toastWindow.startMove());
+handle('toast:endMove', () => toastWindow.endMove());
 handle('test:run', (_e, c, p) => !testHarness ? { ok: false, error: 'No harness' } : testHarness.run(c, p));
 handle('test:enabled', () => testHarness ? testHarness.testEnabled() : false);
 handle('scheduler:forcePull', (_e, n) => scheduler.forcePull(n));

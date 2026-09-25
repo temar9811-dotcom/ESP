@@ -53,6 +53,14 @@ body[data-theme="kick-mrchi"] aside .bg-gray-700 { background-color: transparent
 body[data-theme="kick-mrchi"] aside .border-gray-600 { border-color: rgba(103,232,249,0.22) !important; }
 body[data-theme="kick-mrchi"] aside .hover\:bg-gray-600:hover { background-color: rgba(103,232,249,0.08) !important; }
 
+/* 5c. Group selector: trigger text black, list options black / selected red */
+body[data-theme="kick-mrchi"] aside button.group-select-btn { color: #000000 !important; }
+body[data-theme="kick-mrchi"] .group-select-menu button { color: #000000 !important; }
+body[data-theme="kick-mrchi"] .group-select-menu button.text-blue-300 { color: #cc0000 !important; }
+
+/* 5d. Overview corp / location / clone context matches char name cyan */
+body[data-theme="kick-mrchi"] .overview-context { color: #67e8f9 !important; }
+
 /* 6. Trained skills tree: branch teal, leaf cyan */
 body[data-theme="kick-mrchi"] .trained-skills-branch { color: #5eead4 !important; }
 body[data-theme="kick-mrchi"] .trained-skills-branch:hover { color: #67e8f9 !important; }

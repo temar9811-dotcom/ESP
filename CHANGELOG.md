@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.10
+
+### Toast notifications — customizable
+- **Move the toast box** — a new "Move toast box" button in Settings enters a drag mode: grab the highlighted toast overlay and drop it anywhere on screen, then save the position. The location is remembered between sessions and still works after unplugging a monitor.
+- **Stack direction** — toasts can list from the top of the screen or up from the bottom. "New toasts on top" is now on by default; the toast box hops to the matching corner when you switch.
+- **How many fit** — choose the number of toasts shown at once (1–10); the toast window resizes to fit and old toasts are pruned.
+- **How long they stay** — set how many seconds a toast stays on screen (2–30).
+- **Test toast** — a button in Settings fires a sample notification instantly, so you can preview positioning and sizing before you're done.
+- All of it lives in a new **Toast Notifications** section of Settings, sitting between Appearance and Tab Activation.
+
+### Kick MRCHI theme
+- Group selection button text is black, matching the metallic-gold button style.
+- The group picker list now shows group names in black, with the currently selected group in red.
+
+### Overview
+- Corporation, location and clone-home context text now matches the character name color (cyan), so the character header reads as a single unit.
+
+### Hotfix
+- **Add Group button fixed** — the New Group button did nothing in the packaged app (it relied on a browser-only prompt). It now opens a proper dialog to name and create the group, and shows an error toast if creation fails.
+
 ## 1.2.9
 
 ### Skill Plans — the centerpiece
@@ -28,34 +48,3 @@
 - Collapsed groups now show the primary character compactly (name + location only), and the Ungrouped section is now collapsible like named groups.
 - Tab bar position lock: new Appearance settings let you pin the tabs vertical or horizontal (mutually exclusive); leave both off for the usual responsive behavior.
 - Skill plan editing: every plan now has an Edit button that reopens the plan builder with the plan's skills pre-loaded, saving back to the same plan.
-
-## 1.2.7
-- Fixed the What's-new popup: it now reliably shows on the first launch after an update. The changelog is requested once the UI is up (instead of being pushed at startup, which could be missed), and the last-seen version is only recorded when the popup is actually shown.
-
-## 1.2.6
-- In-app skill plan creation: build plans straight from the full EVE skill catalog in collapsible groups, adding levels with a single click, and save as a global or character-specific plan.
-- The Create Plan builder shows each skill's current level for the selected character.
-- Clicking any plan opens a detail popup with its skills and an "Export Skill Plan to Clipboard" button (same format as clipboard import).
-- A What's-new popup shows the changelog once per version on first launch, tracking the last-seen version in settings so it only appears after an update.
-
-## 1.2.5
-- Grouped characters sidebar in the new UI (custom group names, primary character star, collapsible groups and Ungrouped section).
-- Debug tab only appears when running from the Vite dev server, never in releases.
-- Installer artifacts use dotted, readable names (EVE.Status.Perception.Setup.1.2.5.exe).
-- Native cross-platform notifications with the Windows toast overlay as a fallback; toast overlay assets restored into packaged builds.
-- Skill Plans tab completed: per-character filtering, delete, and clipboard import with a naming/scope dialog.
-
-## 1.2.4
-- Responsive layout refinements so the interface stays clean and usable on smaller windows.
-
-## 1.2.3
-- Themes: switch between color themes with an optional larger-text mode.
-
-## 1.2.2
-- New debug engine: scriptable diagnostic actions for easier testing and support.
-
-## 1.2.1
-- Assets section completed: full asset tree with structure names and location hierarchy.
-
-## 1.2.0
-- New UI backend for smoother, more responsive interface interaction and smarter ESI request throttling.

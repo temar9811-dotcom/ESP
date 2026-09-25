@@ -1,23 +1,27 @@
-// File: ui/src/components/Topbar.jsx | Version: 1.2
+// File: ui/src/components/Topbar.jsx | Version: 1.3
 import React, { useState } from 'react';
 import { useVersion, useRefreshState, eveApi } from '../hooks/useEveApi';
 import AddCharacterModal from './modals/AddCharacterModal';
+import NewGroupModal from './modals/NewGroupModal';
 
 export default function Topbar({ onOpenSettings, isSettingsOpen }) {
   const version = useVersion();
   const { refreshing } = useRefreshState();
   const [showAdd, setShowAdd] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [groupError, setGroupError] = useState('');
 
   const handleRefresh = () => eveApi.refreshAll().catch(console.error);
 
-  const handleNewGroup = async () => {
-    const name = window.prompt('New group name:');
+  const handleNewGroup = async (name) => {
     const clean = (name || '').trim();
     if (!clean) return;
     try {
       await eveApi.createGroup(clean);
+      setGroupError('');
     } catch (err) {
-      console.error('createGroup failed:', err);
+      setGroupError(err?.message || String(err));
+      throw err;
     }
   };
 
@@ -36,7 +40,7 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
           {refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
         <button
-          onClick={handleNewGroup}
+          onClick={() => setShowNewGroup(true)}
           className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-500"
           title="Create a new character group"
         >
@@ -57,6 +61,17 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
         </button>
       </div>
       {showAdd && <AddCharacterModal onClose={() => setShowAdd(false)} />}
+      {showNewGroup && (
+        <NewGroupModal
+          onClose={() => setShowNewGroup(false)}
+          onSubmit={handleNewGroup}
+        />
+      )}
+      {groupError && (
+        <div className="fixed bottom-4 right-4 z-50 p-3 rounded-lg border border-red-700 bg-red-900/80 text-sm text-red-200">
+          {groupError}
+        </div>
+      )}
     </header>
   );
 }

@@ -103,7 +103,7 @@ export default function Overview({ account, unseenNotifications = [], lastViewed
         </div>
         <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
           <h2 className="text-lg font-semibold text-gray-100 mb-2">Corporation</h2>
-          <p className="text-gray-300">{ov.corpName}</p>
+          <p className="overview-context text-gray-300">{ov.corpName}</p>
           <p className="text-sm text-gray-400">{ov.allianceName}</p>
         </div>
       </div>
@@ -111,12 +111,12 @@ export default function Overview({ account, unseenNotifications = [], lastViewed
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
           <h2 className="text-lg font-semibold text-gray-100 mb-2">Location & Ship</h2>
-          <p className="text-gray-300">{ov.systemName}</p>
+          <p className="overview-context text-gray-300">{ov.systemName}</p>
           <p className="text-sm text-gray-400 mt-1">{ov.shipName || 'Unknown'} {ov.shipType ? `(${ov.shipType})` : ''}</p>
         </div>
         <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
           <h2 className="text-lg font-semibold text-gray-100 mb-2">Clones</h2>
-          <p className="text-gray-300">Home: {ov.homeLocationType} - {ov.homeLocationName || 'Unknown'}</p>
+          <p className="overview-context text-gray-300">Home: {ov.homeLocationType} - {ov.homeLocationName || 'Unknown'}</p>
           <p className="text-sm text-gray-400 mt-1">Jump Clones: {ov.jumpCloneCount}</p>
         </div>
       </div>
