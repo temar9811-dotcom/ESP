@@ -195,7 +195,7 @@ handle('plans:save', (_e, p) => plans.savePlan(p));
 handle('plans:delete', (_e, id) => plans.deletePlan(id));
   handle('plans:exportClipboard', (_e, id) => plans.exportPlanToClipboard(id));
 handle('settings:get', () => settings.getSettings());
-handle('settings:set', (_e, p) => { const u = settings.setSettings(p); if (p && typeof p.openAtLogin === 'boolean') app.setLoginItemSettings({ openAtLogin: p.openAtLogin }); return u; });
+handle('settings:set', (_e, p) => { const u = settings.setSettings(p); if (p && typeof p.openAtLogin === 'boolean') app.setLoginItemSettings({ openAtLogin: p.openAtLogin }); if (p && typeof p.autoInstallUpdates === 'boolean') updater.applyAutoInstallSetting(); return u; });
 handle('settings:pickSound', async () => {
   const res = await dialog.showOpenDialog({
     title: 'Choose a notification sound (WAV)',

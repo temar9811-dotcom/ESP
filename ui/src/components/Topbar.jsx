@@ -1,8 +1,16 @@
-// File: ui/src/components/Topbar.jsx | Version: 1.4
-import React, { useState, useEffect, useCallback } from 'react';
+// File: ui/src/components/Topbar.jsx | Version: 1.6
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useVersion, useRefreshState, eveApi } from '../hooks/useEveApi';
 import AddCharacterModal from './modals/AddCharacterModal';
 import NewGroupModal from './modals/NewGroupModal';
+
+const UPDATE_STATUS_TEXT = {
+  downloading: 'Downloading update...',
+  available: 'Update available!',
+  error: 'Update failed',
+  unavailable: 'Updates unavailable in this build',
+  current: "You're up to date"
+};
 
 export default function Topbar({ onOpenSettings, isSettingsOpen }) {
   const version = useVersion();
@@ -13,6 +21,23 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
   const [anyEligible, setAnyEligible] = useState(false);
   const [eligibleCount, setEligibleCount] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [autoInstall, setAutoInstall] = useState(true);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const statusTimer = useRef(null);
+  const userFired = useRef(false);
+
+  const showUpdateStatus = useCallback((state) => {
+    // The updater checks hourly on its own; only report what the user triggered.
+    if (!userFired.current) return;
+    if (!UPDATE_STATUS_TEXT[state]) return;
+    setUpdateStatus(state);
+    if (statusTimer.current) clearTimeout(statusTimer.current);
+    statusTimer.current = setTimeout(() => {
+      userFired.current = false;
+      setUpdateStatus(null);
+    }, 6000);
+  }, []);
 
   const refreshEligibility = useCallback(async () => {
     try {
@@ -25,11 +50,47 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
     }
   }, []);
 
+  const refreshUpdaterStatus = useCallback(async () => {
+    try {
+      const res = await eveApi.getUpdaterStatus();
+      setAutoInstall(res?.autoInstall !== false);
+      setUpdateAvailable(Boolean(res?.available));
+    } catch {
+      setAutoInstall(true);
+      setUpdateAvailable(false);
+    }
+  }, []);
+
   useEffect(() => {
     refreshEligibility();
-    const t = setInterval(refreshEligibility, 15000);
+    refreshUpdaterStatus();
+    const t = setInterval(() => {
+      refreshEligibility();
+      refreshUpdaterStatus();
+    }, 15000);
     return () => clearInterval(t);
-  }, [refreshEligibility]);
+  }, [refreshEligibility, refreshUpdaterStatus]);
+
+  useEffect(() => {
+    if (!eveApi.onUpdateStatus) return undefined;
+    const unsub = eveApi.onUpdateStatus((p) => {
+      if (typeof p?.autoInstall === 'boolean') setAutoInstall(p.autoInstall);
+      if (typeof p?.available === 'boolean') setUpdateAvailable(p.available);
+      showUpdateStatus(p?.state);
+    });
+    return unsub;
+  }, [showUpdateStatus]);
+
+  const handleUpdateNow = async () => {
+    userFired.current = true;
+    setUpdateStatus('downloading');
+    try {
+      await eveApi.fireUpdaterNow();
+    } catch (err) {
+      console.error(err);
+      setUpdateStatus('error');
+    }
+  };
 
   const handleRefresh = async () => {
     setBusy(true);
@@ -68,6 +129,18 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
         <span className="text-xs text-gray-400">v{version}</span>
       </div>
       <div className="flex gap-2">
+        {updateAvailable && !autoInstall && (
+          <button
+            onClick={handleUpdateNow}
+            title="A new version is available — download and install now"
+            className="rounded bg-purple-700 px-3 py-1 text-sm font-medium text-white hover:bg-purple-600"
+          >
+            Update Now
+          </button>
+        )}
+        {updateStatus && (
+          <span className="self-center text-xs text-gray-400">{UPDATE_STATUS_TEXT[updateStatus] || ''}</span>
+        )}
         <button
           onClick={handleRefresh}
           disabled={!canRefresh}

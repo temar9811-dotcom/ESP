@@ -142,6 +142,12 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
           <span>Hide primary character when a group is collapsed</span>
           <input type="checkbox" checked={settings.hidePrimaryWhenCollapsed} onChange={(e) => updateSetting('hidePrimaryWhenCollapsed', e.target.checked)} className="w-4 h-4" />
         </label>
+        <label className="flex items-center justify-between text-gray-300">
+          <span title="ESP always checks for a new release once an hour. Turn this off to install updates only when you click Update Now in the top bar.">
+            Install updates automatically
+          </span>
+          <input type="checkbox" checked={settings.autoInstallUpdates !== false} onChange={(e) => updateSetting('autoInstallUpdates', e.target.checked)} className="w-4 h-4" />
+        </label>
       </div>
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
         <h3 className="text-md font-semibold text-gray-200">Notifications</h3>

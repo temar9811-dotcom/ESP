@@ -1,5 +1,5 @@
 // FILE: main/settings.js
-// VERSION: 1.1.18-beta
+// VERSION: 1.1.19-beta
 'use strict';
 const { app } = require('electron');
 const path = require('path');
@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   hidePrimaryWhenCollapsed: false,
   openAtLogin: false,
   startMinimized: false,
+  autoInstallUpdates: true,
   muteSounds: false,
   notifySkill: true,
   notifyWallet: true,

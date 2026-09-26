@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.16
+
+### Updates — hourly checks and manual "Update Now"
+- **Checks every hour** — ESP now polls for new releases once an hour instead of only once at launch, so a long-running session picks up updates without a restart.
+- **New "Install updates automatically" setting** (Settings → System, on by default) — this controls whether ESP *acts* on an update, not whether it looks. With it on you get the usual update dialog and the download installs when you quit. With it off, ESP never installs anything on its own.
+- **"Update Now" button** — turn the setting off and, whenever a new version is found, a purple **Update Now** button appears in the top bar. Click it to download and install immediately. The button only shows when there's actually an update to install and stays hidden while automatic installs are on.
+- The hourly check stays silent when it finds nothing, so the top bar isn't disturbed by routine "you're up to date" checks.
+
 ## 1.2.15
 
 ### Clones — nicknames
