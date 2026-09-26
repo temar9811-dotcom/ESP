@@ -177,6 +177,19 @@
         }
       }
 
+      function playCustomSound(dataUrl) {
+        try {
+          const audio = new Audio(dataUrl);
+          audio.volume = 0.9;
+          const playPromise = audio.play();
+          if (playPromise && playPromise.catch) {
+            playPromise.catch(() => {});
+          }
+        } catch {
+          // Unsupported or invalid audio; fall back silently.
+        }
+      }
+
       if (!window.toastApi) {
         console.error('overlay: toastApi is missing!');
       } else {
@@ -185,7 +198,9 @@
         window.toastApi.onToast((payload) => {
           console.log('overlay: got toast', payload);
 
-          if (payload.sound) {
+          if (payload.soundData) {
+            playCustomSound(payload.soundData);
+          } else if (payload.sound) {
             playChime(payload.sound);
           }
 

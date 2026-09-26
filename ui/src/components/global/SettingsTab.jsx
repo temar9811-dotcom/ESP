@@ -95,8 +95,32 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
   const handleTestToast = () => {
     window.eveApi.showToast(
       'ESP Test Toast',
-      `This is a sample notification.\nMax visible: ${settings.toastMaxVisible}, duration: ${settings.toastDurationMs / 1000}s.`
+      `This is a sample notification.\nMax visible: ${settings.toastMaxVisible}, duration: ${settings.toastDurationMs / 1000}s.`,
+      'skill'
     );
+  };
+
+  const SOUND_ROWS = [
+    { key: 'customSoundSkill', label: 'Skill complete sound' },
+    { key: 'customSoundWallet', label: 'Wallet activity sound' },
+    { key: 'customSoundQueue', label: 'Queue empty/warning sound' }
+  ];
+
+  const fileBaseName = (p) => (p ? String(p).split(/[\\/]/).pop() : null);
+
+  const handlePickSound = async (typeKey) => {
+    try {
+      const res = await window.eveApi.pickSound();
+      if (res && !res.canceled && res.path) {
+        setSettings((prev) => ({ ...prev, [typeKey]: res.path }));
+      }
+    } catch (err) {
+      setMoveFeedback(`Could not choose sound: ${err?.message || err}`);
+    }
+  };
+
+  const handleResetSound = (typeKey) => {
+    setSettings((prev) => ({ ...prev, [typeKey]: null }));
   };
 
   if (loading || !settings) return <div className="p-4 text-gray-400">Loading settings...</div>;
@@ -137,6 +161,37 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
           <span>Show queue empty/warning notifications</span>
           <input type="checkbox" checked={settings.notifyQueueEmpty} onChange={(e) => updateSetting('notifyQueueEmpty', e.target.checked)} className="w-4 h-4" />
         </label>
+        <div className="pt-2 border-t border-gray-700 space-y-3">
+          <p className="text-xs text-gray-500">
+            Replace the built-in chime with a custom WAV per notification type (plays through the Windows toast overlay; other platforms keep the system sound).
+          </p>
+          {SOUND_ROWS.map((row) => {
+            const current = settings[row.key] ? fileBaseName(settings[row.key]) : null;
+            return (
+              <div key={row.key} className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex-1 min-w-40">
+                  <div className="text-gray-300">{row.label}</div>
+                  <div className="text-xs text-gray-500 truncate">{current || 'Default chime'}</div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePickSound(row.key)}
+                    className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"
+                  >
+                    Choose WAV…
+                  </button>
+                  <button
+                    onClick={() => handleResetSound(row.key)}
+                    disabled={!settings[row.key]}
+                    className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
         <div className="pt-2 border-t border-gray-700 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-gray-300">Queue warning lead time (hours)</span>

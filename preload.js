@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   exportPlanToClipboard: invoke('plans:exportClipboard'),
   getSettings: invoke('settings:get'),
   setSettings: invoke('settings:set'),
+  pickSound: invoke('settings:pickSound'),
   showToast: invoke('toast:show'),
   startToastMove: invoke('toast:startMove'),
   endToastMove: invoke('toast:endMove'),

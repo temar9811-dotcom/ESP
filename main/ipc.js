@@ -1,7 +1,7 @@
 // main/ipc.js
 // VERSION: 1.17
 'use strict';
-const { ipcMain, app } = require('electron');
+const { ipcMain, app, dialog } = require('electron');
 const { VERSION } = require('../version');
 const accounts = require('./accounts');
 const plans = require('./plans');
@@ -106,7 +106,16 @@ handle('plans:delete', (_e, id) => plans.deletePlan(id));
   handle('plans:exportClipboard', (_e, id) => plans.exportPlanToClipboard(id));
 handle('settings:get', () => settings.getSettings());
 handle('settings:set', (_e, p) => { const u = settings.setSettings(p); if (p && typeof p.openAtLogin === 'boolean') app.setLoginItemSettings({ openAtLogin: p.openAtLogin }); return u; });
-handle('toast:show', (_e, t, b) => { if (process.platform === 'win32') { toastWindow.showToast(t, b); } else { require('./native-notifications').show(t, b, null); } return true; });
+handle('settings:pickSound', async () => {
+  const res = await dialog.showOpenDialog({
+    title: 'Choose a notification sound (WAV)',
+    properties: ['openFile'],
+    filters: [{ name: 'WAV files', extensions: ['wav'] }]
+  });
+  if (res.canceled || !res.filePaths.length) return { canceled: true, path: null };
+  return { canceled: false, path: res.filePaths[0] };
+});
+handle('toast:show', (_e, t, b, sound) => { if (process.platform === 'win32') { toastWindow.showToast(t, b, sound); } else { require('./native-notifications').show(t, b, sound); } return true; });
 handle('toast:startMove', () => toastWindow.startMove());
 handle('toast:endMove', () => toastWindow.endMove());
 handle('test:run', (_e, c, p) => !testHarness ? { ok: false, error: 'No harness' } : testHarness.run(c, p));

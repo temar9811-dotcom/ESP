@@ -2,8 +2,15 @@
 
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const logger = require('./debug/logger');
 const settings = require('./settings');
+
+const CUSTOM_SOUND_KEYS = {
+  skill: 'customSoundSkill',
+  wallet: 'customSoundWallet',
+  queue: 'customSoundQueue'
+};
 
 const TOAST_WIDTH = 380;
 const TOAST_HEIGHT = 340;
@@ -20,6 +27,29 @@ let lastAppliedStackTop = null;
 function clamp(n, min, max) {
   n = Number(n) || 0;
   return Math.min(max, Math.max(min, n));
+}
+
+const soundCache = new Map();
+
+// Returns a base64 data URL for the configured custom WAV of the given
+// notification kind ('skill' | 'wallet' | 'queue'), or null when the user
+// hasn't picked one (synthesized chime) or the file can't be read.
+function resolveCustomSound(kind) {
+  const key = CUSTOM_SOUND_KEYS[kind];
+  if (!key) return null;
+  const filePath = settings.getSettings()[key];
+  if (!filePath) return null;
+  if (soundCache.has(filePath)) return soundCache.get(filePath);
+  try {
+    const b64 = fs.readFileSync(filePath).toString('base64');
+    const dataUrl = `data:audio/wav;base64,${b64}`;
+    soundCache.set(filePath, dataUrl);
+    logger.debug('TOAST-WIN', 'Loaded custom sound', { kind, filePath });
+    return dataUrl;
+  } catch (err) {
+    logger.error('TOAST-WIN', 'Failed to load custom sound', { kind, filePath, error: err.message });
+    return null;
+  }
 }
 
 function getSavedPosition() {
@@ -149,6 +179,7 @@ function showToast(title, body, sound) {
     title: String(title || ''),
     body: String(body || ''),
     sound: sound || null,
+    soundData: sound ? resolveCustomSound(sound) : null,
     maxVisible: clamp(config?.toastMaxVisible, 1, 10),
     durationMs: clamp(config?.toastDurationMs ?? 8000, 2000, 30000),
     stackTop

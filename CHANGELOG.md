@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.13
+
+### Notifications — custom sounds
+- **Custom WAV sounds** — each notification type (skill complete, wallet activity, queue empty/warning) can now use its own WAV file picked via a file dialog in Settings → Notifications. The toast overlay plays the chosen file instead of the built-in synthesized chime.
+- **Per-type controls** — a "Choose WAV…" button per type plus a "Reset" button to go back to the default chime; the chosen file name is shown under each type.
+- **Test toast preview** — "Show test toast" now plays the current skill-complete sound so you can hear your custom WAV before saving.
+- The built-in chimes and the mute toggle still work exactly as before; custom sounds play through the Windows toast overlay, while other platforms keep the OS default sound.
+
+## 1.2.12
+
+### Skill plans — prerequisites
+- **Auto-added prerequisites** — adding a skill to a plan (e.g. Gallente Cruiser) now brings its prerequisites along (e.g. Gallente Frigate) at the level they actually require, including the full chain of prereqs behind them. Skills the character already has trained aren't re-added.
+- **Requirement hints** — the skill catalog shows a "Requires Gallente Frigate L4" note under each skill, so you can see what will come along before you add it.
+- **Guards** — a prerequisite skill can't be lowered below what another planned skill needs, and can't be removed from a plan while a skill still depends on it.
+
 ## 1.2.11
 
 ### No-skill-training alerts

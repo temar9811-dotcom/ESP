@@ -127,24 +127,59 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
       const base = existing?.level || Math.min(MAX_LEVEL, Math.max(1, charLevel + 1));
       const level = Math.min(MAX_LEVEL, base + (existing ? 1 : 0));
       next.set(skill.id, { skillId: Number(skill.id), name: skill.name, level });
+      addPrerequisites(next, skill, new Set([Number(skill.id)]));
       return next;
     });
+  };
+
+  const addPrerequisites = (map, skill, visited) => {
+    const prs = skill.prerequisites || [];
+    for (const pr of prs) {
+      const prId = Number(pr.skillId);
+      if (visited.has(prId)) continue;
+      visited.add(prId);
+      const prSkill = catalogById.get(prId);
+      const trained = skillLevels[prId] || 0;
+      const prLevel = Math.min(MAX_LEVEL, Math.max(Number(pr.level) || 1, map.get(prId)?.level || 0));
+      if (prLevel > trained) {
+        map.set(prId, { skillId: prId, name: pr.name || prSkill?.name || `Skill ${prId}`, level: prLevel });
+      }
+      if (prSkill) addPrerequisites(map, prSkill, visited);
+    }
+  };
+
+  const requiredLevelOf = (skillId, plan) => {
+    let need = 0;
+    for (const e of plan.values()) {
+      if (Number(e.skillId) === Number(skillId)) continue;
+      const skill = catalogById.get(e.skillId);
+      const pr = Array.isArray(skill?.prerequisites) ? skill.prerequisites.find((p) => Number(p.skillId) === Number(skillId)) : null;
+      if (pr) need = Math.max(need, Math.min(MAX_LEVEL, Number(pr.level) || 1));
+    }
+    return need;
   };
 
   const decreaseSkill = (entry) => {
     setEntries((prev) => {
       const next = new Map(prev);
       const charLevel = skillLevels[entry.skillId] || 0;
-      const level = entry.level - 1;
-      if (level <= Math.max(0, charLevel)) next.delete(entry.skillId);
-      else next.set(entry.skillId, { ...entry, level });
+      const needed = Math.max(requiredLevelOf(entry.skillId, next), charLevel);
+      const target = Math.max(entry.level - 1, needed);
+      if (target <= charLevel) next.delete(entry.skillId);
+      else next.set(entry.skillId, { ...entry, level: target });
       return next;
     });
   };
 
   const removeSkill = (skillId) => {
+    setSaveError('');
     setEntries((prev) => {
       const next = new Map(prev);
+      const needed = requiredLevelOf(skillId, next);
+      if (needed > 0) {
+        setSaveError(`"${next.get(skillId)?.name || `Skill ${skillId}`}" is required by another skill in this plan. Lower or remove that skill first.`);
+        return prev;
+      }
       next.delete(skillId);
       return next;
     });
@@ -306,27 +341,37 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
                         const maxed = current >= MAX_LEVEL;
                         const rank = Number(skill.rank) > 0 ? Number(skill.rank) : 1;
                         const totalSp = spAtLevel(rank, MAX_LEVEL);
+                        const prereqs = Array.isArray(skill.prerequisites) && skill.prerequisites.length
+                          ? skill.prerequisites.map((pr) => `${pr.name || `Skill ${pr.skillId}`} L${pr.level}`).join(', ')
+                          : null;
                         return (
-                          <div key={skill.id} className="flex justify-between items-center py-0.5">
-                            <span className="text-xs text-gray-300 pr-2 truncate">{skill.name}</span>
-                            <span className="text-xs text-gray-500 pr-2 shrink-0" title="Total SP for all 5 levels">
-                              {formatSP(totalSp)} SP
-                            </span>
-                            {charLevel > 0 && (
-                              <span className="text-xs text-gray-500 pr-2 shrink-0">L{charLevel}</span>
+                          <div key={skill.id} className="py-0.5">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-300 pr-2 truncate">{skill.name}</span>
+                              <span className="text-xs text-gray-500 pr-2 shrink-0" title="Total SP for all 5 levels">
+                                {formatSP(totalSp)} SP
+                              </span>
+                              {charLevel > 0 && (
+                                <span className="text-xs text-gray-500 pr-2 shrink-0">L{charLevel}</span>
+                              )}
+                              <button
+                                onClick={() => addSkill(skill)}
+                                disabled={maxed}
+                                title={maxed ? `${skill.name} is at level ${MAX_LEVEL}` : `Add ${skill.name}`}
+                                className={`w-6 h-6 rounded text-sm font-bold shrink-0 ${
+                                  maxed
+                                    ? 'bg-gray-700 text-gray-500 cursor-default'
+                                    : 'bg-green-700 hover:bg-green-600 text-white'
+                                }`}
+                              >
+                                {maxed ? '✓' : '+'}
+                              </button>
+                            </div>
+                            {prereqs && (
+                              <div className="text-[10px] text-gray-500 pl-0.5" title="Auto-added to the plan when this skill is added">
+                                Requires {prereqs}
+                              </div>
                             )}
-                            <button
-                              onClick={() => addSkill(skill)}
-                              disabled={maxed}
-                              title={maxed ? `${skill.name} is at level ${MAX_LEVEL}` : `Add ${skill.name}`}
-                              className={`w-6 h-6 rounded text-sm font-bold shrink-0 ${
-                                maxed
-                                  ? 'bg-gray-700 text-gray-500 cursor-default'
-                                  : 'bg-green-700 hover:bg-green-600 text-white'
-                              }`}
-                            >
-                              {maxed ? '✓' : '+'}
-                            </button>
                           </div>
                         );
                       })}

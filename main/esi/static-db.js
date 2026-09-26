@@ -126,9 +126,13 @@ function getSkillInfo(skillId) {
   return { id: row[0].typeID, name: row[0].typeName, groupName: group?.groupName || 'Unknown Group' };
 }
 
+const PREREQ_SKILL_ATTRS = [182, 183, 184, 185, 186, 187];
+const PREREQ_LEVEL_ATTRS = [277, 278, 279, 280, 281, 282];
+const ALL_PREREQ_ATTRS = [...PREREQ_SKILL_ATTRS, ...PREREQ_LEVEL_ATTRS];
+
 function getAllSkills() {
   if (!db) return null;
-  return query(
+  const skills = query(
     `SELECT t.typeID AS id, t.typeName AS name, g.groupName AS groupName,
             COALESCE(r.valueFloat, r.valueInt) AS rank,
             COALESCE(pa.valueFloat, pa.valueInt) AS primaryAttr,
@@ -141,6 +145,44 @@ function getAllSkills() {
      WHERE g.categoryID = 16 AND t.published = 1
      ORDER BY g.groupName, t.typeName`
   );
+  if (!skills.length) return skills;
+
+  // Prerequisites: requiredSkillX (182-187) carries the skill typeID, and the
+  // matching requiredSkillXLevel (277-282) carries the required level.
+  const skillIds = skills.map((s) => Number(s.id));
+  const preqAttrs = query(
+    `SELECT typeID, attributeID, COALESCE(valueFloat, valueInt) AS val
+     FROM dgmTypeAttributes
+     WHERE typeID IN (${skillIds.join(',')}) AND attributeID IN (${ALL_PREREQ_ATTRS.join(',')})`
+  );
+  const attrsByType = new Map();
+  for (const a of preqAttrs) {
+    const tid = Number(a.typeID);
+    if (!attrsByType.has(tid)) attrsByType.set(tid, new Map());
+    attrsByType.get(tid).set(Number(a.attributeID), Number(a.val));
+  }
+
+  const prereqIds = [...new Set(preqAttrs.filter((a) => PREREQ_SKILL_ATTRS.includes(Number(a.attributeID))).map((a) => Number(a.val)))];
+  const nameById = new Map();
+  if (prereqIds.length) {
+    for (const row of query(`SELECT typeID, typeName FROM invTypes WHERE typeID IN (${prereqIds.join(',')})`)) {
+      nameById.set(Number(row.typeID), row.typeName);
+    }
+  }
+
+  for (const s of skills) {
+    const attrs = attrsByType.get(Number(s.id)) || new Map();
+    const prerequisites = [];
+    for (let i = 0; i < PREREQ_SKILL_ATTRS.length; i++) {
+      const prereqId = attrs.get(PREREQ_SKILL_ATTRS[i]);
+      const level = attrs.get(PREREQ_LEVEL_ATTRS[i]) || 0;
+      if (prereqId && level > 0) {
+        prerequisites.push({ skillId: Number(prereqId), name: nameById.get(Number(prereqId)) || `Skill ${prereqId}`, level });
+      }
+    }
+    s.prerequisites = prerequisites;
+  }
+  return skills;
 }
 
 function getPlanetName(planetId) {
