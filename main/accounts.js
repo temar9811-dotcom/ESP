@@ -232,11 +232,20 @@ function removeAccount(characterId) {
   return getPublicAccounts();
 }
 
+function setIgnoreNoTraining(characterId, value) {
+  const acc = accounts.find((a) => Number(a.characterId) === Number(characterId));
+  if (!acc) return;
+  acc.ignoreNoTraining = Boolean(value);
+  saveAccounts();
+  broadcastAccounts();
+  debugLogger.info('ACCOUNTS', `${acc.characterName || characterId} ignoreNoTraining=${acc.ignoreNoTraining}`);
+}
+
 module.exports = {
   init, loadAccounts, getAccounts, getPublicAccounts, getRefreshState, emitRefreshState,
   isRefreshing, setRefreshing, getRateLimitedUntil, setRateLimitedUntil,
   emitSkillCompleted, emitQueueEmpty, emitQueueWarning, emitWalletActivity,
   enterRateLimit, waitRateLimit, waitErrorBudget, saveAccounts, broadcastAccounts,
   getValidAccessToken, refreshCharacter, refreshAll, addAccount, cancelLogin, removeAccount,
-  ensureScopes, scopesFromAccessToken, addTestPilot, removeTestPilots
+  setIgnoreNoTraining, ensureScopes, scopesFromAccessToken, addTestPilot, removeTestPilots
 };

@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.10)
+## Current Features (v1.2.11)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -43,6 +43,7 @@ Built with Electron and the EVE ESI API.
 - **Skill complete alerts** with an ascending chime
 - **Wallet activity alerts** with a double-blip chime (new activity only)
 - **Queue-running-dry warning** with its own descending chime — toggle and lead time configurable in Settings
+- **No-skill-training alerts** — cards pulse red whenever a character's skill queue is empty (no unread notification required), ESP pings "Queue empty" on launch for every idle queue, and a per-character "Ignore no-skill-training" checkbox on the Skills tab suppresses both
 - **Granular controls** — per-type toggles, mute sounds, minimum ISK threshold
 
 ### Skill Plans
@@ -91,10 +92,11 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.10**
+**Currently tracked version: v1.2.11**
 
 ### Changelog
-- **v1.2.10 (current)** — Toast notifications are now customizable: a new Toast Notifications section in Settings lets you move the toast box anywhere on screen (with a drag mode and saved position), set how many toasts show at once and how long they stay, and list toasts from the top or up from the bottom ("new toasts on top" is now the default); a test toast button previews it all instantly. Kick MRCHI theme: the group selection button text is now black and the group picker shows groups in black with the selected one in red; corporation, location and clone-home context in the Overview now match the character name color. Hotfix: the Add Group button now opens a proper dialog instead of silently doing nothing in the packaged app.
+- **v1.2.11 (current)** — No-skill-training alerts are now proactive. A character card pulses red whenever its skill queue is empty, regardless of unread notifications; on launch ESP pings a "Queue empty" notification once per character whose queue is idle; and a new "Ignore no-skill-training" checkbox on the Skills tab suppresses the notification and red pulse per character, persisted across sessions.
+- **v1.2.10** — Toast notifications are now customizable: a new Toast Notifications section in Settings lets you move the toast box anywhere on screen (with a drag mode and saved position), set how many toasts show at once and how long they stay, and list toasts from the top or up from the bottom ("new toasts on top" is now the default); a test toast button previews it all instantly. Kick MRCHI theme: the group selection button text is now black and the group picker shows groups in black with the selected one in red; corporation, location and clone-home context in the Overview now match the character name color. Hotfix: the Add Group button now opens a proper dialog instead of silently doing nothing in the packaged app.
 - **v1.2.9** — Skill plans for all characters now act per character: each character gets its own editable copy that remembers its shared parent, so switching "Applies to" back to All characters pushes your edits to everyone. Plan skills render as collapsible trees showing every level (target on top, lower levels beneath) with per-level SP, and the builder now shows the selected character's attributes, total remaining SP, and an estimated training time based on them; the catalog lists each skill's total SP for all five levels and hides fully-trained skills. "Applies to" defaults to the selected character. Fixed skill completion notifications and skill history. New Settings option to hide the tabs, the active-skill watcher now shows time left and SP left, and a Notifications tab has been scaffolded (framework only for now).
 - **v1.2.8** — Notification history on each character (everything that happened since you last checked, color-coded, at the bottom of the Overview) plus a Recently Finished Skills panel (last five). Sidebar alert pulses: green for unseen notifications, orange when the queue is almost dry, red when training stopped, with collapsed group headers showing the highest-priority color. Collapsed groups now show the primary compactly (name + location) and the Ungrouped section is collapsible. New tab bar position lock (vertical or horizontal, mutually exclusive). Skill plans can be edited: Edit reopens the builder with existing skills pre-loaded and saves back to the same plan.
 

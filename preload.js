@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   addAccount: invoke('accounts:add'),
   cancelLogin: invoke('accounts:cancelLogin'),
   removeAccount: invoke('accounts:remove'),
+  setIgnoreNoTraining: invoke('accounts:setIgnoreNoTraining'),
   refreshAll: invoke('accounts:refresh'),
   getCorpInfo: invoke('accounts:getCorpInfo'),
   getGroups: invoke('groups:get'),

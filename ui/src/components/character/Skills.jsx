@@ -1,6 +1,7 @@
 // ui/src/components/character/Skills.jsx
 // VERSION: 1.7
 import React, { useState, useEffect } from 'react';
+import { useAccounts } from '../../hooks/useEveApi';
 
 function formatQueueTime(ms) {
   if (ms <= 0) return 'Complete';
@@ -12,8 +13,30 @@ function formatQueueTime(ms) {
 }
 
 export default function Skills({ account }) {
+  const accounts = useAccounts();
   const [loading, setLoading] = useState(true);
   const [skillsData, setSkillsData] = useState(null);
+  const [ignoreNoTraining, setIgnoreNoTraining] = useState(false);
+
+  const liveAccount = Array.isArray(accounts)
+    ? accounts.find((a) => Number(a.characterId) === Number(account?.characterId)) || account
+    : account;
+
+  useEffect(() => {
+    setIgnoreNoTraining(Boolean(liveAccount?.ignoreNoTraining));
+  }, [liveAccount?.characterId, liveAccount?.ignoreNoTraining]);
+
+  const handleIgnoreNoTraining = async (checked) => {
+    setIgnoreNoTraining(checked);
+    try {
+      if (window.eveApi.setIgnoreNoTraining) {
+        await window.eveApi.setIgnoreNoTraining(account.characterId, checked);
+      }
+    } catch (err) {
+      setIgnoreNoTraining(Boolean(liveAccount?.ignoreNoTraining));
+      window.eveApi?.debugLog?.({ level: 'ERROR', source: 'SKILLS-UI', message: 'Failed to update ignoreNoTraining', data: { error: err?.message } });
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -52,6 +75,14 @@ export default function Skills({ account }) {
 
   return (
     <div className="space-y-6">
+      <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <label className="flex items-center justify-between text-gray-300 cursor-pointer select-none">
+          <span>Ignore no-skill-training (suppress notification and red pulse)</span>
+          <input type="checkbox" checked={ignoreNoTraining} onChange={(e) => handleIgnoreNoTraining(e.target.checked)} className="w-4 h-4" />
+        </label>
+        <p className="text-xs text-gray-500 mt-1">While enabled, this character will not show a red alert pulse or ping when its skill queue is empty.</p>
+      </div>
+
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-lg font-semibold text-gray-100 mb-3">Skill Queue ({queue.length})</h2>
         <div className="space-y-2 max-h-60 overflow-y-auto">

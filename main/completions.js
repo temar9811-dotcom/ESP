@@ -13,6 +13,7 @@ const CORRECTION_THRESHOLD_MS = 60 * 1000;
 const STALE_CACHE_MS = 15 * 60 * 1000;
 
 let watchdogTimer = null;
+const startupNoTrainingPinged = new Set();
 
 function accounts() { return require('./accounts'); }
 function notificationHistory() { return require('./notification-history'); }
@@ -78,7 +79,7 @@ function checkCompletion(account) {
       const already = notificationHistory().getCompletion(account.characterId, last.skill_id, last.finished_level);
       if (!already) {
         fire(account, last, { provisional: isStale(account) });
-        if (!active) accounts().emitQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+        if (!active && !account.ignoreNoTraining) accounts().emitQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
       }
     }
   }
@@ -158,6 +159,20 @@ function checkQueueWarning(account) {
   logger.info('COMPLETIONS', `Fired queue-warning for ${account.characterName}`, { remainingMs, warnHours });
 }
 
+function pingNoTrainingIfEmpty(account) {
+  if (account.testPilot) return;
+  const id = String(account.characterId);
+  if (startupNoTrainingPinged.has(id)) return;
+  if (account.ignoreNoTraining) return;
+  const queue = cachedQueue(account);
+  const active = helpers().getActiveSkill(queue) || account.activeSkill || null;
+  const hasTraining = Boolean(active) || queue.length > 0;
+  if (hasTraining) return;
+  startupNoTrainingPinged.add(id);
+  accounts().emitQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+  logger.info('COMPLETIONS', `Fired no-training startup ping for ${account.characterName}`, { id });
+}
+
 function tick() {
   try {
     const accs = accounts().getAccounts();
@@ -186,6 +201,7 @@ function onPulled(account) {
     checkQueueWarning(account);
     checkCompletion(account);
     reconcile(account);
+    pingNoTrainingIfEmpty(account);
     const after = JSON.stringify({ seen: account.lastSeenActiveSkill || null, warn: account.lastQueueWarnKey || null });
     if (before !== after) accounts().saveAccounts();
   } catch (e) {

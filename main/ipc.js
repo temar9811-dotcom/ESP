@@ -48,6 +48,7 @@ handle('accounts:list', () => accounts.getPublicAccounts());
 handle('accounts:add', (_e, s) => accounts.addAccount(s));
 handle('accounts:cancelLogin', () => { accounts.cancelLogin(); return true; });
 handle('accounts:remove', (_e, id) => { accounts.removeAccount(id); return accounts.getPublicAccounts(); });
+handle('accounts:setIgnoreNoTraining', (_e, id, val) => { accounts.setIgnoreNoTraining(id, val); return accounts.getPublicAccounts(); });
 handle('accounts:refresh', async () => { await accounts.refreshAll(); return { accounts: accounts.getPublicAccounts() }; });
 handle('accounts:getCorpInfo', (_e, id) => corpInfo.getCorpAlliance(id));
 handle('groups:get', () => groups.getGroups());
@@ -71,16 +72,27 @@ handle('notifications:getAllUnseenCounts', () => notificationHistory.getAllUnsee
   handle('notifications:getAllUnseenLevels', () => {
     const warnHours = Number(settings.getSettings().queueWarnHours ?? 24) || 24;
     const warnMs = warnHours * 60 * 60 * 1000;
+    const helpers = require('../eve/dashboard-helpers');
     const levels = {};
     for (const acc of accounts.getAccounts()) {
       if (acc.testPilot) continue;
       const unseen = notificationHistory.getUnseen(acc.characterId);
-      const types = new Set(unseen.map((e) => e.type));
-      const remaining = Number(acc.queueRemainingMs || 0);
-      const hasTraining = Boolean(acc.activeSkill) || (Array.isArray(acc.queue) && acc.queue.length > 0);
+      let queue = null;
+      let hasQueueData = false;
+      try {
+        const c = require('./pullers/skills-data').getCache()[String(acc.characterId)];
+        if (c && Array.isArray(c.queue)) { queue = c.queue; hasQueueData = true; }
+      } catch {}
+      if (queue == null && Array.isArray(acc.queue)) { queue = acc.queue; hasQueueData = true; }
+      if (queue == null) queue = [];
+      const active = helpers.getActiveSkill(queue) || acc.activeSkill || null;
+      const times = helpers.getQueueTimes(queue);
+      const remaining = times.lastFinish != null ? times.remainingMs : Number(acc.queueRemainingMs || 0);
+      const hasTraining = Boolean(active) || queue.length > 0;
+      const suppressed = Boolean(acc.ignoreNoTraining);
 
       let level = 0;
-      if (types.has('queue-empty') && !hasTraining) level = 1;
+      if (hasQueueData && !hasTraining && !suppressed) level = 1;
       else if (hasTraining && remaining > 0 && remaining <= warnMs) level = 2;
       else if (unseen.length > 0) level = 3;
       levels[String(acc.characterId)] = level;

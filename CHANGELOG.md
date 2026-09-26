@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.11
+
+### No-skill-training alerts
+- **Red pulse whenever training is empty** — a character card now pulses red whenever that character has no skill training, no matter what. Previously the pulse only appeared while a "queue empty" notification was still unread; now an idle skill queue raises the alert the moment the queue data shows nothing training.
+- **Startup no-training ping** — after the app pulls fresh character data on launch, every character whose skill queue is empty triggers a "Queue empty" notification once per session, so you're reminded right away when you open ESP.
+- **Per-character ignore** — a new "Ignore no-skill-training" checkbox on the Skills tab suppresses both the empty-queue notification and the red pulse for that character, on its own and on every launch.
+
 ## 1.2.10
 
 ### Toast notifications — customizable
