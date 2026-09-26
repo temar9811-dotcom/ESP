@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.15
+
+### Clones — nicknames
+- **Name your clones** — every jump clone and the home station now has a nickname field (the ✎ button next to each entry). Nicknames are saved per character and persist between sessions; a nicknamed clone shows as `Nickname (Citadel - XYZ)` in the list, and clearing the field reverts to the plain location name.
+
+### Skill plans — show trained skills
+- **Show trained skills toggle** — the "Plan Skills" list in the plan editor hides entries the character has already trained up to the planned level. A new "Show trained skills" checkbox (off by default) reveals them, with a subtle "trained" tag on each so you can tell what's still to do at a glance.
+
+### Alerts — queue-low warning joins the orange tier
+- **Queue-low warning** — a character whose remaining queue time drops to or below your "Queue running dry" threshold now raises the orange pulse and sends a warning notification, both on startup and whenever the queue falls under the threshold. If the queue empties completely, the empty-queue warning takes over (still orange), so you never get both.
+- The running-dry warning and its pulse now respect the per-character "Ignore no-skill-training" checkbox, matching the other red/orange alerts.
+
 ## 1.2.14
 
 ### Notifications — export with name resolution

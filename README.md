@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.14)
+## Current Features (v1.2.15)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -94,10 +94,11 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.14**
+**Currently tracked version: v1.2.15**
 
 ### Changelog
-- **v1.2.14 (current)** — Notifications can be exported to a JSON file with names resolved locally (SDE + cached ESI names) and unresolved IDs flagged for background lookup. Alert colors now mean something specific: red "No Active Skill Training" fires when skills are queued but nothing is progressing, while orange is reserved for a completely empty queue. The top-bar Refresh button now only requeues pullers whose timers have passed 50% and locks out until one does.
+- **v1.2.15 (current)** — Clone nicknames: give every jump clone and the home station a name (✎ button, saved per character, shown as "Nickname (Citadel - XYZ)"). Plan editor gains a "Show trained skills" checkbox (off by default) to reveal entries the character already has trained. A queue whose remaining time drops to or below your running-dry threshold now raises the orange pulse and warns on startup and on the drop, superseded by the empty-queue warning, and the running-dry warning now honors the per-character "Ignore no-skill-training" checkbox.
+- **v1.2.14** — Notifications can be exported to a JSON file with names resolved locally (SDE + cached ESI names) and unresolved IDs flagged for background lookup. Alert colors now mean something specific: red "No Active Skill Training" fires when skills are queued but nothing is progressing, while orange is reserved for a completely empty queue. The top-bar Refresh button now only requeues pullers whose timers have passed 50% and locks out until one does.
 - **v1.2.13** — Custom WAV sounds. Each notification type (skill complete, wallet activity, queue empty/warning) can use its own .wav file picked via a dialog in Settings → Notifications, with a Reset button returning to the default chime and "Show test toast" previewing the current skill sound. Custom sounds play through the Windows toast overlay; other platforms keep the OS default sound.
 - **v1.2.12** — Skill plans now handle prerequisites: adding a skill to a plan auto-adds its prerequisites (and the full chain behind them) at the levels they require, skipping anything the character already has trained. The skill catalog shows a "Requires Gallente Frigate L4"-style note under each skill, and a prerequisite skill can't be lowered or removed from a plan while another planned skill still depends on it.
 - **v1.2.11** — No-skill-training alerts are now proactive. A character card pulses red whenever its skill queue is empty, regardless of unread notifications; on launch ESP pings a "Queue empty" notification once per character whose queue is idle; and a new "Ignore no-skill-training" checkbox on the Skills tab suppresses the notification and red pulse per character, persisted across sessions.

@@ -57,6 +57,8 @@ contextBridge.exposeInMainWorld('eveApi', {
   testRun: invoke('test:run'),
   getNotes: invoke('notes:get'),
   setNotes: invoke('notes:set'),
+  getCloneNicknames: invoke('clones:getNicknames'),
+  setCloneNickname: invoke('clones:setNickname'),
   getNotifications: invoke('notifications:getUnseen'),
   getAllNotifications: invoke('notifications:getAll'),
   markNotificationsSeen: invoke('notifications:markSeen'),

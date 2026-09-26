@@ -64,6 +64,14 @@ handle('skills:getCharacter', (_e, id) => require('./pullers/skills-data').getCa
   });
 handle('notes:get', (_e, id) => notes.getNote(id));
 handle('notes:set', (_e, id, t) => { const s = notes.setNote(id, t); const a = accounts.getAccounts().find(a => Number(a.characterId) === Number(id)); if (a) { a.notes = s; accounts.broadcastAccounts(); } return s; });
+const cloneNicknames = require('./clone-nicknames');
+handle('clones:getNicknames', (_e, id) => cloneNicknames.getNicknames(id));
+handle('clones:setNickname', (_e, id, locationId, name) => {
+  const map = cloneNicknames.setNickname(id, locationId, name);
+  const a = accounts.getAccounts().find(a => Number(a.characterId) === Number(id));
+  if (a) require('./snapshots').broadcastSnapshot(a.characterId);
+  return map;
+});
 handle('notifications:getUnseen', (_e, id) => notificationHistory.getUnseen(id));
 handle('notifications:getAll', (_e, id) => notificationHistory.getAll(id));
 handle('notifications:markSeen', (_e, id) => notificationHistory.markSeen(id));

@@ -141,6 +141,7 @@ function buildSnapshot(characterId) {
     return { ...e, party_name: null };
   });
 
+  const cloneNicknames = require('./clone-nicknames').getNicknames(id);
   const jumpClones = (clonesData?.jump_clones || []).map((clone) => ({
     location_id: clone.location_id,
     location_type: clone.location_type,
@@ -148,6 +149,7 @@ function buildSnapshot(characterId) {
       ? (structNames[clone.location_id]?.name || `Structure ${clone.location_id}`)
       : (names[clone.location_id] || 'Unknown Station'),
     type: clone.location_type === 'structure' ? 'Citadel' : 'Station',
+    nickname: cloneNicknames[String(clone.location_id)] || '',
     implants: (clone.implant || []).map((implantId) => names[implantId] || `Implant ${implantId}`)
   }));
 
@@ -206,7 +208,7 @@ function buildSnapshot(characterId) {
     },
     clones: {
       home: homeLoc
-        ? { location_id: homeLoc.location_id, location_type: homeLoc.location_type, name: homeLocationName, type: homeLocationType }
+        ? { location_id: homeLoc.location_id, location_type: homeLoc.location_type, name: homeLocationName, type: homeLocationType, nickname: cloneNicknames[String(homeLoc.location_id)] || '' }
         : null,
       last_clone_jump_date: clonesData?.last_clone_jump_date || null,
       last_station_change_date: clonesData?.last_station_change_date || null,
