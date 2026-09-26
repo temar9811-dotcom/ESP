@@ -63,6 +63,9 @@ contextBridge.exposeInMainWorld('eveApi', {
   getNotificationLastViewed: invoke('notifications:getLastViewed'),
   getAllUnseenCounts: invoke('notifications:getAllUnseenCounts'),
   getAllUnseenLevels: invoke('notifications:getAllUnseenLevels'),
+  exportNotifications: invoke('notifications:export'),
+  getPullerEligibility: invoke('scheduler:eligibility'),
+  requeueEligible: invoke('scheduler:requeue'),
   forcePull: invoke('scheduler:forcePull'),
   debugGetLogs: invoke('debug:getLogs'),
   debugGetActions: invoke('debug:getActions'),
@@ -76,6 +79,7 @@ contextBridge.exposeInMainWorld('eveApi', {
   onWalletActivity: on('notification:wallet-activity'),
   onQueueWarning: on('notification:queue-warning'),
   onQueueEmpty: on('notification:queue-empty'),
+  onQueueStalled: on('notification:queue-stalled'),
   onRefreshState: on('refresh-state'),
   onDebugLog: on('debug:log')
 });

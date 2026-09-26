@@ -47,6 +47,35 @@ function registerV2Actions() {
     logger.info('INSPECT', 'First 30 entries:', Object.entries(cache).slice(0, 30));
     return { ok: true, size: Object.keys(cache).length };
   });
+  registerAction('Scan Notification Export File', 'Pick an exported notifications JSON, list unresolved IDs, and queue their ESI resolution', async () => {
+    const { dialog } = require('electron');
+    const res = await dialog.showOpenDialog({
+      title: 'Scan Notification Export',
+      properties: ['openFile'],
+      filters: [{ name: 'ESP notification export', extensions: ['json'] }]
+    });
+    if (res.canceled || !res.filePaths.length) return { ok: true, message: 'Cancelled' };
+    let data = null;
+    try { data = JSON.parse(fs.readFileSync(res.filePaths[0], 'utf8')); }
+    catch (err) { return { ok: false, error: `Could not read file: ${err.message}` }; }
+    if (!data || !Array.isArray(data.notifications)) return { ok: false, error: 'Not a valid ESP notification export' };
+
+    const byId = new Map();
+    for (const n of data.notifications) {
+      for (const i of n.ids || []) {
+        if (i.resolved) continue;
+        if (!byId.has(i.id)) byId.set(i.id, { id: i.id, kind: i.kind, keys: new Set() });
+        byId.get(i.id).keys.add(i.key);
+      }
+    }
+    const unresolved = [...byId.values()].map((u) => ({ id: u.id, kind: u.kind, keys: [...u.keys] }));
+    logger.info('ENGINE', `Scanned ${data.notifications.length} notifications; ${unresolved.length} unresolved IDs`, unresolved);
+
+    const { ESI_RESOLVABLE } = require('../../eve/notification-ids');
+    const esiIds = [...new Set(unresolved.filter((u) => ESI_RESOLVABLE.has(u.kind)).map((u) => u.id))];
+    if (esiIds.length > 0) require('../pullers/universe-names').queueResolution(esiIds, 2);
+    return { ok: true, file: res.filePaths[0], total: data.notifications.length, unresolved: unresolved.length, esiQueued: esiIds.length, ids: unresolved };
+  });
   registerAction('Test Update Available Popup', 'Simulates an update available event', () => {
     const win = getMainWindow();
     if (win) {
@@ -99,6 +128,16 @@ function registerV2Actions() {
       characterName: acc ? acc.characterName : (p.characterName || 'Test Pilot')
     };
     accounts.emitQueueEmpty(payload);
+    return { ok: true, payload };
+  });
+  registerAction('Test No-Active-Training Notification', 'Records a fake queue-stalled (no active skill training) history entry and toasts', (p) => {
+    const accounts = require('../accounts');
+    const acc = p.characterId ? accounts.getAccounts().find(a => Number(a.characterId) === Number(p.characterId)) : null;
+    const payload = {
+      characterId: acc ? acc.characterId : (p.characterId || 0),
+      characterName: acc ? acc.characterName : (p.characterName || 'Test Pilot')
+    };
+    accounts.emitQueueStalled(payload);
     return { ok: true, payload };
   });
   registerAction('Test Wallet Activity Notification', 'Records a fake wallet-activity history entry and toasts', (p) => {

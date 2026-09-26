@@ -76,6 +76,16 @@ function onQueueEmpty(payload) {
   sendToRenderer('notification:queue-empty', payload || {});
 }
 
+function onQueueStalled(payload) {
+  const p = payload || {};
+  notificationHistory.record(p.characterId, 'queue-stalled', {
+    title: 'No active skill training',
+    message: 'skills are queued but nothing is training.',
+    characterName: p.characterName
+  });
+  sendToRenderer('notification:queue-stalled', payload || {});
+}
+
 function onWalletActivity(payload) {
   const p = payload || {};
   const { enabled, entries } = notifications.filterWalletEntries(payload);
@@ -112,7 +122,7 @@ async function bootstrap() {
 
   accounts.init({
     onBroadcast: onAccountsBroadcast,
-    onSkillCompleted, onQueueWarning, onQueueEmpty, onWalletActivity, onRefreshState
+    onSkillCompleted, onQueueWarning, onQueueEmpty, onQueueStalled, onWalletActivity, onRefreshState
   });
 
   windowTray.setActions({ refreshAll: accounts.refreshAll, addAccount: accounts.addAccount });

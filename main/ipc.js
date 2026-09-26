@@ -70,8 +70,6 @@ handle('notifications:markSeen', (_e, id) => notificationHistory.markSeen(id));
 handle('notifications:getLastViewed', (_e, id) => notificationHistory.getLastViewed(id));
 handle('notifications:getAllUnseenCounts', () => notificationHistory.getAllUnseenCounts());
   handle('notifications:getAllUnseenLevels', () => {
-    const warnHours = Number(settings.getSettings().queueWarnHours ?? 24) || 24;
-    const warnMs = warnHours * 60 * 60 * 1000;
     const helpers = require('../eve/dashboard-helpers');
     const levels = {};
     for (const acc of accounts.getAccounts()) {
@@ -86,19 +84,103 @@ handle('notifications:getAllUnseenCounts', () => notificationHistory.getAllUnsee
       if (queue == null && Array.isArray(acc.queue)) { queue = acc.queue; hasQueueData = true; }
       if (queue == null) queue = [];
       const active = helpers.getActiveSkill(queue) || acc.activeSkill || null;
-      const times = helpers.getQueueTimes(queue);
-      const remaining = times.lastFinish != null ? times.remainingMs : Number(acc.queueRemainingMs || 0);
-      const hasTraining = Boolean(active) || queue.length > 0;
       const suppressed = Boolean(acc.ignoreNoTraining);
 
       let level = 0;
-      if (hasQueueData && !hasTraining && !suppressed) level = 1;
-      else if (hasTraining && remaining > 0 && remaining <= warnMs) level = 2;
-      else if (unseen.length > 0) level = 3;
+      if (hasQueueData && !suppressed) {
+        if (queue.length === 0) level = 2;  // Nothing in skill queue → orange
+        else if (!active) level = 1;        // No active skill training → red
+        else {
+          const s = settings.getSettings() || {};
+          const warnHours = Number(s.queueWarnHours ?? 24) || 24;
+          const warnMs = warnHours * 60 * 60 * 1000;
+          const times = helpers.getQueueTimes(queue);
+          // Queue has active training but remaining time hits the user's warn
+          // threshold → orange (same tier as the empty-queue pulse).
+          if (times.lastFinish != null && times.remainingMs > 0 && times.remainingMs <= warnMs) level = 2;
+        }
+      }
+      if (level === 0 && unseen.length > 0) level = 3;
       levels[String(acc.characterId)] = level;
     }
     return levels;
   });
+handle('notifications:export', async (_e, charId) => {
+  const fs = require('fs');
+  const id = String(charId);
+  const notifData = require('./pullers/notifications-data').getCache()[id];
+  const notifications = (notifData && notifData.notifications) || [];
+  const acc = accounts.getAccounts().find((a) => Number(a.characterId) === Number(id));
+  const names = require('./pullers/universe-names').getCache();
+  const staticDb = require('./esi/static-db');
+  await staticDb.initDb();
+  const { annotate, ESI_RESOLVABLE, createLocalResolver } = require('../eve/notification-ids');
+  const resolveName = createLocalResolver({
+    names,
+    getTypeName: (i) => staticDb.getTypeName(i),
+    getSystemName: (i) => staticDb.getSystemName(i),
+    getStationName: (i) => staticDb.getStationName(i),
+    getConstellationName: (i) => staticDb.getConstellationName(i),
+    getRegionName: (i) => staticDb.getRegionName(i),
+    getFactionName: (i) => staticDb.getFactionName(i)
+  });
+
+  const rows = notifications.map((n) => {
+    const ann = annotate(n.text, resolveName);
+    return {
+      notification_id: n.notification_id,
+      type: n.type,
+      date: n.date,
+      is_read: Boolean(n.is_read),
+      sender_id: n.sender_id,
+      sender_type: n.sender_type,
+      sender_name: names[n.sender_id] || `#${n.sender_id}`,
+      text: n.text || '',
+      resolvedText: ann.resolvedText || n.text || '',
+      ids: ann.ids
+    };
+  });
+
+  const unresolvedMap = new Map();
+  for (const r of rows) {
+    for (const i of r.ids || []) {
+      if (i.resolved) continue;
+      if (!unresolvedMap.has(i.id)) unresolvedMap.set(i.id, { id: i.id, kind: i.kind, keys: new Set() });
+      unresolvedMap.get(i.id).keys.add(i.key);
+    }
+  }
+  const unresolvedIds = [...unresolvedMap.values()].map((u) => ({ id: u.id, kind: u.kind, keys: [...u.keys] }));
+
+  const report = {
+    app: 'EVE Status Perception',
+    version: VERSION,
+    exportedAt: new Date().toISOString(),
+    characterId: Number(id),
+    characterName: acc?.characterName || 'Unknown',
+    counts: {
+      total: notifications.length,
+      unseen: notifications.filter((n) => !n.is_read).length,
+      unresolved: unresolvedIds.length
+    },
+    notifications: rows,
+    unresolvedIdsSummary: unresolvedIds
+  };
+
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export Notifications',
+    defaultPath: `esp-notifications-${(acc?.characterName || id).replace(/[^A-Za-z0-9_-]+/g, '_')}.json`,
+    filters: [{ name: 'JSON', extensions: ['json'] }]
+  });
+  if (canceled || !filePath) return { ok: false, canceled: true };
+
+  fs.writeFileSync(filePath, JSON.stringify(report, null, 2), 'utf8');
+
+  const esiIds = [...new Set(unresolvedIds.filter((u) => ESI_RESOLVABLE.has(u.kind)).map((u) => u.id))];
+  if (esiIds.length > 0) require('./pullers/universe-names').queueResolution(esiIds, 2);
+
+  logger.info('NOTIF-EXPORT', `Exported ${rows.length} notifications for char ${id}`, { path: filePath, unresolved: esiIds.length });
+  return { ok: true, path: filePath, count: rows.length, unresolved: esiIds.length, unresolvedTotal: unresolvedIds.length };
+});
 handle('plans:readClipboard', () => plans.readClipboardPlan());
 handle('plans:list', () => plans.loadPlans());
 handle('plans:save', (_e, p) => plans.savePlan(p));
@@ -121,6 +203,8 @@ handle('toast:endMove', () => toastWindow.endMove());
 handle('test:run', (_e, c, p) => !testHarness ? { ok: false, error: 'No harness' } : testHarness.run(c, p));
 handle('test:enabled', () => testHarness ? testHarness.testEnabled() : false);
 handle('scheduler:forcePull', (_e, n) => scheduler.forcePull(n));
+handle('scheduler:eligibility', () => scheduler.getEligibility());
+handle('scheduler:requeue', () => scheduler.requeueEligible());
 handle('esi:status', () => esiStatus.getStatus());
 handle('esi:timers', () => scheduler.getNextRuns());
 const CF = { skills: 'skills-cache.json', wallet: 'wallet-cache.json', assets: 'assets-raw-cache.json', assetsNames: 'assets-names-cache.json', structures: 'structure-names.json', universe: 'universe-cache.json', charData: 'char-data-cache.json', walletData: 'wallet-data-cache.json', skillsData: 'skills-data-cache.json', clonesData: 'clones-data-cache.json', universeNames: 'universe-names-cache.json', structureNames: 'structure-names.json', assetsData: 'assets-data-cache.json', notificationsData: 'notifications-data-cache.json' };

@@ -69,4 +69,39 @@ function getNextRuns() {
   return out;
 }
 
-module.exports = { start, stop, forcePull, getNextRuns };
+// Fraction of each puller's interval elapsed since its last run. A puller is
+// eligible for a manual requeue once 50% of its timer has passed.
+function getEligibility() {
+  const now = Date.now();
+  const out = [];
+  for (const [name, next] of nextRuns) {
+    const intervalMs = (pullerMeta.get(name) || {}).intervalMs || INTERVALS[name] || 0;
+    if (!intervalMs) continue;
+    const lastRun = next - intervalMs;
+    const elapsed = Math.max(0, now - lastRun);
+    const fraction = elapsed / intervalMs;
+    out.push({ name, intervalMs, elapsed, next, fraction, eligible: fraction >= 0.5 });
+  }
+  return out;
+}
+
+// Requeue only the pullers whose timers are past 50%, resetting their next run.
+// Returns which were pulled so callers can lock the refresh button when none
+// qualified.
+function requeueEligible() {
+  const eligibility = getEligibility();
+  const pulled = [];
+  for (const e of eligibility) {
+    if (!e.eligible) continue;
+    forcePull(e.name);
+    pulled.push(e.name);
+  }
+  return {
+    anyEligible: pulled.length > 0,
+    pulled,
+    skipped: eligibility.filter((e) => !e.eligible).map((e) => e.name),
+    eligibility
+  };
+}
+
+module.exports = { start, stop, forcePull, getNextRuns, getEligibility, requeueEligible };

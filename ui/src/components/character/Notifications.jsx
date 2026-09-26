@@ -17,6 +17,7 @@ function TypeBadge({ type }) {
 function NotificationRow({ n }) {
   const [expanded, setExpanded] = React.useState(false);
   const senderText = n.sender_name && n.sender_name !== `#${n.sender_id}` ? n.sender_name : `#${n.sender_id}`;
+  const bodyText = (n.resolvedText || n.text || '').trim();
   return (
     <div className={`p-3 rounded border ${n.is_read ? 'bg-gray-800/60 border-gray-700/60' : 'bg-gray-800 border-blue-500/40'}`}>
       <div className="flex items-start justify-between gap-3">
@@ -26,8 +27,8 @@ function NotificationRow({ n }) {
             <span className="text-xs text-gray-400"><span className="text-gray-500">{n.sender_kind}:</span> {senderText}</span>
             {!n.is_read && <span className="text-xs font-semibold text-blue-400">NEW</span>}
           </div>
-          <p className="text-sm text-gray-300 whitespace-pre-wrap break-words">{expanded ? n.text : (n.text?.length > 220 ? n.text.slice(0, 220) + '...' : n.text)}</p>
-          {n.text?.length > 220 && (
+          <p className="text-sm text-gray-300 whitespace-pre-wrap break-words">{expanded ? bodyText : (bodyText.length > 220 ? bodyText.slice(0, 220) + '...' : bodyText)}</p>
+          {bodyText.length > 220 && (
             <button onClick={() => setExpanded(!expanded)} className="text-xs text-blue-400 hover:text-blue-300">
               {expanded ? 'Show less' : 'Show more'}
             </button>
@@ -41,6 +42,26 @@ function NotificationRow({ n }) {
 
 export default function Notifications({ account }) {
   const snapshot = useCharacterSnapshot(account?.characterId);
+  const [exportMsg, setExportMsg] = React.useState('');
+
+  const handleExport = async () => {
+    setExportMsg('Exporting…');
+    try {
+      const res = await window.eveApi.exportNotifications(account?.characterId);
+      if (res && res.ok) {
+        setExportMsg(
+          `Exported ${res.count} notifications to ${res.path}` +
+          (res.unresolved > 0
+            ? ` — ${res.unresolvedTotal} unresolved ID(s) found, ${res.unresolved} queued for resolution.`
+            : ' — all IDs resolved.')
+        );
+      } else {
+        setExportMsg(res && res.canceled ? 'Export cancelled.' : (res?.error || 'Export failed.'));
+      }
+    } catch (err) {
+      setExportMsg(err?.message || 'Export failed.');
+    }
+  };
 
   if (!account) return <div className="p-4 text-gray-400">No account selected.</div>;
 
@@ -73,7 +94,13 @@ export default function Notifications({ account }) {
             {snapshot.ts && <span>Updated: {new Date(snapshot.ts).toLocaleString()}</span>}
           </div>
         </div>
-        <p className="text-xs text-gray-500 mb-4">Latest {MAX_DISPLAY} notifications from EVE Online. The most recent {TOP_N} are expanded below; older ones are scrollable.</p>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-xs text-gray-500">Latest {MAX_DISPLAY} notifications from EVE Online. The most recent {TOP_N} are expanded below; older ones are scrollable.</p>
+          <button onClick={handleExport} className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded">
+            Export to file…
+          </button>
+        </div>
+        {exportMsg && <p className="mt-2 text-xs text-blue-300 break-words">{exportMsg}</p>}
 
         {list.length === 0 ? (
           <p className="text-gray-500 italic">No notifications yet.</p>

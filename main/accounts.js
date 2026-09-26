@@ -14,7 +14,7 @@ let refreshInProgress = false;
 let rateLimitedUntil = 0;
 let callbacks = {
   onBroadcast: () => {}, onSkillCompleted: () => {}, onQueueWarning: () => {},
-  onQueueEmpty: () => {}, onWalletActivity: () => {}, onRefreshState: () => {}, onAccountRemoved: () => {}
+  onQueueEmpty: () => {}, onQueueStalled: () => {}, onWalletActivity: () => {}, onRefreshState: () => {}, onAccountRemoved: () => {}
 };
 
 function init(newCallbacks) { callbacks = { ...callbacks, ...(newCallbacks || {}) }; }
@@ -61,6 +61,7 @@ const getRateLimitedUntil = () => rateLimitedUntil;
 const setRateLimitedUntil = (val) => { rateLimitedUntil = val; };
 const emitSkillCompleted = (p) => callbacks.onSkillCompleted(p);
 const emitQueueEmpty = (p) => callbacks.onQueueEmpty(p);
+const emitQueueStalled = (p) => callbacks.onQueueStalled(p);
 const emitQueueWarning = (p) => callbacks.onQueueWarning(p);
 const emitWalletActivity = (p) => callbacks.onWalletActivity(p);
 
@@ -244,7 +245,7 @@ function setIgnoreNoTraining(characterId, value) {
 module.exports = {
   init, loadAccounts, getAccounts, getPublicAccounts, getRefreshState, emitRefreshState,
   isRefreshing, setRefreshing, getRateLimitedUntil, setRateLimitedUntil,
-  emitSkillCompleted, emitQueueEmpty, emitQueueWarning, emitWalletActivity,
+  emitSkillCompleted, emitQueueEmpty, emitQueueStalled, emitQueueWarning, emitWalletActivity,
   enterRateLimit, waitRateLimit, waitErrorBudget, saveAccounts, broadcastAccounts,
   getValidAccessToken, refreshCharacter, refreshAll, addAccount, cancelLogin, removeAccount,
   setIgnoreNoTraining, ensureScopes, scopesFromAccessToken, addTestPilot, removeTestPilots

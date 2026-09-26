@@ -61,6 +61,7 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
   const [scope, setScope] = useState('character');
   const [entries, setEntries] = useState(() => entriesFromPlan(editingPlan));
   const [collapsed, setCollapsed] = useState(() => new Set());
+  const [showTrained, setShowTrained] = useState(false);
   const toggleCollapsed = (skillId) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -187,7 +188,12 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
 
   const entryList = Array.from(entries.values());
 
-  const visibleEntries = useMemo(() => entryList.filter((e) => (skillLevels[e.skillId] || 0) < e.level), [entryList, skillLevels]);
+  // Skipped by default (see showTrained toggle): entries whose planned level the
+  // character already has trained are hidden from the planned-skills list.
+  const shownEntries = useMemo(
+    () => entryList.filter((e) => showTrained || (skillLevels[e.skillId] || 0) < e.level),
+    [entryList, skillLevels, showTrained]
+  );
 
   // Summary: remaining SP + train time per plan entry, excluding already-trained levels.
   const summary = useMemo(() => {
@@ -384,11 +390,20 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
         </div>
 
         <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-          <h3 className="text-md font-semibold text-gray-100 mb-2">
-            Plan Skills ({visibleEntries.length})
+          <h3 className="text-md font-semibold text-gray-100 mb-2 flex items-center gap-3">
+            <span>Plan Skills ({shownEntries.length})</span>
+            <label className="flex items-center gap-1 text-xs font-normal text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showTrained}
+                onChange={(e) => setShowTrained(e.target.checked)}
+                className="accent-blue-500"
+              />
+              Show trained skills
+            </label>
           </h3>
           <div className="max-h-[52vh] overflow-y-auto pr-1">
-            {visibleEntries.length === 0 ? (
+            {shownEntries.length === 0 ? (
               <p className="text-gray-500 italic text-sm">
                 {entryList.some((e) => (skillLevels[e.skillId] || 0) >= e.level)
                   ? 'All skills in this plan are already trained for this character.'
@@ -396,16 +411,17 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
               </p>
             ) : (
               <div className="space-y-1">
-                {visibleEntries.map((entry) => {
+                {shownEntries.map((entry) => {
                   const skill = catalogById.get(entry.skillId);
                   const rank = Number(skill?.rank) > 0 ? Number(skill.rank) : 1;
                   const charLevel = skillLevels[entry.skillId] || 0;
                   const below = [];
                   for (let l = entry.level - 1; l > charLevel; l--) below.push(l);
+                  const fullyTrained = charLevel >= entry.level;
                   return (
                     <div
                       key={entry.skillId}
-                      className="bg-gray-700 p-2 rounded"
+                      className={`bg-gray-700 p-2 rounded ${fullyTrained ? 'opacity-60' : ''}`}
                     >
                       <div className="flex justify-between items-center">
                         <button
@@ -418,6 +434,7 @@ export default function CreatePlan({ account, onClose, editingPlan }) {
                           </span>
                           <span>
                             {entry.name} <span className="text-xs text-gray-400">L{entry.level}</span>
+                            {fullyTrained && <span className="ml-1 text-[10px] text-gray-500">trained</span>}
                           </span>
                         </button>
                         <span className="text-xs text-gray-500" title="SP remaining to reach this level">

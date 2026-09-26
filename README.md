@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.13)
+## Current Features (v1.2.14)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -94,10 +94,11 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.13**
+**Currently tracked version: v1.2.14**
 
 ### Changelog
-- **v1.2.13 (current)** — Custom WAV sounds. Each notification type (skill complete, wallet activity, queue empty/warning) can use its own .wav file picked via a dialog in Settings → Notifications, with a Reset button returning to the default chime and "Show test toast" previewing the current skill sound. Custom sounds play through the Windows toast overlay; other platforms keep the OS default sound.
+- **v1.2.14 (current)** — Notifications can be exported to a JSON file with names resolved locally (SDE + cached ESI names) and unresolved IDs flagged for background lookup. Alert colors now mean something specific: red "No Active Skill Training" fires when skills are queued but nothing is progressing, while orange is reserved for a completely empty queue. The top-bar Refresh button now only requeues pullers whose timers have passed 50% and locks out until one does.
+- **v1.2.13** — Custom WAV sounds. Each notification type (skill complete, wallet activity, queue empty/warning) can use its own .wav file picked via a dialog in Settings → Notifications, with a Reset button returning to the default chime and "Show test toast" previewing the current skill sound. Custom sounds play through the Windows toast overlay; other platforms keep the OS default sound.
 - **v1.2.12** — Skill plans now handle prerequisites: adding a skill to a plan auto-adds its prerequisites (and the full chain behind them) at the levels they require, skipping anything the character already has trained. The skill catalog shows a "Requires Gallente Frigate L4"-style note under each skill, and a prerequisite skill can't be lowered or removed from a plan while another planned skill still depends on it.
 - **v1.2.11** — No-skill-training alerts are now proactive. A character card pulses red whenever its skill queue is empty, regardless of unread notifications; on launch ESP pings a "Queue empty" notification once per character whose queue is idle; and a new "Ignore no-skill-training" checkbox on the Skills tab suppresses the notification and red pulse per character, persisted across sessions.
 - **v1.2.10** — Toast notifications are now customizable: a new Toast Notifications section in Settings lets you move the toast box anywhere on screen (with a drag mode and saved position), set how many toasts show at once and how long they stay, and list toasts from the top or up from the bottom ("new toasts on top" is now the default); a test toast button previews it all instantly. Kick MRCHI theme: the group selection button text is now black and the group picker shows groups in black with the selected one in red; corporation, location and clone-home context in the Overview now match the character name color. Hotfix: the Add Group button now opens a proper dialog instead of silently doing nothing in the packaged app.

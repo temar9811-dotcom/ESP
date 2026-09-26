@@ -5,6 +5,7 @@ const logger = require('./debug/logger');
 const windowTray = require('./window-tray');
 const notificationHistory = require('./notification-history');
 const { getActiveSkill, calcSkillProgress } = require('../eve/dashboard-helpers');
+const { annotate, createLocalResolver } = require('../eve/notification-ids');
 
 const CHANNEL = 'data:updated';
 const DEBOUNCE_MS = 2000;
@@ -61,6 +62,25 @@ function resolveSender(n, names) {
   return {
     sender_name: cached || `#${n.sender_id}`,
     sender_kind: cached ? senderKind(n.sender_type) : (n.sender_type || 'Unknown')
+  };
+}
+
+const staticDb = require('./esi/static-db');
+const localResolver = createLocalResolver({
+  names: {},
+  getTypeName: (id) => staticDb.getTypeName(id),
+  getSystemName: (id) => staticDb.getSystemName(id),
+  getStationName: (id) => staticDb.getStationName(id),
+  getConstellationName: (id) => staticDb.getConstellationName(id),
+  getRegionName: (id) => staticDb.getRegionName(id),
+  getFactionName: (id) => staticDb.getFactionName(id)
+});
+
+// names is the live universe-names cache; SDE results are cached internally.
+function notificationLocalResolver(names) {
+  return (id) => {
+    if (names[id]) return names[id];
+    return localResolver(id);
   };
 }
 
@@ -137,17 +157,23 @@ function buildSnapshot(characterId) {
     const scopes = account ? accounts.ensureScopes(account) : null;
     notificationsUnavailable = (Array.isArray(scopes) && !scopes.includes(NOTIFICATIONS_SCOPE)) ? 'no-scope' : 'not-pulled';
   }
+  const resolveName = notificationLocalResolver(names);
   const notifications = {
-    items: allNotifs.slice(0, CAPS.notifications).map((n) => ({
-      notification_id: n.notification_id,
-      type: n.type,
-      date: n.date,
-      is_read: Boolean(n.is_read),
-      text: n.text || '',
-      sender_id: n.sender_id,
-      sender_type: n.sender_type,
-      ...resolveSender(n, names)
-    })),
+    items: allNotifs.slice(0, CAPS.notifications).map((n) => {
+      const ann = annotate(n.text, resolveName);
+      return {
+        notification_id: n.notification_id,
+        type: n.type,
+        date: n.date,
+        is_read: Boolean(n.is_read),
+        text: n.text || '',
+        resolvedText: ann.resolvedText || n.text || '',
+        ids: ann.ids,
+        sender_id: n.sender_id,
+        sender_type: n.sender_type,
+        ...resolveSender(n, names)
+      };
+    }),
     unseen: allNotifs.filter((n) => !n.is_read).length,
     unavailable: notificationsUnavailable
   };

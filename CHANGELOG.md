@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.14
+
+### Notifications — export with name resolution
+- **Export notifications to a file** — a new "Export" button in the character Notifications tab saves the full notification list (from EVE mail, outpost/district rebukes, war alerts, and more) as JSON. The export resolves any character, corporation, alliance, faction, ship or station IDs it can find into names locally (from the built-in SDE + already-cached ESI names) and includes each notification's resolved text, so the file is readable without EVE API lookups.
+- **Unresolved IDs flagged** — IDs it couldn't resolve yet are listed separately in the export so you can see exactly what's missing; the app queues the ESI-resolvable ones for a background name lookup on your next notifications pull, which later exports will fill in.
+
+### Alerts — clearer red/orange meaning
+- The red pulse / "No Active Skill Training" toast now means *no active skill training*: skills are sitting in the queue but nothing is actually progressing (e.g. the queue expired). The orange pulse / "Queue empty" toast is reserved for a completely empty queue.
+- A queue that is non-empty but idle fires the new "No Active Skill Training" notification once per session, and a red ribbon in the Overview. Both alerts still respect the per-character "Ignore no-skill-training" checkbox.
+
+### Refresh button — pulls eligible pullers only
+- The top-bar Refresh button now requeues the app's data pullers instead of a blanket refresh, and only the pullers whose timers have passed 50% of their interval. If no puller has reached the halfway point, the button is locked out until one does; hovering shows how many are ready.
+
 ## 1.2.13
 
 ### Notifications — custom sounds

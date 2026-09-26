@@ -9,6 +9,7 @@ const fetcher = require('../esi/fetcher');
 const logger = require('../debug/logger');
 const accounts = require('../accounts');
 const universeNames = require('./universe-names');
+const { extractIds, ESI_RESOLVABLE } = require('../../eve/notification-ids');
 
 const CACHE_FILE = 'notifications-data-cache.json';
 const NOTIFICATIONS_SCOPE = 'esi-characters.read_notifications.v1';
@@ -79,7 +80,14 @@ async function pullCharacter(account, priority) {
   logger.info('NOTIFS-DATA', `Updated notifications for ${account.characterName}`, { id: account.characterId, count: notifications.length, unseen });
 
   const senderIds = [...new Set(raw.map((n) => n.sender_id).filter((id) => typeof id === 'number' && id > 0))];
-  if (senderIds.length > 0) universeNames.queueResolution(senderIds, priority);
+  const textIds = [];
+  for (const n of notifications) {
+    for (const e of extractIds(n.text)) {
+      if (e.id > 0 && ESI_RESOLVABLE.has(e.kind)) textIds.push(e.id);
+    }
+  }
+  const resolutionIds = [...new Set([...senderIds, ...textIds])];
+  if (resolutionIds.length > 0) universeNames.queueResolution(resolutionIds, priority);
 
   require('../snapshots').broadcastSnapshot(account.characterId);
 

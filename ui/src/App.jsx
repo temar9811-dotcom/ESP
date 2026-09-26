@@ -123,6 +123,10 @@ export default function App() {
     addToast('Queue Empty', p.characterName);
     pushNotification(p.characterId, 'queue-empty', { ...p, title: 'Queue empty', message: 'skill queue has no skills left.' });
   };
+  const handleLiveQueueStalled = (p) => {
+    addToast('No Active Skill Training', p.characterName);
+    pushNotification(p.characterId, 'queue-stalled', { ...p, title: 'No active skill training', message: 'skills are queued but nothing is training.' });
+  };
 
   useEffect(() => {
     if (!window.eveApi) return;
@@ -131,6 +135,7 @@ export default function App() {
       window.eveApi.onWalletActivity(handleLiveWalletActivity),
       window.eveApi.onQueueWarning(handleLiveQueueWarning),
       window.eveApi.onQueueEmpty(handleLiveQueueEmpty),
+      window.eveApi.onQueueStalled(handleLiveQueueStalled),
     ];
     return () => unsubs.forEach(u => u());
   }, [selectedAccount?.characterId]);

@@ -119,6 +119,21 @@ function getStationName(stationId) {
   return row[0]?.stationName || null;
 }
 
+function getConstellationName(constellationId) {
+  const row = query('SELECT constellationName FROM mapConstellations WHERE constellationID = ?', [constellationId]);
+  return row[0]?.constellationName || null;
+}
+
+function getRegionName(regionId) {
+  const row = query('SELECT regionName FROM mapRegions WHERE regionID = ?', [regionId]);
+  return row[0]?.regionName || null;
+}
+
+function getFactionName(factionId) {
+  const row = query('SELECT factionName FROM chrFactions WHERE factionID = ?', [factionId]);
+  return row[0]?.factionName || null;
+}
+
 function getSkillInfo(skillId) {
   const row = query('SELECT typeID, typeName, groupID FROM invTypes WHERE typeID = ?', [skillId]);
   if (!row[0]) return null;
@@ -239,4 +254,4 @@ function getSystemInfo(systemId) {
   };
 }
 
-module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getStationName, getPlanetName, getSkillInfo, getAllSkills, getLocationHierarchy, getSystemInfo, initDb };
+module.exports = { downloadAndExtract, query, getTypeName, getSystemName, getStationName, getConstellationName, getRegionName, getFactionName, getPlanetName, getSkillInfo, getAllSkills, getLocationHierarchy, getSystemInfo, initDb };

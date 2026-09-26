@@ -5,8 +5,9 @@ import { formatQueueTime, formatTime, timeAgo, formatIskAmount } from '../../uti
 
 const TYPE_META = {
   'skill-complete': { label: 'Skill Complete', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/30' },
-  'queue-warning': { label: 'Queue Warning', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30' },
+  'queue-warning': { label: 'Queue Low', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30' },
   'queue-empty': { label: 'Queue Empty', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30' },
+  'queue-stalled': { label: 'No Active Skill Training', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30' },
   'wallet-activity': { label: 'Wallet Activity', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
 };
 const DEFAULT_META = { label: 'Notification', color: 'text-gray-300', bg: 'bg-gray-500/10 border-gray-500/30' };

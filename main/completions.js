@@ -1,5 +1,5 @@
 // main/completions.js
-// VERSION: 1.0
+// VERSION: 1.1
 'use strict';
 // Scheduled skill-completion detector: watchdog fires at each character's cached
 // finish_date (survives restarts and ESI outages); reconcile resolves
@@ -14,6 +14,8 @@ const STALE_CACHE_MS = 15 * 60 * 1000;
 
 let watchdogTimer = null;
 const startupNoTrainingPinged = new Set();
+const startupNoTrainingStalledPinged = new Set();
+const startupQueueLowPinged = new Set();
 
 function accounts() { return require('./accounts'); }
 function notificationHistory() { return require('./notification-history'); }
@@ -79,7 +81,13 @@ function checkCompletion(account) {
       const already = notificationHistory().getCompletion(account.characterId, last.skill_id, last.finished_level);
       if (!already) {
         fire(account, last, { provisional: isStale(account) });
-        if (!active && !account.ignoreNoTraining) accounts().emitQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+        if (!active && !account.ignoreNoTraining) {
+          if (queue.length === 0) {
+            accounts().emitQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+          } else {
+            accounts().emitQueueStalled({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+          }
+        }
       }
     }
   }
@@ -139,6 +147,7 @@ function reconcile(account) {
 
 function checkQueueWarning(account) {
   if (account.testPilot) return;
+  if (account.ignoreNoTraining) return;
   const current = settings().getSettings() || {};
   if (current.notifyQueueEmpty === false) return;
   const warnHours = Number(current.queueWarnHours ?? 24) || 24;
@@ -173,6 +182,40 @@ function pingNoTrainingIfEmpty(account) {
   logger.info('COMPLETIONS', `Fired no-training startup ping for ${account.characterName}`, { id });
 }
 
+function pingNoTrainingStalled(account) {
+  if (account.testPilot) return;
+  const id = String(account.characterId);
+  if (startupNoTrainingStalledPinged.has(id)) return;
+  if (account.ignoreNoTraining) return;
+  const queue = cachedQueue(account);
+  const active = helpers().getActiveSkill(queue) || account.activeSkill || null;
+  if (queue.length === 0 || Boolean(active)) return;
+  startupNoTrainingStalledPinged.add(id);
+  accounts().emitQueueStalled({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+  logger.info('COMPLETIONS', `Fired no-active-training startup ping for ${account.characterName}`, { id, queued: queue.length });
+}
+
+// Queue-low startup ping: once per session, if the queue has active training
+// but has already dropped to (or below) the user's warn threshold, remind the
+// player. An empty queue is left to the empty-queue ping instead.
+function pingQueueLow(account) {
+  if (account.testPilot) return;
+  const id = String(account.characterId);
+  if (startupQueueLowPinged.has(id)) return;
+  if (account.ignoreNoTraining) return;
+  const current = settings().getSettings() || {};
+  if (current.notifyQueueEmpty === false) return;
+  const warnHours = Number(current.queueWarnHours ?? 24) || 24;
+  const warnMs = warnHours * 60 * 60 * 1000;
+  const queue = cachedQueue(account);
+  if (queue.length === 0) return;
+  const times = helpers().getQueueTimes(queue);
+  if (times.lastFinish == null || times.remainingMs <= 0 || times.remainingMs > warnMs) return;
+  startupQueueLowPinged.add(id);
+  accounts().emitQueueWarning({ characterId: account.characterId, characterName: account.characterName || 'Unknown', remainingMs: times.remainingMs });
+  logger.info('COMPLETIONS', `Fired queue-low startup ping for ${account.characterName}`, { id, remainingMs: times.remainingMs, warnHours });
+}
+
 function tick() {
   try {
     const accs = accounts().getAccounts();
@@ -202,6 +245,8 @@ function onPulled(account) {
     checkCompletion(account);
     reconcile(account);
     pingNoTrainingIfEmpty(account);
+    pingNoTrainingStalled(account);
+    pingQueueLow(account);
     const after = JSON.stringify({ seen: account.lastSeenActiveSkill || null, warn: account.lastQueueWarnKey || null });
     if (before !== after) accounts().saveAccounts();
   } catch (e) {

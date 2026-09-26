@@ -33,7 +33,11 @@ function checkSkillCompletion(account, dashboard, api) {
           characterId: account.characterId, characterName: account.characterName || 'Unknown',
           skillName: lastSkill.skillName || 'Unknown skill', level: lastSkill.finished_level || '?'
         });
-        if (!currentActive) api.emitQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+        if (!currentActive) {
+          const hasQueued = Array.isArray(dashboard.queue) && dashboard.queue.length > 0;
+          if (hasQueued) api.emitQueueStalled({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+          else api.emitQueueEmpty({ characterId: account.characterId, characterName: account.characterName || 'Unknown' });
+        }
       }
     }
   }

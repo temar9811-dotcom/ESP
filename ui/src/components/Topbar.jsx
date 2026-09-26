@@ -1,5 +1,5 @@
-// File: ui/src/components/Topbar.jsx | Version: 1.3
-import React, { useState } from 'react';
+// File: ui/src/components/Topbar.jsx | Version: 1.4
+import React, { useState, useEffect, useCallback } from 'react';
 import { useVersion, useRefreshState, eveApi } from '../hooks/useEveApi';
 import AddCharacterModal from './modals/AddCharacterModal';
 import NewGroupModal from './modals/NewGroupModal';
@@ -10,8 +10,42 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [groupError, setGroupError] = useState('');
+  const [anyEligible, setAnyEligible] = useState(false);
+  const [eligibleCount, setEligibleCount] = useState(0);
+  const [busy, setBusy] = useState(false);
 
-  const handleRefresh = () => eveApi.refreshAll().catch(console.error);
+  const refreshEligibility = useCallback(async () => {
+    try {
+      const list = await eveApi.getPullerEligibility();
+      const ready = (list || []).filter((p) => p.eligible);
+      setEligibleCount(ready.length);
+      setAnyEligible(ready.length > 0);
+    } catch {
+      setAnyEligible(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshEligibility();
+    const t = setInterval(refreshEligibility, 15000);
+    return () => clearInterval(t);
+  }, [refreshEligibility]);
+
+  const handleRefresh = async () => {
+    setBusy(true);
+    try {
+      const res = await eveApi.requeueEligible();
+      if (res && !res.anyEligible) {
+        setEligibleCount(0);
+        setAnyEligible(false);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBusy(false);
+      refreshEligibility();
+    }
+  };
 
   const handleNewGroup = async (name) => {
     const clean = (name || '').trim();
@@ -25,6 +59,8 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
     }
   };
 
+  const canRefresh = !refreshing && !busy && anyEligible;
+
   return (
     <header className="flex items-center justify-between border-b border-gray-700 bg-gray-800 px-4 py-3">
       <div className="flex items-center gap-3">
@@ -34,10 +70,11 @@ export default function Topbar({ onOpenSettings, isSettingsOpen }) {
       <div className="flex gap-2">
         <button
           onClick={handleRefresh}
-          disabled={refreshing}
-          className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+          disabled={!canRefresh}
+          title={anyEligible ? `Ready: ${eligibleCount} puller${eligibleCount === 1 ? '' : 's'} past 50% of their timer` : 'No puller has passed 50% of its timer yet'}
+          className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {refreshing ? 'Refreshing...' : 'Refresh'}
+          {busy || refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
         <button
           onClick={() => setShowNewGroup(true)}
