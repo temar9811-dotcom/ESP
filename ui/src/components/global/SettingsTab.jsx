@@ -68,7 +68,7 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
       try {
         await window.eveApi.startToastMove();
         setMoveActive(true);
-        setMoveFeedback('Move mode active — drag the toast box, then click "Save position".');
+        setMoveFeedback('Move mode active — drag the ping box, then click "Save position".');
       } catch (err) {
         setMoveFeedback(err?.message || 'Could not start move mode.');
       }
@@ -79,8 +79,8 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
       setMoveActive(false);
       setMoveFeedback(
         res && res.ok
-          ? `Toast position saved (${res.x}, ${res.y}).`
-          : (res?.error || 'Toast position saved.')
+          ? `Ping box position saved (${res.x}, ${res.y}).`
+          : (res?.error || 'Ping box position saved.')
       );
     } catch (err) {
       setMoveFeedback(err?.message || 'Could not save position.');
@@ -94,7 +94,7 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
 
   const handleTestToast = () => {
     window.eveApi.showToast(
-      'ESP Test Toast',
+      'ESP Test Ping',
       `This is a sample notification.\nMax visible: ${settings.toastMaxVisible}, duration: ${settings.toastDurationMs / 1000}s.`,
       'skill'
     );
@@ -139,6 +139,12 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
           <input type="checkbox" checked={settings.startMinimized} onChange={(e) => updateSetting('startMinimized', e.target.checked)} className="w-4 h-4" />
         </label>
         <label className="flex items-center justify-between text-gray-300">
+          <span title="When off, the X button closes ESP completely instead of sending it to the tray.">
+            Close to tray
+          </span>
+          <input type="checkbox" checked={settings.closeToTray !== false} onChange={(e) => updateSetting('closeToTray', e.target.checked)} className="w-4 h-4" />
+        </label>
+        <label className="flex items-center justify-between text-gray-300">
           <span>Hide primary character when a group is collapsed</span>
           <input type="checkbox" checked={settings.hidePrimaryWhenCollapsed} onChange={(e) => updateSetting('hidePrimaryWhenCollapsed', e.target.checked)} className="w-4 h-4" />
         </label>
@@ -164,12 +170,12 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
           <input type="checkbox" checked={settings.notifyWallet} onChange={(e) => updateSetting('notifyWallet', e.target.checked)} className="w-4 h-4" />
         </label>
         <label className="flex items-center justify-between text-gray-300">
-          <span>Show queue empty/warning notifications</span>
+          <span>Show skill queue empty/warning notifications</span>
           <input type="checkbox" checked={settings.notifyQueueEmpty} onChange={(e) => updateSetting('notifyQueueEmpty', e.target.checked)} className="w-4 h-4" />
         </label>
         <div className="pt-2 border-t border-gray-700 space-y-3">
           <p className="text-xs text-gray-500">
-            Replace the built-in chime with a custom WAV per notification type (plays through the Windows toast overlay; other platforms keep the system sound).
+            Replace the built-in chime with a custom WAV per notification type (Windows Only).
           </p>
           {SOUND_ROWS.map((row) => {
             const current = settings[row.key] ? fileBaseName(settings[row.key]) : null;
@@ -200,7 +206,7 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
         </div>
         <div className="pt-2 border-t border-gray-700 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-gray-300">Queue warning lead time (hours)</span>
+            <span className="text-gray-300">Queue warning less than time remaining (hours)</span>
             <input type="number" min="0" value={settings.queueWarnHours} onChange={(e) => updateSetting('queueWarnHours', Number(e.target.value))} className="w-20 bg-gray-700 text-gray-200 px-2 py-1 rounded border border-gray-600 text-right" />
           </div>
           <div className="flex items-center justify-between">
@@ -240,23 +246,23 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
         </div>
       </div>
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
-        <h3 className="text-md font-semibold text-gray-200">Toast Notifications</h3>
-        <p className="text-xs text-gray-500">The toast box shows notification bubbles over your taskbar (Windows).</p>
+        <h3 className="text-md font-semibold text-gray-200">Notification Pings</h3>
+        <p className="text-xs text-gray-500">Pings are the small popups ESP shows over your taskbar when something happens (Windows).</p>
         <label className="flex items-center justify-between text-gray-300">
-          <span>Number of toasts shown at once</span>
+          <span>Number of pings shown at once</span>
           <input type="number" min="1" max="10" value={settings.toastMaxVisible} onChange={(e) => updateSetting('toastMaxVisible', Math.max(1, Math.min(10, Number(e.target.value) || 5)))} className="w-16 bg-gray-700 text-gray-200 px-2 py-1 rounded border border-gray-600 text-right" />
         </label>
         <label className="flex items-center justify-between text-gray-300">
-          <span>Time toasts stay on screen (seconds)</span>
+          <span>Time pings stay on screen (seconds)</span>
           <input type="number" min="2" max="30" value={Math.round((settings.toastDurationMs ?? 8000) / 1000)} onChange={(e) => updateSetting('toastDurationMs', Math.max(2000, Math.min(30000, (Number(e.target.value) || 8) * 1000)))} className="w-16 bg-gray-700 text-gray-200 px-2 py-1 rounded border border-gray-600 text-right" />
         </label>
         <label className="flex items-center justify-between text-gray-300">
-          <span>New toasts on top</span>
+          <span>New pings on top</span>
           <input type="checkbox" checked={!!settings.toastStackTop} onChange={(e) => updateSetting('toastStackTop', e.target.checked)} className="w-4 h-4" />
         </label>
         <div className="pt-2 border-t border-gray-700 space-y-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-gray-300">Toast box position</span>
+            <span className="text-gray-300">Ping box position</span>
             <div className="flex gap-2">
               {moveActive ? (
                 <>
@@ -278,13 +284,13 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
                   onClick={handleToastMove}
                   className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded"
                 >
-                  Move toast box
+                  Move ping box
                 </button>
               )}
             </div>
           </div>
           {moveActive && (
-            <p className="text-xs text-blue-300">Drag the highlighted toast box to a new spot on screen.</p>
+            <p className="text-xs text-blue-300">Drag the highlighted ping box to a new spot on screen.</p>
           )}
           {moveFeedback && <p className="text-xs text-gray-400">{moveFeedback}</p>}
         </div>
@@ -293,7 +299,7 @@ export default function SettingsTab({ onClose, onSettingsChange }) {
             onClick={handleTestToast}
             className="px-3 py-1 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded"
           >
-            Show test toast
+            Show test ping
           </button>
         </div>
       </div>

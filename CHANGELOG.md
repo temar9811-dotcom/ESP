@@ -1,12 +1,22 @@
 # Changelog
 
+## 1.2.17
+
+### Skill plans — totals on the plan list
+- **Plan totals at a glance** — every plan in the Plans tab now shows the SP still to train and the estimated training time, on the right of the row just before **Edit**. The figures match the plan editor exactly, so already-trained levels are excluded rather than counting the plan's full price. Hover the numbers to see whether the time came from your real attributes or a fallback rate.
+
+### Settings — UI improvements
+- **Clearer wording and a new close-to-tray option** — the settings tab got a pass for readability (the toast section is now "Notification Pings", and a few labels now say what they actually do), plus a new **Close to tray** switch in System. It's on by default, so the X button hides ESP to the tray as it always has; turn it off and the X button closes ESP for real.
+
 ## 1.2.16
 
 ### Updates — hourly checks and manual "Update Now"
 - **Checks every hour** — ESP now polls for new releases once an hour instead of only once at launch, so a long-running session picks up updates without a restart.
-- **New "Install updates automatically" setting** (Settings → System, on by default) — this controls whether ESP *acts* on an update, not whether it looks. With it on you get the usual update dialog and the download installs when you quit. With it off, ESP never installs anything on its own.
+- **New "Install updates automatically" setting** (Settings → System, on by default) — this controls whether ESP *acts* on an update, not whether it looks. With it on you get the usual update dialog: press **Download Now** and the download runs, then ESP quits and installs it straight away. With it off, ESP never opens that dialog and never installs anything on its own.
 - **"Update Now" button** — turn the setting off and, whenever a new version is found, a purple **Update Now** button appears in the top bar. Click it to download and install immediately. The button only shows when there's actually an update to install and stays hidden while automatic installs are on.
 - The hourly check stays silent when it finds nothing, so the top bar isn't disturbed by routine "you're up to date" checks.
+- Turning the setting off and on again takes effect straight away: switch it on with an update already waiting and the dialog appears, switch it off and the dialog steps aside for the top-bar **Update Now** button.
+
 
 ## 1.2.15
 

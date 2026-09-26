@@ -6,7 +6,7 @@ and nudges you exactly when something matters.
 
 Built with Electron and the EVE ESI API.
 
-## Current Features (v1.2.16)
+## Current Features (v1.2.17)
 
 ### Character Management & Tracking
 - **EVE SSO login** for multiple characters
@@ -94,10 +94,11 @@ Built with Electron and the EVE ESI API.
 This repository tracks the latest development (alpha) code. If you want to run the bleeding edge before an official release is built, pull the `main` branch and run:
 
 
-**Currently tracked version: v1.2.16**
+**Currently tracked version: v1.2.17**
 
 ### Changelog
-- **v1.2.16 (current)** — ESP now checks for new releases once an hour instead of only at launch. A new "Install updates automatically" setting (on by default) controls what happens when an update is found rather than whether ESP looks: on, you get the normal update dialog and the download installs when you quit; off, nothing installs itself and a purple "Update Now" button appears in the top bar whenever a new version is waiting, downloading and installing on click. The button is hidden while automatic installs are on, and routine hourly checks stay silent.
+- **v1.2.17 (current)** — Plans tab: every plan row now shows the SP still to train and the estimated training time, on the right just before Edit, calculated exactly like the plan editor (already-trained levels excluded). Settings tab: a readability pass on the wording (the toast section is now "Notification Pings", and a few labels say what they actually do) plus a new "Close to tray" switch in System, on by default — untick it and the X button closes ESP instead of hiding it to the tray.
+- **v1.2.16** — ESP now checks for new releases once an hour instead of only at launch. A new "Install updates automatically" setting (on by default) controls what happens when an update is found rather than whether ESP looks: on, you get the normal update dialog, and pressing Download Now downloads the update and then quits and installs it straight away; off, nothing installs itself and a purple "Update Now" button appears in the top bar whenever a new version is waiting, doing the same download-quit-install on click. The button is hidden while automatic installs are on, and routine hourly checks stay silent.
 - **v1.2.15** — Clone nicknames: give every jump clone and the home station a name (✎ button, saved per character, shown as "Nickname (Citadel - XYZ)"). Plan editor gains a "Show trained skills" checkbox (off by default) to reveal entries the character already has trained. A queue whose remaining time drops to or below your running-dry threshold now raises the orange pulse and warns on startup and on the drop, superseded by the empty-queue warning, and the running-dry warning now honors the per-character "Ignore no-skill-training" checkbox.
 - **v1.2.14** — Notifications can be exported to a JSON file with names resolved locally (SDE + cached ESI names) and unresolved IDs flagged for background lookup. Alert colors now mean something specific: red "No Active Skill Training" fires when skills are queued but nothing is progressing, while orange is reserved for a completely empty queue. The top-bar Refresh button now only requeues pullers whose timers have passed 50% and locks out until one does.
 - **v1.2.13** — Custom WAV sounds. Each notification type (skill complete, wallet activity, queue empty/warning) can use its own .wav file picked via a dialog in Settings → Notifications, with a Reset button returning to the default chime and "Show test toast" previewing the current skill sound. Custom sounds play through the Windows toast overlay; other platforms keep the OS default sound.

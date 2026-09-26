@@ -1,7 +1,8 @@
-// File: ui/src/components/character/SkillPlans.jsx | Version: 2.5
-import React, { useState, useEffect } from 'react';
+// File: ui/src/components/character/SkillPlans.jsx | Version: 2.6
+import React, { useState, useEffect, useMemo } from 'react';
 import SkillPlanModal from '../modals/SkillPlanModal';
 import PlanDetailModal from '../modals/PlanDetailModal';
+import { formatSP, formatTrain, summarizePlan } from '../../utils/planSummary';
 
 export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
   const characterId = account?.characterId;
@@ -11,6 +12,9 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
   const [importError, setImportError] = useState('');
   const [draft, setDraft] = useState(null);
   const [viewPlan, setViewPlan] = useState(null);
+  const [catalog, setCatalog] = useState(null);
+  const [skillLevels, setSkillLevels] = useState({});
+  const [attributes, setAttributes] = useState(null);
 
   const fetchPlans = async () => {
     const data = await window.eveApi.listPlans();
@@ -25,6 +29,38 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
       .finally(() => { if (isMounted) setLoading(false); });
     return () => { isMounted = false; };
   }, [characterId]);
+
+  // Skill catalog (rank + attributes) for the SP math.
+  useEffect(() => {
+    let isMounted = true;
+    window.eveApi.getAllSkills()
+      .then((all) => { if (isMounted) setCatalog(Array.isArray(all) ? all : null); })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  // The character's trained levels + attributes, so totals show what is
+  // actually left to train rather than the full cost of the plan.
+  useEffect(() => {
+    let isMounted = true;
+    if (!characterId) return;
+    window.eveApi.getSkillsData(characterId)
+      .then((data) => {
+        if (!isMounted) return;
+        const map = {};
+        (data?.skills || []).forEach((s) => { map[s.skill_id] = s.trained_skill_level; });
+        setSkillLevels(map);
+        setAttributes(data?.attributes || null);
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, [characterId]);
+
+  const catalogById = useMemo(() => {
+    const m = new Map();
+    (catalog || []).forEach((s) => m.set(s.id, s));
+    return m;
+  }, [catalog]);
 
   const isChildPlan = (plan) => Boolean(plan?.parentId);
 
@@ -129,7 +165,9 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
           </p>
         ) : (
           <div className="space-y-2">
-            {applicablePlans.map((plan) => (
+            {applicablePlans.map((plan) => {
+              const totals = summarizePlan(plan.entries, catalogById, skillLevels, attributes);
+              return (
               <div
                 key={plan.id}
                 onClick={() => setViewPlan(plan)}
@@ -142,6 +180,15 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
+                  <div
+                    className="text-right leading-tight"
+                    title={totals.hasAttributes
+                      ? 'Remaining SP to train, and estimated time at your current attributes'
+                      : 'Remaining SP to train (estimated time uses a default rate - attribute data unavailable)'}
+                  >
+                    <p className="text-xs font-mono text-blue-400">{formatSP(totals.totalRemainingSP)} SP</p>
+                    <p className="text-xs font-mono text-green-400">{formatTrain(totals.totalMinutes)}</p>
+                  </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); onEditPlan && onEditPlan(plan); }}
                     className="text-blue-400 hover:text-blue-300 text-sm"
@@ -156,7 +203,8 @@ export default function SkillPlans({ account, onCreatePlan, onEditPlan }) {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

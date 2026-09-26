@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   hidePrimaryWhenCollapsed: false,
   openAtLogin: false,
   startMinimized: false,
+  closeToTray: true,
   autoInstallUpdates: true,
   muteSounds: false,
   notifySkill: true,

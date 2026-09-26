@@ -7,11 +7,21 @@ export default function UpdateDialog() {
   const [version, setVersion] = useState('');
 
   useEffect(() => {
-    const unsub = window.eveApi.onUpdateAvailable((data) => {
+    const unsubAvailable = window.eveApi.onUpdateAvailable((data) => {
       setVersion(data.version);
       setShow(true);
     });
-    return unsub;
+    // If automatic installs get switched off while this dialog is open, the
+    // top-bar "Update Now" button takes over, so step aside.
+    const unsubStatus = window.eveApi.onUpdateStatus((status) => {
+      if (!status) return;
+      if (status.version) setVersion(status.version);
+      if (status.autoInstall === false) setShow(false);
+    });
+    return () => {
+      unsubAvailable();
+      unsubStatus();
+    };
   }, []);
 
   if (!show) return null;

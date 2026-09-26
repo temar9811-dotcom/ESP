@@ -1,4 +1,4 @@
-// File Version: 1.2.1-alpha
+// File Version: 1.2.2-alpha
 'use strict';
 const {
 app,
@@ -180,9 +180,14 @@ win.on('resize', debounceSaveBounds);
 win.on('move', debounceSaveBounds);
 win.on('close', (event) => {
 if (!isQuitting) {
+const closeToTray = require('./settings').getSettings().closeToTray !== false;
+if (closeToTray) {
 event.preventDefault();
 win.hide();
 return;
+}
+// Close-to-tray is off: closing the window quits the app.
+isQuitting = true;
 }
 saveBounds();
 });
